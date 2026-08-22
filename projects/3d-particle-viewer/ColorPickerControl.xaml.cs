@@ -9,6 +9,8 @@ namespace ParticleModelViewer;
 public partial class ColorPickerControl : UserControl
 {
     private const int WheelSize = 180;
+    private readonly BitmapSource colorWheelBitmap;
+    private readonly SolidColorBrush previewBrush = new();
     private bool suppressChanges;
     private bool isWheelDragging;
     private double hue = 252;
@@ -18,6 +20,8 @@ public partial class ColorPickerControl : UserControl
     public ColorPickerControl()
     {
         InitializeComponent();
+        colorWheelBitmap = CreateColorWheelBitmap();
+        PreviewBorder.Background = previewBrush;
         ValueSlider.ValueChanged += ValueSlider_Changed;
         RenderPicker(false);
     }
@@ -84,9 +88,9 @@ public partial class ColorPickerControl : UserControl
         suppressChanges = true;
         ValueSlider.Value = value;
         suppressChanges = false;
-        PreviewBorder.Background = new SolidColorBrush(SelectedColor);
+        previewBrush.Color = SelectedColor;
         HexValueText.Text = $"HEX: {HexValue}";
-        ColorWheelImage.Source = CreateColorWheelBitmap();
+        ColorWheelImage.Source = colorWheelBitmap;
         if (notify) ColorChanged?.Invoke(this, EventArgs.Empty);
     }
 
