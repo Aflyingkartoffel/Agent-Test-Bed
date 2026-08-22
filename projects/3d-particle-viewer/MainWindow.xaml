@@ -72,13 +72,13 @@
             <TextBlock Text="Simulation" FontSize="15" FontWeight="SemiBold" />
             <CheckBox x:Name="SoftBodyCheckBox" Content="Enable soft body" IsChecked="False" Click="SoftBody_Changed" Foreground="#CBD5E1" Margin="0,12,0,0" />
             <TextBlock Text="Simulation strength" Foreground="#94A3B8" Margin="0,12,0,2" />
-            <Slider x:Name="SimulationStrengthSlider" Minimum="0" Maximum="20" Value="7" TickFrequency="1" ValueChanged="SimulationSettings_Changed" />
+            <Slider x:Name="SimulationStrengthSlider" Minimum="0" Maximum="20" Value="7" TickFrequency="1" />
             <TextBlock x:Name="SimulationStrengthValue" Text="7.0" Foreground="#CBD5E1" HorizontalAlignment="Right" />
             <TextBlock Text="Damping" Foreground="#94A3B8" Margin="0,10,0,2" />
-            <Slider x:Name="DampingSlider" Minimum="0.75" Maximum="0.999" Value="0.92" TickFrequency="0.01" ValueChanged="SimulationSettings_Changed" />
+            <Slider x:Name="DampingSlider" Minimum="0.75" Maximum="0.999" Value="0.92" TickFrequency="0.01" />
             <TextBlock x:Name="DampingValue" Text="0.920" Foreground="#CBD5E1" HorizontalAlignment="Right" />
             <TextBlock Text="Time step" Foreground="#94A3B8" Margin="0,10,0,2" />
-            <Slider x:Name="TimeStepSlider" Minimum="0.005" Maximum="0.033" Value="0.016" TickFrequency="0.004" ValueChanged="SimulationSettings_Changed" />
+            <Slider x:Name="TimeStepSlider" Minimum="0.005" Maximum="0.033" Value="0.016" TickFrequency="0.004" />
             <TextBlock x:Name="TimeStepValue" Text="0.016 s" Foreground="#CBD5E1" HorizontalAlignment="Right" />
             <Button Content="Reset simulation" Click="ResetSimulation_Click" />
           </StackPanel>
@@ -89,7 +89,7 @@
             <TextBlock Text="Scene" FontSize="15" FontWeight="SemiBold" />
             <CheckBox x:Name="GroundPlaneCheckBox" Content="Ground plane" IsChecked="False" Click="GroundPlane_Changed" Foreground="#CBD5E1" Margin="0,12,0,0" />
             <TextBlock Text="Ground height" Foreground="#94A3B8" Margin="0,10,0,2" />
-            <Slider x:Name="GroundHeightSlider" Minimum="-3" Maximum="1" Value="-2" TickFrequency="0.25" ValueChanged="GroundHeight_Changed" />
+            <Slider x:Name="GroundHeightSlider" Minimum="-3" Maximum="1" Value="-2" TickFrequency="0.25" />
             <TextBlock x:Name="GroundHeightValue" Text="-2.00" Foreground="#CBD5E1" HorizontalAlignment="Right" />
           </StackPanel>
         </Border>

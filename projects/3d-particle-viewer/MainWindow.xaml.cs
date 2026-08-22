@@ -34,6 +34,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        SimulationStrengthSlider.ValueChanged += SimulationSettings_Changed;
+        DampingSlider.ValueChanged += SimulationSettings_Changed;
+        TimeStepSlider.ValueChanged += SimulationSettings_Changed;
+        GroundHeightSlider.ValueChanged += GroundHeight_Changed;
         SceneVisual.Content = scene;
         scene.Children.Add(modelScene);
         modelTransform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), 0)));
@@ -167,7 +171,6 @@ public partial class MainWindow : Window
 
     private void UpdateSimulationLabels()
     {
-        if (SimulationStrengthValue is null || DampingValue is null || TimeStepValue is null) return;
         SimulationStrengthValue.Text = SimulationStrengthSlider.Value.ToString("0.0", CultureInfo.InvariantCulture);
         DampingValue.Text = DampingSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
         TimeStepValue.Text = $"{TimeStepSlider.Value:0.000} s";
