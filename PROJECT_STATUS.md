@@ -7,8 +7,8 @@ The first application, a browser-based calculator, has been created. The second 
 - **Purpose:** Personal AI-assisted application development laboratory
 - **Current status:** Scaffolded, initialized as a local Git repository, and ready for GitHub connection
 - **Technology/language:** HTML/CSS/vanilla JavaScript for the calculator; C#/.NET 8 WPF for the particle viewer
-- **What currently works:** Calculator core workflow; particle viewer build, OBJ parsing, surface-derived particles, HSV color picker with HEX input, smoothed render-cadence FPS display, orbit/pan/zoom input, all appearance controls, built-in radial-gradient billboard test asset, local spring constraints, adjustable spring stiffness/deformation resistance/elasticity/bounce, damping, soft-body shape preservation, reset behavior, optional ground plane/collision, and particle-level collision response
-- **What is being worked on:** Interactive Windows testing of picker behavior, FPS under load, mouse capture recovery, cube/brain spring stability, elasticity tuning, and each particle shape with a representative anatomical OBJ
+- **What currently works:** Calculator core workflow; particle viewer build, OBJ parsing, cohesive local spring constraints, black viewport, visible optional ground plane/collision, compact soft-body controls for Chaos/Momentum/Drop Height, reset-to-start behavior, and camera view/rotation controls
+- **What is being worked on:** Interactive Windows testing of the simplified interface, cube/brain spring stability, chaos/momentum/drop-height differences, and settling behavior
 - **Known problems:** FBX and GPU point rendering are not implemented; spring simulation and combined mesh updates run on the UI thread; anatomical visual testing requires an anatomical model asset not present in this repository
 - **Next logical steps:** Test with a small and complex OBJ, then decide whether a reliable FBX/glTF loader is worth adding
 

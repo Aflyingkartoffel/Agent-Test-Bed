@@ -11,28 +11,35 @@ public sealed class ParticleSimulation
     private readonly List<Spring> springs = [];
     private Point3D restCenter;
     private double restHeight;
+    private double simulationTime;
 
     private readonly record struct Spring(int A, int B, double RestLength, double Stiffness, double Damping);
 
     public IReadOnlyList<Point3D> Positions => positions;
     public int SpringCount => springs.Count;
 
-    public void Reset(IReadOnlyList<Point3D> newRestPositions)
+    public void Reset(IReadOnlyList<Point3D> newRestPositions) => Reset(newRestPositions, 0, 0);
+
+    public void Reset(IReadOnlyList<Point3D> newRestPositions, double dropHeight, double momentum)
     {
         restPositions.Clear();
         positions.Clear();
         velocities.Clear();
         forces.Clear();
         springs.Clear();
+        simulationTime = 0;
         restPositions.AddRange(newRestPositions);
-        positions.AddRange(newRestPositions);
-        velocities.AddRange(Enumerable.Repeat(new Vector3D(), newRestPositions.Count));
+        foreach (var point in newRestPositions)
+        {
+            positions.Add(new Point3D(point.X, point.Y + Math.Max(0, dropHeight), point.Z));
+            velocities.Add(new Vector3D(0, -Math.Clamp(momentum, 0, 1) * 3.5, 0));
+        }
         forces.AddRange(Enumerable.Repeat(new Vector3D(), newRestPositions.Count));
         CalculateRestShape();
         BuildSpringGraph();
     }
 
-    public void Step(double timeStep, double strength, double deformationResistance, double elasticity, double springStiffness, double bounce, double damping, bool groundEnabled, double groundHeight, double particleRadius)
+    public void Step(double timeStep, double strength, double deformationResistance, double elasticity, double springStiffness, double bounce, double damping, double chaos, bool groundEnabled, double groundHeight, double particleRadius)
     {
         if (positions.Count == 0) return;
         var substeps = 2;
@@ -60,14 +67,20 @@ public sealed class ParticleSimulation
             {
                 var rest = restPositions[i];
                 var current = positions[i];
-                var shapeForce = (rest - current) * shapeStrength;
+                var translatedRest = new Point3D(
+                    rest.X + currentCenter.X - restCenter.X,
+                    rest.Y + currentCenter.Y - restCenter.Y,
+                    rest.Z + currentCenter.Z - restCenter.Z);
+                var shapeForce = (translatedRest - current) * shapeStrength;
                 var centerForce = new Vector3D(restCenter.X - currentCenter.X, 0, restCenter.Z - currentCenter.Z) * (shapeStrength * 0.35);
                 var lateralTarget = new Point3D(
-                    restCenter.X + (rest.X - restCenter.X) * lateralScale,
-                    rest.Y,
-                    restCenter.Z + (rest.Z - restCenter.Z) * lateralScale);
+                    currentCenter.X + (rest.X - restCenter.X) * lateralScale,
+                    currentCenter.Y + (rest.Y - restCenter.Y),
+                    currentCenter.Z + (rest.Z - restCenter.Z) * lateralScale);
                 var volumeForce = new Vector3D(lateralTarget.X - current.X, 0, lateralTarget.Z - current.Z) * (compression * boundedElasticity * 4);
-                forces[i] = gravity + shapeForce + centerForce + volumeForce;
+                var phase = simulationTime * (1.2 + (i % 7) * 0.11) + i * 0.73;
+                var disturbance = new Vector3D(Math.Sin(phase), Math.Cos(phase * 0.83), Math.Sin(phase * 1.17)) * (Math.Clamp(chaos, 0, 1) * 2.2);
+                forces[i] = gravity + shapeForce + centerForce + volumeForce + disturbance;
             }
 
             foreach (var spring in springs)
@@ -100,6 +113,7 @@ public sealed class ParticleSimulation
                 positions[i] = next;
                 velocities[i] = velocity;
             }
+            simulationTime += subTimeStep;
         }
     }
 

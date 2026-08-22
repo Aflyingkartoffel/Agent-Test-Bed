@@ -48,6 +48,9 @@ public partial class MainWindow : Window
         particleMaterial = new DiffuseMaterial(particleBrush);
         ParticleColorPicker.ColorChanged += ParticleColorPicker_Changed;
         ColorTextBox.Text = ParticleColorPicker.HexValue;
+        ChaosSlider.ValueChanged += SimulationSettings_Changed;
+        MomentumSlider.ValueChanged += SimulationSettings_Changed;
+        DropHeightSlider.ValueChanged += SimulationSettings_Changed;
         SpringStiffnessSlider.ValueChanged += SimulationSettings_Changed;
         SimulationStrengthSlider.ValueChanged += SimulationSettings_Changed;
         DeformationResistanceSlider.ValueChanged += SimulationSettings_Changed;
@@ -112,7 +115,7 @@ public partial class MainWindow : Window
         if (loadedModel is null) return;
         var count = (int)DensitySlider.Value;
         particlePoints = ParticleGenerator.SampleSurface(loadedModel, count);
-        simulation.Reset(particlePoints);
+        simulation.Reset(particlePoints, DropHeightSlider.Value, MomentumSlider.Value);
         UpdateParticleVisual();
         DensityValue.Text = $"{count:N0} particles";
         SizeValue.Text = SizeSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
@@ -184,6 +187,9 @@ public partial class MainWindow : Window
 
     private void UpdateSimulationLabels()
     {
+        ChaosValue.Text = $"{ChaosSlider.Value:0%}";
+        MomentumValue.Text = $"{MomentumSlider.Value:0%}";
+        DropHeightValue.Text = DropHeightSlider.Value.ToString("0.0", CultureInfo.InvariantCulture);
         SimulationStrengthValue.Text = SimulationStrengthSlider.Value.ToString("0.0", CultureInfo.InvariantCulture);
         SpringStiffnessValue.Text = SpringStiffnessSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
         DeformationResistanceValue.Text = DeformationResistanceSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
@@ -196,7 +202,7 @@ public partial class MainWindow : Window
     private void SimulationTimer_Tick(object? sender, EventArgs e)
     {
         if (!simulationIsActive || loadedModel is null) return;
-        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DeformationResistanceSlider.Value, ElasticitySlider.Value, SpringStiffnessSlider.Value, BounceSlider.Value, DampingSlider.Value, GroundPlaneCheckBox.IsChecked == true && CollisionCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
+        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DeformationResistanceSlider.Value, ElasticitySlider.Value, SpringStiffnessSlider.Value, BounceSlider.Value, DampingSlider.Value, ChaosSlider.Value, GroundPlaneCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
         var shape = GetSelectedShape();
         if (particleVisual is null) return;
         if (shape is ParticleShape.Billboard or ParticleShape.ImageBillboard)
@@ -207,12 +213,17 @@ public partial class MainWindow : Window
 
     private void ResetSimulation_Click(object sender, RoutedEventArgs e)
     {
+        SoftBodyCheckBox.IsChecked = false;
+        simulationIsActive = false;
+        simulationTimer.Stop();
         ResetSimulationState();
+        RotationSlider.Value = 0;
+        ResetCamera_Click(sender, e);
         if (loadedModel is not null) UpdateParticleVisual();
         StatusText.Text = loadedModel is null ? "No model loaded" : "Simulation reset";
     }
 
-    private void ResetSimulationState() => simulation.Reset(particlePoints);
+    private void ResetSimulationState() => simulation.Reset(particlePoints, DropHeightSlider.Value, MomentumSlider.Value);
 
     private void GroundPlane_Changed(object sender, RoutedEventArgs e) => UpdateGroundVisual();
 
@@ -232,7 +243,8 @@ public partial class MainWindow : Window
         var mesh = new MeshGeometry3D();
         mesh.Positions.Add(new Point3D(-6, y, -6)); mesh.Positions.Add(new Point3D(6, y, -6)); mesh.Positions.Add(new Point3D(6, y, 6)); mesh.Positions.Add(new Point3D(-6, y, 6));
         mesh.TriangleIndices.Add(0); mesh.TriangleIndices.Add(1); mesh.TriangleIndices.Add(2); mesh.TriangleIndices.Add(0); mesh.TriangleIndices.Add(2); mesh.TriangleIndices.Add(3);
-        groundVisual = new GeometryModel3D(mesh, new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(45, 120, 140, 170))));
+        var groundMaterial = new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(88, 96, 108)));
+        groundVisual = new GeometryModel3D(mesh, groundMaterial) { BackMaterial = groundMaterial };
         scene.Children.Add(groundVisual);
     }
 
@@ -346,6 +358,8 @@ public partial class MainWindow : Window
         cameraTarget = new Point3D();
         UpdateCamera();
     }
+
+    private void ResetRotation_Click(object sender, RoutedEventArgs e) => RotationSlider.Value = 0;
 
     private void ResetVisualization_Click(object sender, RoutedEventArgs e)
     {
