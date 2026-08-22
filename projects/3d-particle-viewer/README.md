@@ -28,6 +28,7 @@ To test quickly, choose the included `sample-cube.obj` with **Load model**.
 - Rotate around the Y axis with a slider
 - Keep the original mesh hidden by default, with an optional **Show original mesh** reference toggle
 - Run a lightweight soft-body simulation with restoring forces, damping, gravity, and optional ground collision
+- Adjust deformation resistance independently from damping while the simulation is running
 - Display and adjust an optional ground plane without rotating it with the model
 - Reset the camera or visualization
 - Graceful messages for unsupported FBX files, invalid OBJ files, invalid colors, and zero-size models
@@ -44,7 +45,7 @@ The OBJ loader reads vertices and faces. Each face is triangulated, triangles ar
 
 ## Soft-body simulation
 
-Enable **Soft body** to let particles move with a simple stable simulation. Each particle remembers its sampled rest position and receives a restoring force toward that position, plus gravity and velocity damping. When **Ground plane** is enabled, particles are kept above the configured plane and downward velocity is reduced on contact. **Reset simulation** restores all particles and velocities without reloading the model.
+Enable **Soft body** to let particles move with a simple stable simulation. Each particle remembers its sampled rest position and receives a restoring force toward that position, plus gravity and velocity damping. **Deformation resistance** ranges from `0.00` to `1.00` and scales that restoring force live; `1.00` preserves the default behavior. **Damping** remains separate and controls how much velocity and energy are dissipated each step. When **Ground plane** is enabled, particles are kept above the configured plane and downward velocity is reduced on contact. **Reset simulation** restores all particles and velocities without reloading the model.
 
 This is intentionally a lightweight shape-preserving effect, not a full physics engine. It does not calculate particle-to-particle springs or rigid-body contacts, so very high deformation or dense models may look approximate.
 

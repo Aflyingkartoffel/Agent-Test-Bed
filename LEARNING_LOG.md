@@ -24,6 +24,12 @@ This log records useful programming concepts encountered while building the repo
 - **Where we encountered it:** We created a top-level structure that separates applications, experiments, and broader documentation.
 - **Why it matters:** Clear structure and current documentation help both people and AI assistants understand what exists and what should happen next.
 
+## 2026-08-21 — Deformation resistance and simulation state
+
+- **Rest state:** A simulation needs a separate copy of each particle's original position; comparing a particle to its current position produces no restoring force.
+- **Parameter separation:** Deformation resistance scales the force pulling particles toward rest, while damping independently reduces velocity and energy over time.
+- **Live UI updates:** A WPF slider event can update a simulation parameter during the timer loop without resetting the simulation state.
+
 ## 2026-08-21 — Building the calculator
 
 - **Functions:** A function packages a focused action, such as entering a number or clearing the calculator, so the same behavior can be called from both buttons and keyboard input.

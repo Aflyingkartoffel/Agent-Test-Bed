@@ -45,7 +45,13 @@
               <Button Content="Apply" Click="ApplyColor_Click" DockPanel.Dock="Right" Margin="8,0,0,0" />
             </DockPanel>
             <TextBlock Text="Particle shape" Foreground="#94A3B8" Margin="0,14,0,4" />
-            <ComboBox x:Name="ParticleShapeComboBox" SelectedIndex="0" SelectionChanged="ParticleShape_Changed" Background="#1B2740" Foreground="#0F172A">
+            <ComboBox x:Name="ParticleShapeComboBox" SelectedIndex="0" SelectionChanged="ParticleShape_Changed" Background="#1B2740" Foreground="Black">
+              <ComboBox.Resources>
+                <Style TargetType="{x:Type ComboBoxItem}">
+                  <Setter Property="Foreground" Value="Black" />
+                  <Setter Property="Background" Value="White" />
+                </Style>
+              </ComboBox.Resources>
               <ComboBoxItem Content="Cube" />
               <ComboBoxItem Content="Sphere" />
               <ComboBoxItem Content="Tetrahedron" />
@@ -74,6 +80,9 @@
             <TextBlock Text="Simulation strength" Foreground="#94A3B8" Margin="0,12,0,2" />
             <Slider x:Name="SimulationStrengthSlider" Minimum="0" Maximum="20" Value="7" TickFrequency="1" />
             <TextBlock x:Name="SimulationStrengthValue" Text="7.0" Foreground="#CBD5E1" HorizontalAlignment="Right" />
+            <TextBlock Text="Deformation resistance" Foreground="#94A3B8" Margin="0,10,0,2" />
+            <Slider x:Name="DeformationResistanceSlider" Minimum="0" Maximum="1" Value="1" TickFrequency="0.1" />
+            <TextBlock x:Name="DeformationResistanceValue" Text="1.00" Foreground="#CBD5E1" HorizontalAlignment="Right" />
             <TextBlock Text="Damping" Foreground="#94A3B8" Margin="0,10,0,2" />
             <Slider x:Name="DampingSlider" Minimum="0.75" Maximum="0.999" Value="0.92" TickFrequency="0.01" />
             <TextBlock x:Name="DampingValue" Text="0.920" Foreground="#CBD5E1" HorizontalAlignment="Right" />

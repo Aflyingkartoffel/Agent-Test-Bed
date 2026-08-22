@@ -35,6 +35,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         SimulationStrengthSlider.ValueChanged += SimulationSettings_Changed;
+        DeformationResistanceSlider.ValueChanged += SimulationSettings_Changed;
         DampingSlider.ValueChanged += SimulationSettings_Changed;
         TimeStepSlider.ValueChanged += SimulationSettings_Changed;
         GroundHeightSlider.ValueChanged += GroundHeight_Changed;
@@ -172,6 +173,7 @@ public partial class MainWindow : Window
     private void UpdateSimulationLabels()
     {
         SimulationStrengthValue.Text = SimulationStrengthSlider.Value.ToString("0.0", CultureInfo.InvariantCulture);
+        DeformationResistanceValue.Text = DeformationResistanceSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
         DampingValue.Text = DampingSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
         TimeStepValue.Text = $"{TimeStepSlider.Value:0.000} s";
     }
@@ -179,7 +181,7 @@ public partial class MainWindow : Window
     private void SimulationTimer_Tick(object? sender, EventArgs e)
     {
         if (!simulationIsActive || loadedModel is null) return;
-        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DampingSlider.Value, GroundPlaneCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
+        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DeformationResistanceSlider.Value, DampingSlider.Value, GroundPlaneCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
         var shape = GetSelectedShape();
         if (particleVisual is null) return;
         if (shape is ParticleShape.Billboard or ParticleShape.ImageBillboard)

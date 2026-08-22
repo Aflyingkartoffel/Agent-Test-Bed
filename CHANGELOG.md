@@ -19,3 +19,6 @@
 - Added a built-in transparent `radial_gradient.png` billboard test texture and one-click selection.
 - Added a lightweight soft-body mode with rest-position restoring forces, damping, gravity, reset behavior, optional ground plane, and particle-level ground collision.
 - Added focused simulation/scene UI sections and reduced per-particle template allocations during dynamic mesh updates.
+- Added a live `0.00`–`1.00` deformation-resistance slider that scales rest-position restoring force independently from damping.
+- Fixed the simulation to retain separate rest positions so deformation resistance affects actual particle recovery.
+- Set the Particle Shape selector and its options to black text for readability.
