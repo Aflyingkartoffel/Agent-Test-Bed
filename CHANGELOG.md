@@ -16,3 +16,6 @@
 - Added selectable Cube, Sphere, Tetrahedron, Billboard, and Image Billboard particle shapes.
 - Hid the original mesh by default and added an optional reference-mesh toggle to prevent mesh occlusion.
 - Added PNG/JPG/JPEG image loading for camera-facing billboards with aspect-ratio preservation.
+- Added a built-in transparent `radial_gradient.png` billboard test texture and one-click selection.
+- Added a lightweight soft-body mode with rest-position restoring forces, damping, gravity, reset behavior, optional ground plane, and particle-level ground collision.
+- Added focused simulation/scene UI sections and reduced per-particle template allocations during dynamic mesh updates.

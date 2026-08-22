@@ -14,12 +14,17 @@ namespace ParticleModelViewer;
 public partial class MainWindow : Window
 {
     private readonly Model3DGroup scene = new();
+    private readonly Model3DGroup modelScene = new();
     private readonly Transform3DGroup modelTransform = new();
+    private readonly ParticleSimulation simulation = new();
+    private readonly System.Windows.Threading.DispatcherTimer simulationTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private ObjModel? loadedModel;
     private GeometryModel3D? originalMeshVisual;
     private GeometryModel3D? particleVisual;
     private List<Point3D> particlePoints = [];
     private BitmapSource? particleImage;
+    private GeometryModel3D? groundVisual;
+    private bool simulationIsActive;
     private Point lastMousePosition;
     private bool isDragging;
     private double cameraYaw = 0;
@@ -30,10 +35,14 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         SceneVisual.Content = scene;
+        scene.Children.Add(modelScene);
         modelTransform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(0, 1, 0), 0)));
         modelTransform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 0)));
-        scene.Transform = modelTransform;
+        modelScene.Transform = modelTransform;
+        simulationTimer.Tick += SimulationTimer_Tick;
         UpdateCamera();
+        UpdateSimulationLabels();
+        UpdateGroundVisual();
     }
 
     private void LoadModel_Click(object sender, RoutedEventArgs e)
@@ -54,7 +63,10 @@ public partial class MainWindow : Window
         catch (Exception error) when (error is IOException or InvalidDataException or FormatException or NotSupportedException)
         {
             loadedModel = null;
-            scene.Children.Clear();
+            modelScene.Children.Clear();
+            originalMeshVisual = null;
+            particleVisual = null;
+            simulation.Reset([]);
             StatusText.Text = error.Message;
             ViewportHint.Text = "Load an OBJ model to begin";
         }
@@ -63,11 +75,12 @@ public partial class MainWindow : Window
     private void RebuildVisualization()
     {
         if (loadedModel is null) return;
-        scene.Children.Clear();
+        modelScene.Children.Clear();
         var surface = ParticleGenerator.CreateSurfaceMesh(loadedModel);
         var surfaceMaterial = new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(18, 170, 190, 220)));
         originalMeshVisual = new GeometryModel3D(surface, surfaceMaterial);
         particlePoints = ParticleGenerator.SampleSurface(loadedModel, (int)DensitySlider.Value);
+        simulation.Reset(particlePoints);
         UpdateOriginalMeshVisibility();
         RebuildParticles();
     }
@@ -77,6 +90,7 @@ public partial class MainWindow : Window
         if (loadedModel is null) return;
         var count = (int)DensitySlider.Value;
         particlePoints = ParticleGenerator.SampleSurface(loadedModel, count);
+        simulation.Reset(particlePoints);
         UpdateParticleVisual();
         DensityValue.Text = $"{count:N0} particles";
         SizeValue.Text = SizeSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
@@ -86,12 +100,13 @@ public partial class MainWindow : Window
     {
         if (loadedModel is null) return;
         var shape = GetSelectedShape();
-        if (particleVisual is not null) scene.Children.Remove(particleVisual);
+        if (particleVisual is not null) modelScene.Children.Remove(particleVisual);
+        var visiblePoints = simulationIsActive ? simulation.Positions : particlePoints;
         var geometry = shape is ParticleShape.Billboard or ParticleShape.ImageBillboard
-            ? ParticleGenerator.CreateBillboardMesh(particlePoints, SizeSlider.Value, Camera.Position, RotationSlider.Value)
-            : ParticleGenerator.CreateParticleMesh(particlePoints, SizeSlider.Value, shape);
+            ? ParticleGenerator.CreateBillboardMesh(visiblePoints, SizeSlider.Value, Camera.Position, RotationSlider.Value)
+            : ParticleGenerator.CreateParticleMesh(visiblePoints, SizeSlider.Value, shape);
         particleVisual = new GeometryModel3D(geometry, CreateParticleMaterial(shape));
-        scene.Children.Add(particleVisual);
+        modelScene.Children.Add(particleVisual);
     }
 
     private Material CreateParticleMaterial(ParticleShape shape)
@@ -114,19 +129,90 @@ public partial class MainWindow : Window
         if (particleVisual is null || loadedModel is null) return;
         var shape = GetSelectedShape();
         if (shape is ParticleShape.Billboard or ParticleShape.ImageBillboard)
-            particleVisual.Geometry = ParticleGenerator.CreateBillboardMesh(particlePoints, SizeSlider.Value, Camera.Position, RotationSlider.Value);
+            particleVisual.Geometry = ParticleGenerator.CreateBillboardMesh(GetVisibleParticlePoints(), SizeSlider.Value, Camera.Position, RotationSlider.Value);
     }
 
     private ParticleShape GetSelectedShape() => (ParticleShape)Math.Max(0, ParticleShapeComboBox.SelectedIndex);
+
+    private IReadOnlyList<Point3D> GetVisibleParticlePoints() => simulationIsActive ? simulation.Positions : particlePoints;
 
     private void UpdateOriginalMeshVisibility()
     {
         if (originalMeshVisual is null) return;
         if (ShowOriginalMeshCheckBox.IsChecked == true)
         {
-            if (!scene.Children.Contains(originalMeshVisual)) scene.Children.Insert(0, originalMeshVisual);
+            if (!modelScene.Children.Contains(originalMeshVisual)) modelScene.Children.Insert(0, originalMeshVisual);
         }
-        else scene.Children.Remove(originalMeshVisual);
+        else modelScene.Children.Remove(originalMeshVisual);
+    }
+
+    private void SoftBody_Changed(object sender, RoutedEventArgs e)
+    {
+        simulationIsActive = SoftBodyCheckBox.IsChecked == true && loadedModel is not null;
+        if (simulationIsActive)
+        {
+            simulationTimer.Start();
+            StatusText.Text = "Soft body simulation active";
+        }
+        else
+        {
+            simulationTimer.Stop();
+            ResetSimulationState();
+            if (loadedModel is not null) UpdateParticleVisual();
+            StatusText.Text = loadedModel is null ? "No model loaded" : "Static particle visualization";
+        }
+    }
+
+    private void SimulationSettings_Changed(object sender, RoutedPropertyChangedEventArgs<double> e) => UpdateSimulationLabels();
+
+    private void UpdateSimulationLabels()
+    {
+        SimulationStrengthValue.Text = SimulationStrengthSlider.Value.ToString("0.0", CultureInfo.InvariantCulture);
+        DampingValue.Text = DampingSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
+        TimeStepValue.Text = $"{TimeStepSlider.Value:0.000} s";
+    }
+
+    private void SimulationTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!simulationIsActive || loadedModel is null) return;
+        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DampingSlider.Value, GroundPlaneCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
+        var shape = GetSelectedShape();
+        if (particleVisual is null) return;
+        if (shape is ParticleShape.Billboard or ParticleShape.ImageBillboard)
+            particleVisual.Geometry = ParticleGenerator.CreateBillboardMesh(simulation.Positions, SizeSlider.Value, Camera.Position, RotationSlider.Value);
+        else if (!ParticleGenerator.UpdateParticleMesh((MeshGeometry3D)particleVisual.Geometry, simulation.Positions, SizeSlider.Value, shape))
+            UpdateParticleVisual();
+    }
+
+    private void ResetSimulation_Click(object sender, RoutedEventArgs e)
+    {
+        ResetSimulationState();
+        if (loadedModel is not null) UpdateParticleVisual();
+        StatusText.Text = loadedModel is null ? "No model loaded" : "Simulation reset";
+    }
+
+    private void ResetSimulationState() => simulation.Reset(particlePoints);
+
+    private void GroundPlane_Changed(object sender, RoutedEventArgs e) => UpdateGroundVisual();
+
+    private void GroundHeight_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        GroundHeightValue.Text = GroundHeightSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
+        UpdateGroundVisual();
+    }
+
+    private void UpdateGroundVisual()
+    {
+        if (groundVisual is not null) scene.Children.Remove(groundVisual);
+        groundVisual = null;
+        GroundHeightValue.Text = GroundHeightSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
+        if (GroundPlaneCheckBox.IsChecked != true) return;
+        var y = GroundHeightSlider.Value;
+        var mesh = new MeshGeometry3D();
+        mesh.Positions.Add(new Point3D(-6, y, -6)); mesh.Positions.Add(new Point3D(6, y, -6)); mesh.Positions.Add(new Point3D(6, y, 6)); mesh.Positions.Add(new Point3D(-6, y, 6));
+        mesh.TriangleIndices.Add(0); mesh.TriangleIndices.Add(1); mesh.TriangleIndices.Add(2); mesh.TriangleIndices.Add(0); mesh.TriangleIndices.Add(2); mesh.TriangleIndices.Add(3);
+        groundVisual = new GeometryModel3D(mesh, new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(45, 120, 140, 170))));
+        scene.Children.Add(groundVisual);
     }
 
     private void ParticleSettings_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -168,21 +254,36 @@ public partial class MainWindow : Window
         }
         try
         {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.UriSource = new Uri(dialog.FileName, UriKind.Absolute);
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            particleImage = bitmap;
-            ParticleImageText.Text = Path.GetFileName(dialog.FileName);
-            if (loadedModel is not null) UpdateParticleVisual();
+            LoadParticleImage(dialog.FileName, Path.GetFileName(dialog.FileName));
         }
         catch (Exception error) when (error is IOException or InvalidOperationException or ArgumentException)
         {
             particleImage = null;
             ParticleImageText.Text = $"Could not load image: {error.Message}";
         }
+    }
+
+    private void UseBuiltInImage_Click(object sender, RoutedEventArgs e)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "radial_gradient.png");
+        try { LoadParticleImage(path, "radial_gradient.png (built-in)"); }
+        catch (Exception error) when (error is IOException or InvalidOperationException or ArgumentException)
+        {
+            ParticleImageText.Text = $"Could not load built-in image: {error.Message}";
+        }
+    }
+
+    private void LoadParticleImage(string path, string displayName)
+    {
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.UriSource = new Uri(path, UriKind.Absolute);
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.EndInit();
+        bitmap.Freeze();
+        particleImage = bitmap;
+        ParticleImageText.Text = displayName;
+        if (loadedModel is not null) UpdateParticleVisual();
     }
 
     private Color ParseColor()
@@ -210,12 +311,15 @@ public partial class MainWindow : Window
 
     private void ResetVisualization_Click(object sender, RoutedEventArgs e)
     {
-        ColorTextBox.Text = "#818CF8"; DensitySlider.Value = 1600; SizeSlider.Value = 0.018; RotationSlider.Value = 0;
-        ParticleShapeComboBox.SelectedIndex = 0;
-        particleImage = null;
-        ParticleImageText.Text = "No image selected";
+        SoftBodyCheckBox.IsChecked = false;
+        GroundPlaneCheckBox.IsChecked = false;
+        simulationIsActive = false;
+        simulationTimer.Stop();
+        ResetSimulationState();
+        RotationSlider.Value = 0;
         ResetCamera_Click(sender, e);
-        if (loadedModel is not null) RebuildVisualization();
+        UpdateGroundVisual();
+        if (loadedModel is not null) UpdateParticleVisual();
     }
 
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
