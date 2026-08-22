@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -9,11 +8,9 @@ namespace ParticleModelViewer;
 
 public partial class ColorPickerControl : UserControl
 {
-    private const int HueWidth = 360;
-    private const int HueHeight = 18;
-    private const int SaturationValueWidth = 220;
-    private const int SaturationValueHeight = 128;
+    private const int WheelSize = 180;
     private bool suppressChanges;
+    private bool isWheelDragging;
     private double hue = 252;
     private double saturation = 0.42;
     private double value = 0.97;
@@ -26,9 +23,7 @@ public partial class ColorPickerControl : UserControl
     }
 
     public event EventHandler? ColorChanged;
-
     public Color SelectedColor => HsvToColor(hue, saturation, value);
-
     public string HexValue => $"#{SelectedColor.R:X2}{SelectedColor.G:X2}{SelectedColor.B:X2}";
 
     public void SetColor(Color color, bool notify = false)
@@ -37,45 +32,50 @@ public partial class ColorPickerControl : UserControl
         RenderPicker(notify);
     }
 
-    private void HueImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void ColorWheelImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        HueImage.CaptureMouse();
-        UpdateHue(e.GetPosition(HueImage).X);
+        isWheelDragging = true;
+        ColorWheelImage.CaptureMouse();
+        UpdateWheel(e.GetPosition(ColorWheelImage));
+        e.Handled = true;
     }
 
-    private void HueImage_MouseMove(object sender, MouseEventArgs e)
+    private void ColorWheelImage_MouseMove(object sender, MouseEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed) UpdateHue(e.GetPosition(HueImage).X);
+        if (isWheelDragging && e.LeftButton == MouseButtonState.Pressed) UpdateWheel(e.GetPosition(ColorWheelImage));
     }
 
-    private void SaturationValueImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private void ColorWheelImage_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        SaturationValueImage.CaptureMouse();
-        UpdateSaturationAndValue(e.GetPosition(SaturationValueImage));
+        EndWheelDrag();
+        e.Handled = true;
     }
 
-    private void SaturationValueImage_MouseMove(object sender, MouseEventArgs e)
+    private void ColorWheelImage_LostMouseCapture(object sender, MouseEventArgs e) => EndWheelDrag();
+
+    private void EndWheelDrag()
     {
-        if (e.LeftButton == MouseButtonState.Pressed) UpdateSaturationAndValue(e.GetPosition(SaturationValueImage));
+        isWheelDragging = false;
+        if (Mouse.Captured == ColorWheelImage) Mouse.Capture(null);
     }
 
-    private void UpdateHue(double x)
+    private void UpdateWheel(Point point)
     {
-        hue = Math.Clamp(x / Math.Max(1, HueImage.ActualWidth) * 360, 0, 360);
-        RenderPicker(true);
-    }
-
-    private void UpdateSaturationAndValue(Point point)
-    {
-        saturation = Math.Clamp(point.X / Math.Max(1, SaturationValueImage.ActualWidth), 0, 1);
-        value = Math.Clamp(1 - point.Y / Math.Max(1, SaturationValueImage.ActualHeight), 0, 1);
+        var width = Math.Max(1, ColorWheelImage.ActualWidth);
+        var height = Math.Max(1, ColorWheelImage.ActualHeight);
+        var dx = point.X - width / 2;
+        var dy = point.Y - height / 2;
+        var radius = Math.Sqrt(dx * dx + dy * dy);
+        var maxRadius = Math.Min(width, height) / 2;
+        saturation = Math.Clamp(radius / maxRadius, 0, 1);
+        hue = (Math.Atan2(-dy, dx) * 180 / Math.PI + 360) % 360;
         RenderPicker(true);
     }
 
     private void ValueSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (suppressChanges) return;
-        value = e.NewValue;
+        value = Math.Clamp(e.NewValue, 0, 1);
         RenderPicker(true);
     }
 
@@ -86,38 +86,28 @@ public partial class ColorPickerControl : UserControl
         suppressChanges = false;
         PreviewBorder.Background = new SolidColorBrush(SelectedColor);
         HexValueText.Text = $"HEX: {HexValue}";
-        HueImage.Source = CreateHueBitmap();
-        SaturationValueImage.Source = CreateSaturationValueBitmap();
+        ColorWheelImage.Source = CreateColorWheelBitmap();
         if (notify) ColorChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private BitmapSource CreateHueBitmap()
+    private static BitmapSource CreateColorWheelBitmap()
     {
-        var pixels = new byte[HueWidth * HueHeight * 4];
-        for (var x = 0; x < HueWidth; x++)
+        var pixels = new byte[WheelSize * WheelSize * 4];
+        var center = (WheelSize - 1) / 2d;
+        var maxRadius = WheelSize / 2d;
+        for (var y = 0; y < WheelSize; y++)
+        for (var x = 0; x < WheelSize; x++)
         {
-            var color = HsvToColor(x, 1, 1);
-            for (var y = 0; y < HueHeight; y++) SetPixel(pixels, x, y, HueWidth, color);
+            var dx = x - center;
+            var dy = y - center;
+            var radius = Math.Sqrt(dx * dx + dy * dy);
+            var index = (y * WheelSize + x) * 4;
+            if (radius > maxRadius) { pixels[index + 3] = 0; continue; }
+            var selectedHue = (Math.Atan2(-dy, dx) * 180 / Math.PI + 360) % 360;
+            var color = HsvToColor(selectedHue, radius / maxRadius, 1);
+            pixels[index] = color.B; pixels[index + 1] = color.G; pixels[index + 2] = color.R; pixels[index + 3] = 255;
         }
-        return BitmapSource.Create(HueWidth, HueHeight, 96, 96, PixelFormats.Bgra32, null, pixels, HueWidth * 4);
-    }
-
-    private BitmapSource CreateSaturationValueBitmap()
-    {
-        var pixels = new byte[SaturationValueWidth * SaturationValueHeight * 4];
-        for (var y = 0; y < SaturationValueHeight; y++)
-        for (var x = 0; x < SaturationValueWidth; x++)
-            SetPixel(pixels, x, y, SaturationValueWidth, HsvToColor(hue, (double)x / (SaturationValueWidth - 1), 1 - (double)y / (SaturationValueHeight - 1)));
-        return BitmapSource.Create(SaturationValueWidth, SaturationValueHeight, 96, 96, PixelFormats.Bgra32, null, pixels, SaturationValueWidth * 4);
-    }
-
-    private static void SetPixel(byte[] pixels, int x, int y, int width, Color color)
-    {
-        var index = (y * width + x) * 4;
-        pixels[index] = color.B;
-        pixels[index + 1] = color.G;
-        pixels[index + 2] = color.R;
-        pixels[index + 3] = 255;
+        return BitmapSource.Create(WheelSize, WheelSize, 96, 96, PixelFormats.Bgra32, null, pixels, WheelSize * 4);
     }
 
     private static Color HsvToColor(double hue, double saturation, double value)

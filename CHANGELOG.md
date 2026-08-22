@@ -25,3 +25,8 @@
 - Added a dependency-free HSV particle color picker with hue, saturation/value, brightness, preview, live HEX display, and optional precise HEX apply input.
 - Added a separate normalized Elasticity control and bounded ground-contact squish, lateral spreading, recovery, and bounce behavior.
 - Added an explicit Ground collision toggle while preserving the existing ground plane behavior by default.
+- Added a smoothed FPS counter based on WPF render callbacks, refreshed approximately four times per second.
+- Replaced the color picker's hue strip with a radial HSV wheel; hue is selected by angle, saturation by radius, and brightness by the separate value slider.
+- Fixed HEX input to accept both `#RRGGBB` and `RRGGBB`, and made Apply update the shared solid material without rebuilding particle geometry.
+- Added right-drag camera panning and robust mouse-capture cleanup for release, focus loss, and window deactivation.
+- Reduced per-frame simulation enumeration and reused the solid particle material for color-only updates.

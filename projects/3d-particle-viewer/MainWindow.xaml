@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:ParticleModelViewer"
         Title="3D Particle Model Viewer" Width="1180" Height="760" MinWidth="900" MinHeight="600"
+        Deactivated="Window_Deactivated" Closed="Window_Closed"
         Background="#090D16" Foreground="#F8FAFC">
   <Grid Margin="18">
     <Grid.ColumnDefinitions>
@@ -26,6 +27,9 @@
           <TextBlock Text="PARTICLE VIEWPORT" Foreground="#818CF8" FontSize="11" FontWeight="Bold" />
           <TextBlock x:Name="ViewportHint" Text="Load an OBJ model to begin" Margin="0,4,0,0" Foreground="#94A3B8" />
         </StackPanel>
+        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="18" Padding="8,4" CornerRadius="5" Background="#B0090D16" IsHitTestVisible="False">
+          <TextBlock x:Name="FpsText" Text="FPS: --" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" />
+        </Border>
       </Grid>
     </Border>
 

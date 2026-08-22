@@ -22,8 +22,18 @@ public sealed class ParticleSimulation
         velocities.AddRange(Enumerable.Repeat(new Vector3D(), newRestPositions.Count));
         if (newRestPositions.Count > 0)
         {
-            restCenter = new Point3D(newRestPositions.Average(point => point.X), newRestPositions.Average(point => point.Y), newRestPositions.Average(point => point.Z));
-            restHeight = newRestPositions.Max(point => point.Y) - newRestPositions.Min(point => point.Y);
+            var minY = double.MaxValue;
+            var maxY = double.MinValue;
+            var centerX = 0d;
+            var centerY = 0d;
+            var centerZ = 0d;
+            foreach (var point in newRestPositions)
+            {
+                centerX += point.X; centerY += point.Y; centerZ += point.Z;
+                minY = Math.Min(minY, point.Y); maxY = Math.Max(maxY, point.Y);
+            }
+            restCenter = new Point3D(centerX / newRestPositions.Count, centerY / newRestPositions.Count, centerZ / newRestPositions.Count);
+            restHeight = maxY - minY;
         }
         else
         {
@@ -38,8 +48,13 @@ public sealed class ParticleSimulation
         timeStep = Math.Clamp(timeStep, 0.005, 0.033);
         var gravity = new Vector3D(0, -4.2, 0);
         var velocityDamping = Math.Clamp(damping, 0.75, 0.999);
-        var currentMinY = positions.Min(point => point.Y);
-        var currentMaxY = positions.Max(point => point.Y);
+        var currentMinY = double.MaxValue;
+        var currentMaxY = double.MinValue;
+        foreach (var point in positions)
+        {
+            currentMinY = Math.Min(currentMinY, point.Y);
+            currentMaxY = Math.Max(currentMaxY, point.Y);
+        }
         var currentHeight = currentMaxY - currentMinY;
         var contactCompression = groundEnabled && restHeight > 0.0001 && currentMinY <= groundHeight + particleRadius + 0.03
             ? Math.Clamp((restHeight - currentHeight) / restHeight, 0, 0.6)

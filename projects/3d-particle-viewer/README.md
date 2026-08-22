@@ -21,11 +21,13 @@ To test quickly, choose the included `sample-cube.obj` with **Load model**.
 - Generate up to 6,000 surface-derived particles
 - Change particle color with a hex color value
 - Choose particle hue, saturation, and brightness with the built-in color picker, with optional HEX precision input
+- Show a smoothed render-cadence FPS counter in the upper-right of the viewport
 - Choose Cube, Sphere, Tetrahedron, Billboard, or Image Billboard particles
 - Load PNG, JPG, or JPEG images for camera-facing image billboards
 - Use the built-in `radial_gradient.png` texture for immediate billboard testing
 - Adjust particle count and size
 - Orbit with mouse drag and zoom with the mouse wheel
+- Orbit with left-drag, pan with right-drag, and zoom with the mouse wheel; drag capture is released safely when focus or buttons change
 - Rotate around the Y axis with a slider
 - Keep the original mesh hidden by default, with an optional **Show original mesh** reference toggle
 - Run a lightweight soft-body simulation with restoring forces, deformation resistance, elasticity, damping, gravity, and optional ground collision
@@ -50,6 +52,8 @@ Enable **Soft body** to let particles move with a simple stable simulation. Each
 
 This is intentionally a lightweight shape-preserving effect, not a full physics engine. It does not calculate particle-to-particle springs or rigid-body contacts, so very high deformation or dense models may look approximate.
 
+The FPS indicator measures WPF `CompositionTarget.Rendering` callbacks, which is the closest render cadence available to this architecture. It uses a smoothed rolling measurement and refreshes about four times per second; it is not a hardware/GPU profiler.
+
 ## Radial-gradient billboard test
 
 `radial_gradient.png` is a 256×256 transparent PNG with a bright center and soft transparent edges. Choose **Image Billboard**, then **Use built-in radial gradient** to test camera-facing texture particles without finding an image manually.
@@ -63,6 +67,7 @@ This is intentionally a lightweight shape-preserving effect, not a full physics 
 - Soft-body updates currently update combined mesh positions on the UI thread; static visualization remains the preferred mode for large models.
 - Pan, materials, textures, normals, and animation are not implemented.
 - The current environment supports compilation but does not provide a GUI test harness, so interactive viewport testing must be performed by opening the application on Windows.
+- Color selection updates the preview and HEX field while dragging; Apply commits the selected color to a shared particle material without regenerating particle positions or geometry. Image billboards continue to use their source image colors.
 
 ## Future ideas
 

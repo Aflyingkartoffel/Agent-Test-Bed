@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.IO;
@@ -13,6 +14,8 @@ namespace ParticleModelViewer;
 
 public partial class MainWindow : Window
 {
+    private enum ViewportDragMode { None, Orbit, Pan }
+
     private readonly Model3DGroup scene = new();
     private readonly Model3DGroup modelScene = new();
     private readonly Transform3DGroup modelTransform = new();
@@ -24,17 +27,25 @@ public partial class MainWindow : Window
     private List<Point3D> particlePoints = [];
     private BitmapSource? particleImage;
     private Color particleColor = Color.FromRgb(129, 140, 248);
+    private readonly SolidColorBrush particleBrush = new(Color.FromRgb(129, 140, 248));
+    private readonly DiffuseMaterial particleMaterial;
     private GeometryModel3D? groundVisual;
     private bool simulationIsActive;
     private Point lastMousePosition;
-    private bool isDragging;
+    private ViewportDragMode viewportDragMode;
     private double cameraYaw = 0;
     private double cameraPitch = 12;
     private double cameraDistance = 7;
+    private Point3D cameraTarget;
+    private readonly Stopwatch fpsClock = Stopwatch.StartNew();
+    private TimeSpan lastFpsSample;
+    private int renderedFrames;
+    private double smoothedFps;
 
     public MainWindow()
     {
         InitializeComponent();
+        particleMaterial = new DiffuseMaterial(particleBrush);
         ParticleColorPicker.ColorChanged += ParticleColorPicker_Changed;
         ColorTextBox.Text = ParticleColorPicker.HexValue;
         SimulationStrengthSlider.ValueChanged += SimulationSettings_Changed;
@@ -49,6 +60,8 @@ public partial class MainWindow : Window
         modelTransform.Children.Add(new RotateTransform3D(new AxisAngleRotation3D(new Vector3D(1, 0, 0), 0)));
         modelScene.Transform = modelTransform;
         simulationTimer.Tick += SimulationTimer_Tick;
+        CompositionTarget.Rendering += CompositionTarget_Rendering;
+        lastFpsSample = fpsClock.Elapsed;
         UpdateCamera();
         UpdateSimulationLabels();
         UpdateGroundVisual();
@@ -125,7 +138,7 @@ public partial class MainWindow : Window
             var imageBrush = new ImageBrush(particleImage) { Stretch = Stretch.Uniform };
             return new DiffuseMaterial(imageBrush);
         }
-        return new DiffuseMaterial(new SolidColorBrush(particleColor));
+        return particleMaterial;
     }
 
     private void UpdateBillboardGeometry()
@@ -237,8 +250,10 @@ public partial class MainWindow : Window
         try
         {
             particleColor = ParseColor();
+            particleBrush.Color = particleColor;
             ParticleColorPicker.SetColor(particleColor);
-            if (loadedModel is not null) UpdateParticleVisual();
+            if (particleVisual is not null && GetSelectedShape() != ParticleShape.ImageBillboard)
+                particleVisual.Material = particleMaterial;
         }
         catch (FormatException)
         {
@@ -306,7 +321,8 @@ public partial class MainWindow : Window
     private Color ParseColor()
     {
         var value = ColorTextBox.Text.Trim();
-        if (!value.StartsWith('#') || (value.Length != 7 && value.Length != 9)) throw new FormatException();
+        if (!value.StartsWith('#')) value = $"#{value}";
+        if (value.Length != 7 && value.Length != 9) throw new FormatException();
         try { return (Color)ColorConverter.ConvertFromString(value)!; }
         catch (Exception error) when (error is ArgumentException or FormatException or InvalidOperationException or NotSupportedException)
         { throw new FormatException("Invalid color", error); }
@@ -325,6 +341,7 @@ public partial class MainWindow : Window
         cameraYaw = 0;
         cameraPitch = 12;
         cameraDistance = GetDefaultCameraDistance();
+        cameraTarget = new Point3D();
         UpdateCamera();
     }
 
@@ -343,20 +360,49 @@ public partial class MainWindow : Window
 
     private void Viewport_MouseDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed) { isDragging = true; lastMousePosition = e.GetPosition(Viewport); Viewport.CaptureMouse(); }
+        if (e.ChangedButton == MouseButton.Left) viewportDragMode = ViewportDragMode.Orbit;
+        else if (e.ChangedButton == MouseButton.Right) viewportDragMode = ViewportDragMode.Pan;
+        else return;
+        lastMousePosition = e.GetPosition(Viewport);
+        Viewport.CaptureMouse();
+        e.Handled = true;
     }
 
     private void Viewport_MouseMove(object sender, MouseEventArgs e)
     {
-        if (!isDragging) return;
+        if (viewportDragMode == ViewportDragMode.None) return;
         var position = e.GetPosition(Viewport);
-        cameraYaw -= (position.X - lastMousePosition.X) * 0.5;
-        cameraPitch = Math.Clamp(cameraPitch + (position.Y - lastMousePosition.Y) * 0.5, -80, 80);
+        var deltaX = position.X - lastMousePosition.X;
+        var deltaY = position.Y - lastMousePosition.Y;
+        if (viewportDragMode == ViewportDragMode.Orbit)
+        {
+            cameraYaw -= deltaX * 0.5;
+            cameraPitch = Math.Clamp(cameraPitch + deltaY * 0.5, -80, 80);
+        }
+        else
+        {
+            PanCamera(deltaX, deltaY);
+        }
         lastMousePosition = position;
         UpdateCamera();
     }
 
-    private void Viewport_MouseUp(object sender, MouseButtonEventArgs e) { isDragging = false; Viewport.ReleaseMouseCapture(); }
+    private void Viewport_MouseUp(object sender, MouseButtonEventArgs e) => EndViewportDrag();
+
+    private void EndViewportDrag()
+    {
+        viewportDragMode = ViewportDragMode.None;
+        if (Viewport.IsMouseCaptured) Viewport.ReleaseMouseCapture();
+    }
+
+    private void Window_Deactivated(object sender, EventArgs e) => EndViewportDrag();
+
+    private void Window_Closed(object? sender, EventArgs e)
+    {
+        EndViewportDrag();
+        simulationTimer.Stop();
+        CompositionTarget.Rendering -= CompositionTarget_Rendering;
+    }
 
     private void Viewport_MouseWheel(object sender, MouseWheelEventArgs e)
     {
@@ -373,11 +419,35 @@ public partial class MainWindow : Window
     private void UpdateCamera()
     {
         var yaw = cameraYaw * Math.PI / 180; var pitch = cameraPitch * Math.PI / 180;
-        var position = new Point3D(cameraDistance * Math.Cos(pitch) * Math.Sin(yaw), cameraDistance * Math.Sin(pitch), cameraDistance * Math.Cos(pitch) * Math.Cos(yaw));
+        var position = new Point3D(cameraTarget.X + cameraDistance * Math.Cos(pitch) * Math.Sin(yaw), cameraTarget.Y + cameraDistance * Math.Sin(pitch), cameraTarget.Z + cameraDistance * Math.Cos(pitch) * Math.Cos(yaw));
         Camera.Position = position;
-        Camera.LookDirection = new Vector3D(-position.X, -position.Y, -position.Z);
+        Camera.LookDirection = cameraTarget - position;
         Camera.UpDirection = new Vector3D(0, 1, 0);
         UpdateBillboardGeometry();
+    }
+
+    private void PanCamera(double deltaX, double deltaY)
+    {
+        var forward = Camera.LookDirection;
+        forward.Normalize();
+        var right = Vector3D.CrossProduct(forward, Camera.UpDirection);
+        right.Normalize();
+        var up = Camera.UpDirection;
+        up.Normalize();
+        var scale = cameraDistance * 0.002;
+        cameraTarget += right * (-deltaX * scale) + up * (deltaY * scale);
+    }
+
+    private void CompositionTarget_Rendering(object? sender, EventArgs e)
+    {
+        renderedFrames++;
+        var elapsed = fpsClock.Elapsed - lastFpsSample;
+        if (elapsed.TotalSeconds < 0.25) return;
+        var measuredFps = renderedFrames / elapsed.TotalSeconds;
+        smoothedFps = smoothedFps == 0 ? measuredFps : smoothedFps * 0.7 + measuredFps * 0.3;
+        FpsText.Text = $"FPS: {Math.Clamp(smoothedFps, 0, 999):0}";
+        renderedFrames = 0;
+        lastFpsSample = fpsClock.Elapsed;
     }
 
     private double GetDefaultCameraDistance()

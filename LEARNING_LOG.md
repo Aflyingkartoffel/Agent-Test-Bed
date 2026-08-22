@@ -36,6 +36,12 @@ This log records useful programming concepts encountered while building the repo
 - **Custom WPF control:** A small reusable `UserControl` can own drawing, pointer events, and a `ColorChanged` event without adding a UI library.
 - **Approximate volume preservation:** During ground compression, targeting bounded lateral expansion from the rest shape creates a more convincing squish without a full particle-neighbor physics system.
 
+## 2026-08-21 — Render timing, capture, and shared materials
+
+- **Render timing:** WPF's `CompositionTarget.Rendering` event provides a practical render-cadence signal; smoothing several samples makes an FPS display more useful than single-frame timing.
+- **Mouse capture:** Capturing the viewport during a drag and releasing it on mouse-up, capture loss, and window deactivation prevents stale interaction state.
+- **Shared material:** A reusable brush/material lets a color-only change reach existing geometry without regenerating particle positions or meshes.
+
 ## 2026-08-21 — Building the calculator
 
 - **Functions:** A function packages a focused action, such as entering a number or clearing the calculator, so the same behavior can be called from both buttons and keyboard input.
