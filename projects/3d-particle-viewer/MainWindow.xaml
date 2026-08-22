@@ -44,12 +44,25 @@
               <TextBox x:Name="ColorTextBox" Text="#818CF8" Padding="8" Background="#1B2740" Foreground="#F8FAFC" BorderBrush="#3E4E70" />
               <Button Content="Apply" Click="ApplyColor_Click" DockPanel.Dock="Right" Margin="8,0,0,0" />
             </DockPanel>
+            <TextBlock Text="Particle shape" Foreground="#94A3B8" Margin="0,14,0,4" />
+            <ComboBox x:Name="ParticleShapeComboBox" SelectedIndex="0" SelectionChanged="ParticleShape_Changed" Background="#1B2740" Foreground="#0F172A">
+              <ComboBoxItem Content="Cube" />
+              <ComboBoxItem Content="Sphere" />
+              <ComboBoxItem Content="Tetrahedron" />
+              <ComboBoxItem Content="Billboard" />
+              <ComboBoxItem Content="Image Billboard" />
+            </ComboBox>
+            <StackPanel x:Name="ImageControls" Visibility="Collapsed">
+              <Button Content="Load particle image…" Click="LoadParticleImage_Click" />
+              <TextBlock x:Name="ParticleImageText" Text="No image selected" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,4,0,0" />
+            </StackPanel>
+            <CheckBox x:Name="ShowOriginalMeshCheckBox" Content="Show original mesh" IsChecked="False" Click="ShowOriginalMesh_Changed" Foreground="#CBD5E1" Margin="0,14,0,0" />
             <TextBlock Text="Particle count" Foreground="#94A3B8" Margin="0,14,0,2" />
             <Slider x:Name="DensitySlider" Minimum="200" Maximum="6000" Value="1600" TickFrequency="200" IsSnapToTickEnabled="True" ValueChanged="ParticleSettings_Changed" />
             <TextBlock x:Name="DensityValue" Text="1,600 particles" Foreground="#CBD5E1" HorizontalAlignment="Right" />
             <TextBlock Text="Particle size" Foreground="#94A3B8" Margin="0,14,0,2" />
-            <Slider x:Name="SizeSlider" Minimum="0.01" Maximum="0.08" Value="0.035" TickFrequency="0.005" ValueChanged="ParticleSettings_Changed" />
-            <TextBlock x:Name="SizeValue" Text="0.035" Foreground="#CBD5E1" HorizontalAlignment="Right" />
+            <Slider x:Name="SizeSlider" Minimum="0.006" Maximum="0.05" Value="0.018" TickFrequency="0.002" ValueChanged="ParticleSettings_Changed" />
+            <TextBlock x:Name="SizeValue" Text="0.018" Foreground="#CBD5E1" HorizontalAlignment="Right" />
           </StackPanel>
         </Border>
 

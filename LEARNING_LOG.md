@@ -14,6 +14,7 @@ This log records useful programming concepts encountered while building the repo
 - **Surface sampling:** The viewer chooses points inside imported triangles using barycentric coordinates, so particles follow the actual model surface.
 - **Camera transforms:** A 3D camera position, look direction, and distance determine which part of the scene is visible; mouse movement changes those values for orbiting and zooming.
 - **Desktop UI events and state:** WPF button, slider, mouse, and file-dialog events update shared model and visualization state.
+- **Billboards and materials:** A billboard is a camera-facing quad; an `ImageBrush` supplies its texture while a `DiffuseMaterial` connects that appearance to WPF 3D geometry.
 
 ## 2026-08-21 — Repository structure and documentation
 

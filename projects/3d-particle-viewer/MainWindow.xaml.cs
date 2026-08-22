@@ -7,6 +7,7 @@ using System.Linq;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using System.Windows.Media.Imaging;
 
 namespace ParticleModelViewer;
 
@@ -15,6 +16,10 @@ public partial class MainWindow : Window
     private readonly Model3DGroup scene = new();
     private readonly Transform3DGroup modelTransform = new();
     private ObjModel? loadedModel;
+    private GeometryModel3D? originalMeshVisual;
+    private GeometryModel3D? particleVisual;
+    private List<Point3D> particlePoints = [];
+    private BitmapSource? particleImage;
     private Point lastMousePosition;
     private bool isDragging;
     private double cameraYaw = 0;
@@ -60,36 +65,124 @@ public partial class MainWindow : Window
         if (loadedModel is null) return;
         scene.Children.Clear();
         var surface = ParticleGenerator.CreateSurfaceMesh(loadedModel);
-        var surfaceMaterial = new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(45, 170, 190, 220)));
-        scene.Children.Add(new GeometryModel3D(surface, surfaceMaterial));
+        var surfaceMaterial = new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(18, 170, 190, 220)));
+        originalMeshVisual = new GeometryModel3D(surface, surfaceMaterial);
+        particlePoints = ParticleGenerator.SampleSurface(loadedModel, (int)DensitySlider.Value);
+        UpdateOriginalMeshVisibility();
         RebuildParticles();
     }
 
     private void RebuildParticles()
     {
         if (loadedModel is null) return;
-        Color particleColor;
-        try { particleColor = ParseColor(); }
-        catch (FormatException) { StatusText.Text = "Use a color such as #818CF8."; return; }
-        if (scene.Children.Count > 1) scene.Children.RemoveAt(1);
         var count = (int)DensitySlider.Value;
-        var points = ParticleGenerator.SampleSurface(loadedModel, count);
-        var particles = ParticleGenerator.CreateParticleMesh(points, SizeSlider.Value);
-        var material = new DiffuseMaterial(new SolidColorBrush(particleColor));
-        scene.Children.Add(new GeometryModel3D(particles, material));
+        particlePoints = ParticleGenerator.SampleSurface(loadedModel, count);
+        UpdateParticleVisual();
         DensityValue.Text = $"{count:N0} particles";
         SizeValue.Text = SizeSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
     }
 
+    private void UpdateParticleVisual()
+    {
+        if (loadedModel is null) return;
+        var shape = GetSelectedShape();
+        if (particleVisual is not null) scene.Children.Remove(particleVisual);
+        var geometry = shape is ParticleShape.Billboard or ParticleShape.ImageBillboard
+            ? ParticleGenerator.CreateBillboardMesh(particlePoints, SizeSlider.Value, Camera.Position, RotationSlider.Value)
+            : ParticleGenerator.CreateParticleMesh(particlePoints, SizeSlider.Value, shape);
+        particleVisual = new GeometryModel3D(geometry, CreateParticleMaterial(shape));
+        scene.Children.Add(particleVisual);
+    }
+
+    private Material CreateParticleMaterial(ParticleShape shape)
+    {
+        if (shape == ParticleShape.ImageBillboard && particleImage is not null)
+        {
+            var imageBrush = new ImageBrush(particleImage) { Stretch = Stretch.Uniform };
+            return new DiffuseMaterial(imageBrush);
+        }
+        try { return new DiffuseMaterial(new SolidColorBrush(ParseColor())); }
+        catch (FormatException)
+        {
+            StatusText.Text = "Use a color such as #818CF8.";
+            return new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(129, 140, 248)));
+        }
+    }
+
+    private void UpdateBillboardGeometry()
+    {
+        if (particleVisual is null || loadedModel is null) return;
+        var shape = GetSelectedShape();
+        if (shape is ParticleShape.Billboard or ParticleShape.ImageBillboard)
+            particleVisual.Geometry = ParticleGenerator.CreateBillboardMesh(particlePoints, SizeSlider.Value, Camera.Position, RotationSlider.Value);
+    }
+
+    private ParticleShape GetSelectedShape() => (ParticleShape)Math.Max(0, ParticleShapeComboBox.SelectedIndex);
+
+    private void UpdateOriginalMeshVisibility()
+    {
+        if (originalMeshVisual is null) return;
+        if (ShowOriginalMeshCheckBox.IsChecked == true)
+        {
+            if (!scene.Children.Contains(originalMeshVisual)) scene.Children.Insert(0, originalMeshVisual);
+        }
+        else scene.Children.Remove(originalMeshVisual);
+    }
+
     private void ParticleSettings_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (IsInitialized) RebuildParticles();
+        if (!IsInitialized || loadedModel is null) return;
+        if (sender == DensitySlider) RebuildParticles();
+        else
+        {
+            UpdateParticleVisual();
+            SizeValue.Text = SizeSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
+        }
     }
 
     private void ApplyColor_Click(object sender, RoutedEventArgs e)
     {
-        try { if (loadedModel is not null) RebuildParticles(); }
-        catch (FormatException) { StatusText.Text = "Use a color such as #818CF8."; }
+        if (loadedModel is not null) UpdateParticleVisual();
+    }
+
+    private void ParticleShape_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsInitialized) return;
+        var isImage = GetSelectedShape() == ParticleShape.ImageBillboard;
+        ImageControls.Visibility = isImage ? Visibility.Visible : Visibility.Collapsed;
+        if (isImage && particleImage is null) ParticleImageText.Text = "No image selected; using a plain billboard.";
+        if (loadedModel is not null) UpdateParticleVisual();
+    }
+
+    private void ShowOriginalMesh_Changed(object sender, RoutedEventArgs e) => UpdateOriginalMeshVisibility();
+
+    private void LoadParticleImage_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Filter = "Particle images (*.png;*.jpg;*.jpeg)|*.png;*.jpg;*.jpeg|PNG images (*.png)|*.png|JPEG images (*.jpg;*.jpeg)|*.jpg;*.jpeg" };
+        if (dialog.ShowDialog() != true) return;
+        var extension = Path.GetExtension(dialog.FileName).ToLowerInvariant();
+        if (extension is not ".png" and not ".jpg" and not ".jpeg")
+        {
+            ParticleImageText.Text = "Unsupported image format. Choose PNG or JPG.";
+            return;
+        }
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.UriSource = new Uri(dialog.FileName, UriKind.Absolute);
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            particleImage = bitmap;
+            ParticleImageText.Text = Path.GetFileName(dialog.FileName);
+            if (loadedModel is not null) UpdateParticleVisual();
+        }
+        catch (Exception error) when (error is IOException or InvalidOperationException or ArgumentException)
+        {
+            particleImage = null;
+            ParticleImageText.Text = $"Could not load image: {error.Message}";
+        }
     }
 
     private Color ParseColor()
@@ -104,17 +197,23 @@ public partial class MainWindow : Window
         if (!IsInitialized) return;
         ((AxisAngleRotation3D)((RotateTransform3D)modelTransform.Children[0]).Rotation).Angle = RotationSlider.Value;
         RotationValue.Text = $"{RotationSlider.Value:0}°";
+        UpdateBillboardGeometry();
     }
 
     private void ResetCamera_Click(object sender, RoutedEventArgs e)
     {
-        cameraYaw = 0; cameraPitch = 12; cameraDistance = 7;
+        cameraYaw = 0;
+        cameraPitch = 12;
+        cameraDistance = GetDefaultCameraDistance();
         UpdateCamera();
     }
 
     private void ResetVisualization_Click(object sender, RoutedEventArgs e)
     {
-        ColorTextBox.Text = "#818CF8"; DensitySlider.Value = 1600; SizeSlider.Value = 0.035; RotationSlider.Value = 0;
+        ColorTextBox.Text = "#818CF8"; DensitySlider.Value = 1600; SizeSlider.Value = 0.018; RotationSlider.Value = 0;
+        ParticleShapeComboBox.SelectedIndex = 0;
+        particleImage = null;
+        ParticleImageText.Text = "No image selected";
         ResetCamera_Click(sender, e);
         if (loadedModel is not null) RebuildVisualization();
     }
@@ -155,6 +254,14 @@ public partial class MainWindow : Window
         Camera.Position = position;
         Camera.LookDirection = new Vector3D(-position.X, -position.Y, -position.Z);
         Camera.UpDirection = new Vector3D(0, 1, 0);
+        UpdateBillboardGeometry();
+    }
+
+    private double GetDefaultCameraDistance()
+    {
+        if (loadedModel is null) return 7;
+        var radius = loadedModel.Vertices.Max(point => (point - new Point3D()).Length);
+        return Math.Clamp(radius * 2.4, 5.5, 12);
     }
 
     private static ObjModel Normalize(ObjModel original)

@@ -13,3 +13,6 @@
 - Created `projects/3d-particle-viewer/`, a .NET 8 WPF desktop viewer for OBJ surface particles.
 - Added OBJ face triangulation, area-weighted barycentric surface sampling, particle controls, camera orbit/zoom, and a Y-rotation slider.
 - Added `sample-cube.obj` as a repeatable import fixture. FBX remains planned, not implemented.
+- Added selectable Cube, Sphere, Tetrahedron, Billboard, and Image Billboard particle shapes.
+- Hid the original mesh by default and added an optional reference-mesh toggle to prevent mesh occlusion.
+- Added PNG/JPG/JPEG image loading for camera-facing billboards with aspect-ratio preservation.
