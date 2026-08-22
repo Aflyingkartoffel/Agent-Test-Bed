@@ -37,3 +37,4 @@
 - Changed the main viewport to pure black and made the optional ground a solid, lit neutral plane enabled by default.
 - Added user-facing Chaos, Momentum, and Drop Height controls with reset behavior that preserves the loaded model and selected settings.
 - Connected Ground Plane visibility directly to floor collision eligibility.
+- Renamed the application and project from **3D Particle Model Viewer** to **3D Bounce Simulator**, including its folder, project file, run command, title, and current documentation references.

@@ -55,6 +55,10 @@ This log records useful programming concepts encountered while building the repo
 - **Independent simulation inputs:** Drop Height changes initial position, Momentum changes initial velocity, and Chaos adds bounded disturbances; none is merely a relabeled gravity multiplier.
 - **Visibility and collision state:** A visible ground plane and its collision toggle should share one clear state so an object is never colliding with an invisible surface.
 
+## 2026-08-21 — Project rename
+
+- **Git-aware renaming:** Renaming a project includes its folder, project file, assembly identity, run commands, application title, and current documentation references; internal technical class names can remain when they still describe their implementation role.
+
 ## 2026-08-21 — Building the calculator
 
 - **Functions:** A function packages a focused action, such as entering a number or clearing the calculator, so the same behavior can be called from both buttons and keyboard input.

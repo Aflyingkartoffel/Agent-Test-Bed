@@ -1,4 +1,4 @@
-# 3D Particle Model Viewer
+# 3D Bounce Simulator
 
 This Windows desktop application imports an OBJ model and presents it as a deformable soft body. Particles remain the internal representation, but the visible interface focuses on the object and its simulation.
 
@@ -7,7 +7,7 @@ This Windows desktop application imports an OBJ model and presents it as a defor
 From the repository root:
 
 ```powershell
-dotnet run --project projects/3d-particle-viewer/3d-particle-viewer.csproj
+dotnet run --project projects/3d-bounce-simulator/3d-bounce-simulator.csproj
 ```
 
 Load the included `sample-cube.obj` to try the simulation.

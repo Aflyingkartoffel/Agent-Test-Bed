@@ -4,7 +4,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <RootNamespace>ParticleModelViewer</RootNamespace>
-    <AssemblyName>ParticleModelViewer</AssemblyName>
+    <AssemblyName>BounceSimulator</AssemblyName>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
