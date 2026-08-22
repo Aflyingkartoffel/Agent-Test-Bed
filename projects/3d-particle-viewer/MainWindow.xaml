@@ -83,6 +83,9 @@
           <StackPanel>
             <TextBlock Text="Simulation" FontSize="15" FontWeight="SemiBold" />
             <CheckBox x:Name="SoftBodyCheckBox" Content="Enable soft body" IsChecked="False" Click="SoftBody_Changed" Foreground="#CBD5E1" Margin="0,12,0,0" />
+            <TextBlock Text="Spring stiffness" Foreground="#94A3B8" Margin="0,12,0,2" />
+            <Slider x:Name="SpringStiffnessSlider" Minimum="0" Maximum="1" Value="0.55" TickFrequency="0.1" />
+            <TextBlock x:Name="SpringStiffnessValue" Text="0.55" Foreground="#CBD5E1" HorizontalAlignment="Right" />
             <TextBlock Text="Simulation strength" Foreground="#94A3B8" Margin="0,12,0,2" />
             <Slider x:Name="SimulationStrengthSlider" Minimum="0" Maximum="20" Value="7" TickFrequency="1" />
             <TextBlock x:Name="SimulationStrengthValue" Text="7.0" Foreground="#CBD5E1" HorizontalAlignment="Right" />
@@ -92,6 +95,9 @@
             <TextBlock Text="Elasticity" Foreground="#94A3B8" Margin="0,10,0,2" />
             <Slider x:Name="ElasticitySlider" Minimum="0" Maximum="1" Value="0.5" TickFrequency="0.1" />
             <TextBlock x:Name="ElasticityValue" Text="0.50" Foreground="#CBD5E1" HorizontalAlignment="Right" />
+            <TextBlock Text="Bounce" Foreground="#94A3B8" Margin="0,10,0,2" />
+            <Slider x:Name="BounceSlider" Minimum="0" Maximum="0.8" Value="0.35" TickFrequency="0.05" />
+            <TextBlock x:Name="BounceValue" Text="0.35" Foreground="#CBD5E1" HorizontalAlignment="Right" />
             <TextBlock Text="Damping" Foreground="#94A3B8" Margin="0,10,0,2" />
             <Slider x:Name="DampingSlider" Minimum="0.75" Maximum="0.999" Value="0.92" TickFrequency="0.01" />
             <TextBlock x:Name="DampingValue" Text="0.920" Foreground="#CBD5E1" HorizontalAlignment="Right" />

@@ -7,86 +7,183 @@ public sealed class ParticleSimulation
     private readonly List<Point3D> restPositions = [];
     private readonly List<Point3D> positions = [];
     private readonly List<Vector3D> velocities = [];
+    private readonly List<Vector3D> forces = [];
+    private readonly List<Spring> springs = [];
     private Point3D restCenter;
     private double restHeight;
 
+    private readonly record struct Spring(int A, int B, double RestLength, double Stiffness, double Damping);
+
     public IReadOnlyList<Point3D> Positions => positions;
+    public int SpringCount => springs.Count;
 
     public void Reset(IReadOnlyList<Point3D> newRestPositions)
     {
         restPositions.Clear();
         positions.Clear();
         velocities.Clear();
+        forces.Clear();
+        springs.Clear();
         restPositions.AddRange(newRestPositions);
         positions.AddRange(newRestPositions);
         velocities.AddRange(Enumerable.Repeat(new Vector3D(), newRestPositions.Count));
-        if (newRestPositions.Count > 0)
+        forces.AddRange(Enumerable.Repeat(new Vector3D(), newRestPositions.Count));
+        CalculateRestShape();
+        BuildSpringGraph();
+    }
+
+    public void Step(double timeStep, double strength, double deformationResistance, double elasticity, double springStiffness, double bounce, double damping, bool groundEnabled, double groundHeight, double particleRadius)
+    {
+        if (positions.Count == 0) return;
+        var substeps = 2;
+        var subTimeStep = Math.Clamp(timeStep, 0.005, 0.033) / substeps;
+        var boundedResistance = Math.Clamp(deformationResistance, 0, 1);
+        var boundedElasticity = Math.Clamp(elasticity, 0, 1);
+        var boundedSpringStiffness = Math.Clamp(springStiffness, 0, 1);
+        var boundedBounce = Math.Clamp(bounce, 0, 0.8);
+        var velocityDamping = Math.Clamp(damping, 0.75, 0.999);
+        var gravity = new Vector3D(0, -4.2, 0);
+        var shapeStrength = Math.Clamp(strength, 0, 20) * boundedResistance;
+        var springStrength = 18 + boundedSpringStiffness * 72;
+        var springDamping = 0.8 + boundedSpringStiffness * 1.8;
+
+        for (var substep = 0; substep < substeps; substep++)
         {
-            var minY = double.MaxValue;
-            var maxY = double.MinValue;
-            var centerX = 0d;
-            var centerY = 0d;
-            var centerZ = 0d;
-            foreach (var point in newRestPositions)
+            CalculateCenterAndBounds(out var currentCenter, out var currentMinY, out var currentMaxY);
+            var currentHeight = currentMaxY - currentMinY;
+            var compression = groundEnabled && restHeight > 0.0001 && currentMinY <= groundHeight + particleRadius + 0.04
+                ? Math.Clamp((restHeight - currentHeight) / restHeight, 0, 0.55)
+                : 0;
+            var lateralScale = 1 + compression * boundedElasticity * 0.28;
+
+            for (var i = 0; i < forces.Count; i++)
             {
-                centerX += point.X; centerY += point.Y; centerZ += point.Z;
-                minY = Math.Min(minY, point.Y); maxY = Math.Max(maxY, point.Y);
+                var rest = restPositions[i];
+                var current = positions[i];
+                var shapeForce = (rest - current) * shapeStrength;
+                var centerForce = new Vector3D(restCenter.X - currentCenter.X, 0, restCenter.Z - currentCenter.Z) * (shapeStrength * 0.35);
+                var lateralTarget = new Point3D(
+                    restCenter.X + (rest.X - restCenter.X) * lateralScale,
+                    rest.Y,
+                    restCenter.Z + (rest.Z - restCenter.Z) * lateralScale);
+                var volumeForce = new Vector3D(lateralTarget.X - current.X, 0, lateralTarget.Z - current.Z) * (compression * boundedElasticity * 4);
+                forces[i] = gravity + shapeForce + centerForce + volumeForce;
             }
-            restCenter = new Point3D(centerX / newRestPositions.Count, centerY / newRestPositions.Count, centerZ / newRestPositions.Count);
-            restHeight = maxY - minY;
+
+            foreach (var spring in springs)
+            {
+                var delta = positions[spring.B] - positions[spring.A];
+                var length = delta.Length;
+                if (length < 0.000001) continue;
+                var direction = delta / length;
+                var relativeVelocity = velocities[spring.B] - velocities[spring.A];
+                var extension = length - spring.RestLength;
+                var forceMagnitude = extension * springStrength * spring.Stiffness + Vector3D.DotProduct(relativeVelocity, direction) * springDamping * spring.Damping;
+                forceMagnitude = Math.Clamp(forceMagnitude, -45, 45);
+                var springForce = direction * forceMagnitude;
+                forces[spring.A] += springForce;
+                forces[spring.B] -= springForce;
+            }
+
+            for (var i = 0; i < positions.Count; i++)
+            {
+                var velocity = (velocities[i] + forces[i] * subTimeStep) * velocityDamping;
+                var next = positions[i] + velocity * subTimeStep;
+                if (groundEnabled && next.Y - particleRadius < groundHeight)
+                {
+                    next.Y = groundHeight + particleRadius;
+                    if (velocity.Y < 0) velocity.Y = -velocity.Y * boundedBounce;
+                    var friction = 0.12;
+                    velocity.X *= 1 - friction;
+                    velocity.Z *= 1 - friction;
+                }
+                positions[i] = next;
+                velocities[i] = velocity;
+            }
         }
-        else
+    }
+
+    private void CalculateRestShape()
+    {
+        if (restPositions.Count == 0)
         {
             restCenter = new Point3D();
             restHeight = 0;
+            return;
         }
+        var minY = double.MaxValue;
+        var maxY = double.MinValue;
+        var centerX = 0d; var centerY = 0d; var centerZ = 0d;
+        foreach (var point in restPositions)
+        {
+            centerX += point.X; centerY += point.Y; centerZ += point.Z;
+            minY = Math.Min(minY, point.Y); maxY = Math.Max(maxY, point.Y);
+        }
+        restCenter = new Point3D(centerX / restPositions.Count, centerY / restPositions.Count, centerZ / restPositions.Count);
+        restHeight = maxY - minY;
     }
 
-    public void Step(double timeStep, double strength, double deformationResistance, double elasticity, double damping, bool groundEnabled, double groundHeight, double particleRadius)
+    private void CalculateCenterAndBounds(out Point3D center, out double minY, out double maxY)
     {
-        if (positions.Count == 0) return;
-        timeStep = Math.Clamp(timeStep, 0.005, 0.033);
-        var gravity = new Vector3D(0, -4.2, 0);
-        var velocityDamping = Math.Clamp(damping, 0.75, 0.999);
-        var currentMinY = double.MaxValue;
-        var currentMaxY = double.MinValue;
+        var centerX = 0d; var centerY = 0d; var centerZ = 0d;
+        minY = double.MaxValue; maxY = double.MinValue;
         foreach (var point in positions)
         {
-            currentMinY = Math.Min(currentMinY, point.Y);
-            currentMaxY = Math.Max(currentMaxY, point.Y);
+            centerX += point.X; centerY += point.Y; centerZ += point.Z;
+            minY = Math.Min(minY, point.Y); maxY = Math.Max(maxY, point.Y);
         }
-        var currentHeight = currentMaxY - currentMinY;
-        var contactCompression = groundEnabled && restHeight > 0.0001 && currentMinY <= groundHeight + particleRadius + 0.03
-            ? Math.Clamp((restHeight - currentHeight) / restHeight, 0, 0.6)
-            : 0;
-        var boundedElasticity = Math.Clamp(elasticity, 0, 1);
-        var lateralScale = 1 + contactCompression * boundedElasticity * 0.35;
-        for (var i = 0; i < positions.Count; i++)
+        center = new Point3D(centerX / positions.Count, centerY / positions.Count, centerZ / positions.Count);
+    }
+
+    private void BuildSpringGraph()
+    {
+        if (restPositions.Count < 2) return;
+        var min = restPositions[0]; var max = restPositions[0];
+        foreach (var point in restPositions)
         {
-            var rest = restPositions[i];
-            var current = positions[i];
-            var restoringForce = rest - current;
-            var restoringStrength = Math.Clamp(strength, 0, 20) * Math.Clamp(deformationResistance, 0, 1);
-            var lateralTarget = new Point3D(
-                restCenter.X + (rest.X - restCenter.X) * lateralScale,
-                rest.Y,
-                restCenter.Z + (rest.Z - restCenter.Z) * lateralScale);
-            var lateralForce = new Vector3D(lateralTarget.X - current.X, 0, lateralTarget.Z - current.Z) * Math.Clamp(contactCompression * boundedElasticity * 6, 0, 3);
-            var elasticRecovery = restoringForce * (contactCompression * boundedElasticity * 0.75);
-            var acceleration = restoringForce * restoringStrength + elasticRecovery + lateralForce + gravity;
-            var velocity = (velocities[i] + acceleration * timeStep) * velocityDamping;
-            var next = current + velocity * timeStep;
+            min.X = Math.Min(min.X, point.X); min.Y = Math.Min(min.Y, point.Y); min.Z = Math.Min(min.Z, point.Z);
+            max.X = Math.Max(max.X, point.X); max.Y = Math.Max(max.Y, point.Y); max.Z = Math.Max(max.Z, point.Z);
+        }
+        var largestDimension = Math.Max(max.X - min.X, Math.Max(max.Y - min.Y, max.Z - min.Z));
+        var searchRadius = Math.Clamp(largestDimension * (3.2 / Math.Sqrt(restPositions.Count)), largestDimension * 0.035, largestDimension * 0.25);
+        var cells = new Dictionary<(int X, int Y, int Z), List<int>>();
+        for (var i = 0; i < restPositions.Count; i++)
+        {
+            var cell = GetCell(restPositions[i], searchRadius);
+            if (!cells.TryGetValue(cell, out var members)) cells[cell] = members = [];
+            members.Add(i);
+        }
 
-            if (groundEnabled && next.Y - particleRadius < groundHeight)
+        var edges = new HashSet<long>();
+        for (var i = 0; i < restPositions.Count; i++)
+        {
+            var point = restPositions[i];
+            var candidates = new List<(int Index, double Distance)>();
+            var cell = GetCell(point, searchRadius);
+            for (var x = cell.X - 1; x <= cell.X + 1; x++)
+            for (var y = cell.Y - 1; y <= cell.Y + 1; y++)
+            for (var z = cell.Z - 1; z <= cell.Z + 1; z++)
             {
-                next.Y = groundHeight + particleRadius;
-                if (velocity.Y < 0) velocity.Y *= 0.05 + boundedElasticity * 0.75;
-                velocity.X *= 0.92;
-                velocity.Z *= 0.92;
+                if (!cells.TryGetValue((x, y, z), out var members)) continue;
+                foreach (var j in members)
+                {
+                    if (j == i) continue;
+                    var distance = (restPositions[j] - point).Length;
+                    if (distance <= searchRadius * 1.35) candidates.Add((j, distance));
+                }
             }
-
-            positions[i] = next;
-            velocities[i] = velocity;
+            candidates.Sort((left, right) => left.Distance.CompareTo(right.Distance));
+            var connections = Math.Min(8, candidates.Count);
+            for (var candidateIndex = 0; candidateIndex < connections; candidateIndex++)
+            {
+                var j = candidates[candidateIndex].Index;
+                var a = Math.Min(i, j); var b = Math.Max(i, j);
+                var key = ((long)a << 32) | (uint)b;
+                if (edges.Add(key)) springs.Add(new Spring(a, b, candidates[candidateIndex].Distance, 1, 1));
+            }
         }
     }
+
+    private static (int X, int Y, int Z) GetCell(Point3D point, double cellSize) =>
+        ((int)Math.Floor(point.X / cellSize), (int)Math.Floor(point.Y / cellSize), (int)Math.Floor(point.Z / cellSize));
 }

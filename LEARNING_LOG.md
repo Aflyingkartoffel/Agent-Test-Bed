@@ -42,6 +42,13 @@ This log records useful programming concepts encountered while building the repo
 - **Mouse capture:** Capturing the viewport during a drag and releasing it on mouse-up, capture loss, and window deactivation prevents stale interaction state.
 - **Shared material:** A reusable brush/material lets a color-only change reach existing geometry without regenerating particle positions or meshes.
 
+## 2026-08-21 — Spring-constrained soft bodies
+
+- **Rest positions and spring constraints:** Neighbor particles are connected using distances measured from the original model, so deformation produces restoring forces between particles instead of independent falling points.
+- **Damping and restitution:** Spring/velocity damping removes oscillation over time, while restitution separately controls how much normal collision velocity returns from the ground.
+- **Shape preservation:** Rest-position, center-of-mass, and bounded lateral forces help a compressed object recover without preventing all deformation.
+- **Substeps and spatial hashing:** Two semi-implicit Euler substeps improve stability, while a spatial hash builds a local graph without an O(n²) every-frame search.
+
 ## 2026-08-21 — Building the calculator
 
 - **Functions:** A function packages a focused action, such as entering a number or clearing the calculator, so the same behavior can be called from both buttons and keyboard input.

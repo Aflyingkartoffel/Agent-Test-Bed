@@ -30,3 +30,6 @@
 - Fixed HEX input to accept both `#RRGGBB` and `RRGGBB`, and made Apply update the shared solid material without rebuilding particle geometry.
 - Added right-drag camera panning and robust mouse-capture cleanup for release, focus loss, and window deactivation.
 - Reduced per-frame simulation enumeration and reused the solid particle material for color-only updates.
+- Added a spatial-hash-built local spring graph from original particle positions to preserve soft-body cohesion.
+- Added spring stiffness and bounce controls, semi-implicit two-substep integration, center/rest-shape preservation, bounded restitution, and ground friction.
+- Removed a redundant particle reset during visualization rebuild so the sampled particle set and spring graph are initialized once.

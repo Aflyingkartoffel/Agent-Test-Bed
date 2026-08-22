@@ -31,6 +31,8 @@ To test quickly, choose the included `sample-cube.obj` with **Load model**.
 - Rotate around the Y axis with a slider
 - Keep the original mesh hidden by default, with an optional **Show original mesh** reference toggle
 - Run a lightweight soft-body simulation with restoring forces, deformation resistance, elasticity, damping, gravity, and optional ground collision
+- Preserve cohesion with local rest-position spring constraints built from nearby particles
+- Tune spring stiffness and bounce separately from deformation resistance, elasticity, and damping
 - Adjust deformation resistance independently from damping while the simulation is running
 - Display and adjust an optional ground plane without rotating it with the model
 - Reset the camera or visualization
@@ -48,9 +50,9 @@ The OBJ loader reads vertices and faces. Each face is triangulated, triangles ar
 
 ## Soft-body simulation
 
-Enable **Soft body** to let particles move with a simple stable simulation. Each particle remembers its sampled rest position and receives a restoring force toward that position, plus gravity and velocity damping. **Deformation resistance** ranges from `0.00` to `1.00` and scales that restoring force live; **Elasticity** ranges from `0.00` to `1.00` and controls collision bounce, compression recovery, and bounded lateral spreading. **Damping** remains separate and controls how much velocity and energy are dissipated each step. When **Ground plane** and **Ground collision** are enabled, particles are kept above the configured plane and downward velocity is reduced on contact. The soft-body approximation allows compressed particles to spread laterally and recover toward their rest shape without uniformly scaling the model. **Reset simulation** restores all particles and velocities without reloading the model.
+Enable **Soft body** to let particles move with a cohesive spring simulation. Each particle remembers its sampled rest position and is connected to a capped set of nearby rest-position neighbors. Those local springs restore rest lengths while a gentle rest-shape and center-of-mass force prevents permanent collapse. **Spring stiffness** ranges from `0.00` to `1.00`; low values feel softer and high values feel more rubbery. **Deformation resistance** scales the global rest-position force, **Elasticity** controls compression recovery and lateral spreading, and **Damping** controls velocity/energy dissipation. **Bounce** controls the bounded ground restitution independently from spring damping. When **Ground plane** and **Ground collision** are enabled, particles are kept above the plane, downward velocity is reflected, and modest friction slows sliding. The soft-body approximation allows compression and recovery without uniformly scaling the model. **Reset simulation** restores all particles, velocities, and spring rest lengths without reloading the model.
 
-This is intentionally a lightweight shape-preserving effect, not a full physics engine. It does not calculate particle-to-particle springs or rigid-body contacts, so very high deformation or dense models may look approximate.
+This is intentionally a lightweight shape-preserving effect, not a full physics engine. The spring graph is built once with a spatial hash rather than comparing every particle pair each frame. It uses two semi-implicit Euler substeps per timer update to keep reasonable stiffness values stable; very high deformation or dense models may still look approximate.
 
 The FPS indicator measures WPF `CompositionTarget.Rendering` callbacks, which is the closest render cadence available to this architecture. It uses a smoothed rolling measurement and refreshes about four times per second; it is not a hardware/GPU profiler.
 
@@ -64,7 +66,7 @@ The FPS indicator measures WPF `CompositionTarget.Rendering` callbacks, which is
 - Geometric particles are combined into one WPF mesh rather than thousands of UI objects, but they are still CPU-side geometry rather than GPU point sprites.
 - Low-poly spheres and image billboards can still become expensive at the 6,000-particle maximum; reduce count for complex models if interaction slows.
 - Image billboard color is not applied automatically, so the source image keeps its original colors.
-- Soft-body updates currently update combined mesh positions on the UI thread; static visualization remains the preferred mode for large models.
+- Soft-body spring updates and combined mesh positions are processed on the UI thread; static visualization remains the preferred mode for large models.
 - Pan, materials, textures, normals, and animation are not implemented.
 - The current environment supports compilation but does not provide a GUI test harness, so interactive viewport testing must be performed by opening the application on Windows.
 - Color selection updates the preview and HEX field while dragging; Apply commits the selected color to a shared particle material without regenerating particle positions or geometry. Image billboards continue to use their source image colors.

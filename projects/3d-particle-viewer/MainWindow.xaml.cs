@@ -48,6 +48,7 @@ public partial class MainWindow : Window
         particleMaterial = new DiffuseMaterial(particleBrush);
         ParticleColorPicker.ColorChanged += ParticleColorPicker_Changed;
         ColorTextBox.Text = ParticleColorPicker.HexValue;
+        SpringStiffnessSlider.ValueChanged += SimulationSettings_Changed;
         SimulationStrengthSlider.ValueChanged += SimulationSettings_Changed;
         DeformationResistanceSlider.ValueChanged += SimulationSettings_Changed;
         ElasticitySlider.ValueChanged += SimulationSettings_Changed;
@@ -102,7 +103,6 @@ public partial class MainWindow : Window
         var surfaceMaterial = new DiffuseMaterial(new SolidColorBrush(Color.FromArgb(18, 170, 190, 220)));
         originalMeshVisual = new GeometryModel3D(surface, surfaceMaterial);
         particlePoints = ParticleGenerator.SampleSurface(loadedModel, (int)DensitySlider.Value);
-        simulation.Reset(particlePoints);
         UpdateOriginalMeshVisibility();
         RebuildParticles();
     }
@@ -185,8 +185,10 @@ public partial class MainWindow : Window
     private void UpdateSimulationLabels()
     {
         SimulationStrengthValue.Text = SimulationStrengthSlider.Value.ToString("0.0", CultureInfo.InvariantCulture);
+        SpringStiffnessValue.Text = SpringStiffnessSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
         DeformationResistanceValue.Text = DeformationResistanceSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
         ElasticityValue.Text = ElasticitySlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
+        BounceValue.Text = BounceSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
         DampingValue.Text = DampingSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
         TimeStepValue.Text = $"{TimeStepSlider.Value:0.000} s";
     }
@@ -194,7 +196,7 @@ public partial class MainWindow : Window
     private void SimulationTimer_Tick(object? sender, EventArgs e)
     {
         if (!simulationIsActive || loadedModel is null) return;
-        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DeformationResistanceSlider.Value, ElasticitySlider.Value, DampingSlider.Value, GroundPlaneCheckBox.IsChecked == true && CollisionCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
+        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DeformationResistanceSlider.Value, ElasticitySlider.Value, SpringStiffnessSlider.Value, BounceSlider.Value, DampingSlider.Value, GroundPlaneCheckBox.IsChecked == true && CollisionCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
         var shape = GetSelectedShape();
         if (particleVisual is null) return;
         if (shape is ParticleShape.Billboard or ParticleShape.ImageBillboard)
