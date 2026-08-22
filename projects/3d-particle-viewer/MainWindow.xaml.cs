@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private GeometryModel3D? particleVisual;
     private List<Point3D> particlePoints = [];
     private BitmapSource? particleImage;
+    private Color particleColor = Color.FromRgb(129, 140, 248);
     private GeometryModel3D? groundVisual;
     private bool simulationIsActive;
     private Point lastMousePosition;
@@ -34,8 +35,11 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        ParticleColorPicker.ColorChanged += ParticleColorPicker_Changed;
+        ColorTextBox.Text = ParticleColorPicker.HexValue;
         SimulationStrengthSlider.ValueChanged += SimulationSettings_Changed;
         DeformationResistanceSlider.ValueChanged += SimulationSettings_Changed;
+        ElasticitySlider.ValueChanged += SimulationSettings_Changed;
         DampingSlider.ValueChanged += SimulationSettings_Changed;
         TimeStepSlider.ValueChanged += SimulationSettings_Changed;
         GroundHeightSlider.ValueChanged += GroundHeight_Changed;
@@ -121,12 +125,7 @@ public partial class MainWindow : Window
             var imageBrush = new ImageBrush(particleImage) { Stretch = Stretch.Uniform };
             return new DiffuseMaterial(imageBrush);
         }
-        try { return new DiffuseMaterial(new SolidColorBrush(ParseColor())); }
-        catch (FormatException)
-        {
-            StatusText.Text = "Use a color such as #818CF8.";
-            return new DiffuseMaterial(new SolidColorBrush(Color.FromRgb(129, 140, 248)));
-        }
+        return new DiffuseMaterial(new SolidColorBrush(particleColor));
     }
 
     private void UpdateBillboardGeometry()
@@ -174,6 +173,7 @@ public partial class MainWindow : Window
     {
         SimulationStrengthValue.Text = SimulationStrengthSlider.Value.ToString("0.0", CultureInfo.InvariantCulture);
         DeformationResistanceValue.Text = DeformationResistanceSlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
+        ElasticityValue.Text = ElasticitySlider.Value.ToString("0.00", CultureInfo.InvariantCulture);
         DampingValue.Text = DampingSlider.Value.ToString("0.000", CultureInfo.InvariantCulture);
         TimeStepValue.Text = $"{TimeStepSlider.Value:0.000} s";
     }
@@ -181,7 +181,7 @@ public partial class MainWindow : Window
     private void SimulationTimer_Tick(object? sender, EventArgs e)
     {
         if (!simulationIsActive || loadedModel is null) return;
-        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DeformationResistanceSlider.Value, DampingSlider.Value, GroundPlaneCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
+        simulation.Step(TimeStepSlider.Value, SimulationStrengthSlider.Value, DeformationResistanceSlider.Value, ElasticitySlider.Value, DampingSlider.Value, GroundPlaneCheckBox.IsChecked == true && CollisionCheckBox.IsChecked == true, GroundHeightSlider.Value, SizeSlider.Value / 2);
         var shape = GetSelectedShape();
         if (particleVisual is null) return;
         if (shape is ParticleShape.Billboard or ParticleShape.ImageBillboard)
@@ -234,8 +234,19 @@ public partial class MainWindow : Window
 
     private void ApplyColor_Click(object sender, RoutedEventArgs e)
     {
-        if (loadedModel is not null) UpdateParticleVisual();
+        try
+        {
+            particleColor = ParseColor();
+            ParticleColorPicker.SetColor(particleColor);
+            if (loadedModel is not null) UpdateParticleVisual();
+        }
+        catch (FormatException)
+        {
+            StatusText.Text = "Use a color such as #818CF8.";
+        }
     }
+
+    private void ParticleColorPicker_Changed(object? sender, EventArgs e) => ColorTextBox.Text = ParticleColorPicker.HexValue;
 
     private void ParticleShape_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
@@ -296,7 +307,9 @@ public partial class MainWindow : Window
     {
         var value = ColorTextBox.Text.Trim();
         if (!value.StartsWith('#') || (value.Length != 7 && value.Length != 9)) throw new FormatException();
-        return (Color)ColorConverter.ConvertFromString(value)!;
+        try { return (Color)ColorConverter.ConvertFromString(value)!; }
+        catch (Exception error) when (error is ArgumentException or FormatException or InvalidOperationException or NotSupportedException)
+        { throw new FormatException("Invalid color", error); }
     }
 
     private void RotationSlider_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)

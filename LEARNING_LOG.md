@@ -30,6 +30,12 @@ This log records useful programming concepts encountered while building the repo
 - **Parameter separation:** Deformation resistance scales the force pulling particles toward rest, while damping independently reduces velocity and energy over time.
 - **Live UI updates:** A WPF slider event can update a simulation parameter during the timer loop without resetting the simulation state.
 
+## 2026-08-21 — HSV color picking and bounded elasticity
+
+- **HSV color model:** Hue, saturation, and value are convenient independent controls for a visual color picker; the renderer still receives a WPF `Color`.
+- **Custom WPF control:** A small reusable `UserControl` can own drawing, pointer events, and a `ColorChanged` event without adding a UI library.
+- **Approximate volume preservation:** During ground compression, targeting bounded lateral expansion from the rest shape creates a more convincing squish without a full particle-neighbor physics system.
+
 ## 2026-08-21 — Building the calculator
 
 - **Functions:** A function packages a focused action, such as entering a number or clearing the calculator, so the same behavior can be called from both buttons and keyboard input.

@@ -22,3 +22,6 @@
 - Added a live `0.00`–`1.00` deformation-resistance slider that scales rest-position restoring force independently from damping.
 - Fixed the simulation to retain separate rest positions so deformation resistance affects actual particle recovery.
 - Set the Particle Shape selector and its options to black text for readability.
+- Added a dependency-free HSV particle color picker with hue, saturation/value, brightness, preview, live HEX display, and optional precise HEX apply input.
+- Added a separate normalized Elasticity control and bounded ground-contact squish, lateral spreading, recovery, and bounce behavior.
+- Added an explicit Ground collision toggle while preserving the existing ground plane behavior by default.

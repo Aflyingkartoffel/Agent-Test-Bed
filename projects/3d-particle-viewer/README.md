@@ -20,6 +20,7 @@ To test quickly, choose the included `sample-cube.obj` with **Load model**.
 - Normalize and automatically frame imported geometry
 - Generate up to 6,000 surface-derived particles
 - Change particle color with a hex color value
+- Choose particle hue, saturation, and brightness with the built-in color picker, with optional HEX precision input
 - Choose Cube, Sphere, Tetrahedron, Billboard, or Image Billboard particles
 - Load PNG, JPG, or JPEG images for camera-facing image billboards
 - Use the built-in `radial_gradient.png` texture for immediate billboard testing
@@ -27,7 +28,7 @@ To test quickly, choose the included `sample-cube.obj` with **Load model**.
 - Orbit with mouse drag and zoom with the mouse wheel
 - Rotate around the Y axis with a slider
 - Keep the original mesh hidden by default, with an optional **Show original mesh** reference toggle
-- Run a lightweight soft-body simulation with restoring forces, damping, gravity, and optional ground collision
+- Run a lightweight soft-body simulation with restoring forces, deformation resistance, elasticity, damping, gravity, and optional ground collision
 - Adjust deformation resistance independently from damping while the simulation is running
 - Display and adjust an optional ground plane without rotating it with the model
 - Reset the camera or visualization
@@ -45,7 +46,7 @@ The OBJ loader reads vertices and faces. Each face is triangulated, triangles ar
 
 ## Soft-body simulation
 
-Enable **Soft body** to let particles move with a simple stable simulation. Each particle remembers its sampled rest position and receives a restoring force toward that position, plus gravity and velocity damping. **Deformation resistance** ranges from `0.00` to `1.00` and scales that restoring force live; `1.00` preserves the default behavior. **Damping** remains separate and controls how much velocity and energy are dissipated each step. When **Ground plane** is enabled, particles are kept above the configured plane and downward velocity is reduced on contact. **Reset simulation** restores all particles and velocities without reloading the model.
+Enable **Soft body** to let particles move with a simple stable simulation. Each particle remembers its sampled rest position and receives a restoring force toward that position, plus gravity and velocity damping. **Deformation resistance** ranges from `0.00` to `1.00` and scales that restoring force live; **Elasticity** ranges from `0.00` to `1.00` and controls collision bounce, compression recovery, and bounded lateral spreading. **Damping** remains separate and controls how much velocity and energy are dissipated each step. When **Ground plane** and **Ground collision** are enabled, particles are kept above the configured plane and downward velocity is reduced on contact. The soft-body approximation allows compressed particles to spread laterally and recover toward their rest shape without uniformly scaling the model. **Reset simulation** restores all particles and velocities without reloading the model.
 
 This is intentionally a lightweight shape-preserving effect, not a full physics engine. It does not calculate particle-to-particle springs or rigid-body contacts, so very high deformation or dense models may look approximate.
 
