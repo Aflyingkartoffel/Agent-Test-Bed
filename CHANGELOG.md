@@ -38,3 +38,5 @@
 - Added user-facing Chaos, Momentum, and Drop Height controls with reset behavior that preserves the loaded model and selected settings.
 - Connected Ground Plane visibility directly to floor collision eligibility.
 - Renamed the application and project from **3D Particle Model Viewer** to **3D Bounce Simulator**, including its folder, project file, run command, title, and current documentation references.
+- Abandoned the unreliable soft-body implementation and rebuilt `projects/3d-bounce-simulator/` as a clean Stage 1 WPF foundation with solid OBJ/FBX mesh import, automatic framing, orbit, zoom, and Reset View.
+- Added AssimpNet 4.1.0 as the minimal importer dependency required for actual OBJ and FBX support.

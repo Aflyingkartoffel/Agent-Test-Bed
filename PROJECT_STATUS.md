@@ -1,16 +1,16 @@
 # Project Status
 
-The first application, a browser-based calculator, has been created. The second application is the WPF 3D Bounce Simulator, which presents an OBJ model as a cohesive soft body with an optional ground simulation.
+The first application, a browser-based calculator, has been created. The second application is the WPF 3D Bounce Simulator. Its current foundation stage focuses on importing and viewing solid OBJ/FBX meshes; physics and particle features have intentionally not been rebuilt yet.
 
 ## Repository
 
 - **Purpose:** Personal AI-assisted application development laboratory
 - **Current status:** Scaffolded, initialized as a local Git repository, and ready for GitHub connection
-- **Technology/language:** HTML/CSS/vanilla JavaScript for the calculator; C#/.NET 8 WPF for the particle viewer
-- **What currently works:** Calculator core workflow; 3D Bounce Simulator build, OBJ parsing, cohesive local spring constraints, black viewport, visible optional ground plane/collision, compact soft-body controls for Chaos/Momentum/Drop Height, reset-to-start behavior, and camera view/rotation controls
-- **What is being worked on:** Interactive Windows testing of the simplified interface, cube/brain spring stability, chaos/momentum/drop-height differences, and settling behavior
-- **Known problems:** FBX and GPU point rendering are not implemented; spring simulation and combined mesh updates run on the UI thread; anatomical visual testing requires an anatomical model asset not present in this repository
-- **Next logical steps:** Test with a small and complex OBJ, then decide whether a reliable FBX/glTF loader is worth adding
+- **Technology/language:** HTML/CSS/vanilla JavaScript for the calculator; C#/.NET 8 WPF with AssimpNet for the 3D Bounce Simulator
+- **What currently works:** Calculator core workflow; 3D Bounce Simulator Stage 1 build, actual OBJ/FBX import path, solid mesh rendering, validation, automatic centering/scaling/framing, orbit, zoom, and Reset View
+- **What is being worked on:** Interactive Windows testing with cube, complex OBJ, and FBX assets
+- **Known problems:** Stage 1 uses one simple material; animation, textures, physics, particles, soft-body behavior, ground collision, and advanced FBX material preservation are not implemented
+- **Next logical steps:** Confirm visual OBJ/FBX loading, then add the next feature only after this foundation is stable
 
 ## Projects
 

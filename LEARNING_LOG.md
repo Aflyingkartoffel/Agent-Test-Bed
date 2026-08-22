@@ -59,6 +59,12 @@ This log records useful programming concepts encountered while building the repo
 
 - **Git-aware renaming:** Renaming a project includes its folder, project file, assembly identity, run commands, application title, and current documentation references; internal technical class names can remain when they still describe their implementation role.
 
+## 2026-08-22 — 3D Bounce Simulator foundation rebuild
+
+- **Scope control:** A reliable foundation should be validated before adding physics; Stage 1 intentionally contains only import, solid mesh rendering, framing, orbit, zoom, and reset view.
+- **Format import:** AssimpNet converts OBJ and FBX files into standard triangle data that WPF can render as `MeshGeometry3D`.
+- **Validation:** Importers should reject missing files, unsupported extensions, empty meshes, zero-size bounds, and non-finite coordinates before creating viewport geometry.
+
 ## 2026-08-21 — Building the calculator
 
 - **Functions:** A function packages a focused action, such as entering a number or clearing the calculator, so the same behavior can be called from both buttons and keyboard input.

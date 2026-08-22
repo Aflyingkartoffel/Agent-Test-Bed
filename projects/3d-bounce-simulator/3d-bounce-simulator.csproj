@@ -3,12 +3,12 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
-    <RootNamespace>ParticleModelViewer</RootNamespace>
+    <RootNamespace>BounceSimulator</RootNamespace>
     <AssemblyName>BounceSimulator</AssemblyName>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <None Update="radial_gradient.png" CopyToOutputDirectory="PreserveNewest" />
+    <PackageReference Include="AssimpNet" Version="4.1.0" />
   </ItemGroup>
 </Project>

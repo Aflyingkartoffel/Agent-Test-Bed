@@ -1,147 +1,44 @@
-<Window x:Class="ParticleModelViewer.MainWindow"
+<Window x:Class="BounceSimulator.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:ParticleModelViewer"
-        Title="3D Bounce Simulator" Width="1180" Height="760" MinWidth="900" MinHeight="600"
-        Deactivated="Window_Deactivated" Closed="Window_Closed"
-        Background="#090D16" Foreground="#F8FAFC">
+        Title="3D Bounce Simulator" Width="1180" Height="760" MinWidth="800" MinHeight="520"
+        Background="#111111" Foreground="#F8FAFC"
+        Deactivated="Window_Deactivated" Closed="Window_Closed">
   <Grid Margin="18">
-    <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="*" />
-      <ColumnDefinition Width="270" />
-    </Grid.ColumnDefinitions>
-    <Border Grid.Column="0" Margin="0,0,16,0" CornerRadius="16" BorderBrush="#24324A" BorderThickness="1" Background="#000000">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <DockPanel Grid.Row="0" Margin="0,0,0,12">
+      <Button x:Name="LoadButton" Content="Load Model..." Click="LoadModel_Click" Width="130" DockPanel.Dock="Left" />
+      <Button Content="Reset View" Click="ResetView_Click" Width="110" Margin="8,0,0,0" DockPanel.Dock="Left" />
+      <TextBlock x:Name="StatusText" Text="No model loaded" Foreground="#AAB4C5" VerticalAlignment="Center" Margin="16,0,0,0" TextTrimming="CharacterEllipsis" />
+    </DockPanel>
+    <Border Grid.Row="1" Background="#000000" BorderBrush="#2D3440" BorderThickness="1" CornerRadius="12">
       <Grid>
-        <Viewport3D x:Name="Viewport" ClipToBounds="True" MouseDown="Viewport_MouseDown" MouseMove="Viewport_MouseMove" MouseUp="Viewport_MouseUp" MouseWheel="Viewport_MouseWheel">
+        <Viewport3D x:Name="Viewport" ClipToBounds="True"
+                    MouseDown="Viewport_MouseDown" MouseMove="Viewport_MouseMove"
+                    MouseUp="Viewport_MouseUp" MouseWheel="Viewport_MouseWheel">
           <Viewport3D.Camera>
-            <PerspectiveCamera x:Name="Camera" FieldOfView="45" Position="0,0,8" LookDirection="0,0,-8" UpDirection="0,1,0" />
+            <PerspectiveCamera x:Name="Camera" FieldOfView="45" Position="0,1,8" LookDirection="0,-1,-8" UpDirection="0,1,0" />
           </Viewport3D.Camera>
           <ModelVisual3D>
             <ModelVisual3D.Content>
               <Model3DGroup>
-                <AmbientLight Color="#7886A8" />
+                <AmbientLight Color="#707070" />
                 <DirectionalLight Color="#FFFFFF" Direction="-1,-2,-1" />
               </Model3DGroup>
             </ModelVisual3D.Content>
           </ModelVisual3D>
-          <ModelVisual3D x:Name="SceneVisual" />
+          <ModelVisual3D x:Name="ModelVisual" />
         </Viewport3D>
-        <StackPanel Margin="18" VerticalAlignment="Top" IsHitTestVisible="False">
-          <TextBlock Text="PARTICLE VIEWPORT" Foreground="#818CF8" FontSize="11" FontWeight="Bold" />
-          <TextBlock x:Name="ViewportHint" Text="Load an OBJ model to begin" Margin="0,4,0,0" Foreground="#94A3B8" />
+        <StackPanel Margin="18" IsHitTestVisible="False" VerticalAlignment="Top">
+          <TextBlock Text="3D BOUNCE SIMULATOR" Foreground="#8FA8FF" FontSize="11" FontWeight="Bold" />
+          <TextBlock x:Name="ViewportHint" Text="Load an OBJ or FBX model to begin" Foreground="#AAB4C5" Margin="0,4,0,0" />
         </StackPanel>
-        <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="18" Padding="8,4" CornerRadius="5" Background="#B0090D16" IsHitTestVisible="False">
-          <TextBlock x:Name="FpsText" Text="FPS: --" Foreground="#CBD5E1" FontSize="12" FontWeight="SemiBold" />
-        </Border>
       </Grid>
     </Border>
-
-    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-      <StackPanel>
-        <TextBlock Text="3D Bounce Simulator" FontSize="22" FontWeight="SemiBold" />
-        <TextBlock Text="Turn real mesh surfaces into an interactive point sculpture." Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,6,0,20" />
-
-        <Button x:Name="LoadButton" Content="Load model…" Click="LoadModel_Click" FontSize="14" FontWeight="SemiBold" />
-        <TextBlock x:Name="StatusText" Text="No model loaded" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,8,0,18" />
-
-        <Border BorderBrush="#24324A" BorderThickness="0,1,0,0" Padding="0,16,0,0" Visibility="Collapsed">
-          <StackPanel>
-            <TextBlock Text="Appearance" FontSize="15" FontWeight="SemiBold" />
-            <TextBlock Text="Particle color" Foreground="#94A3B8" Margin="0,12,0,4" />
-            <local:ColorPickerControl x:Name="ParticleColorPicker" />
-            <DockPanel>
-              <TextBox x:Name="ColorTextBox" Text="#818CF8" Padding="8" Background="#1B2740" Foreground="#F8FAFC" BorderBrush="#3E4E70" />
-              <Button Content="Apply" Click="ApplyColor_Click" DockPanel.Dock="Right" Margin="8,0,0,0" />
-            </DockPanel>
-            <TextBlock Text="Particle shape" Foreground="#94A3B8" Margin="0,14,0,4" />
-            <ComboBox x:Name="ParticleShapeComboBox" SelectedIndex="0" SelectionChanged="ParticleShape_Changed" Background="#1B2740" Foreground="Black">
-              <ComboBox.Resources>
-                <Style TargetType="{x:Type ComboBoxItem}">
-                  <Setter Property="Foreground" Value="Black" />
-                  <Setter Property="Background" Value="White" />
-                </Style>
-              </ComboBox.Resources>
-              <ComboBoxItem Content="Cube" />
-              <ComboBoxItem Content="Sphere" />
-              <ComboBoxItem Content="Tetrahedron" />
-              <ComboBoxItem Content="Billboard" />
-              <ComboBoxItem Content="Image Billboard" />
-            </ComboBox>
-            <StackPanel x:Name="ImageControls" Visibility="Collapsed">
-              <Button Content="Use built-in radial gradient" Click="UseBuiltInImage_Click" />
-              <Button Content="Load particle image…" Click="LoadParticleImage_Click" />
-              <TextBlock x:Name="ParticleImageText" Text="No image selected" Foreground="#94A3B8" TextWrapping="Wrap" Margin="0,4,0,0" />
-            </StackPanel>
-            <CheckBox x:Name="ShowOriginalMeshCheckBox" Content="Show original mesh" IsChecked="False" Click="ShowOriginalMesh_Changed" Foreground="#CBD5E1" Margin="0,14,0,0" />
-            <TextBlock Text="Particle count" Foreground="#94A3B8" Margin="0,14,0,2" />
-            <Slider x:Name="DensitySlider" Minimum="200" Maximum="6000" Value="1600" TickFrequency="200" IsSnapToTickEnabled="True" ValueChanged="ParticleSettings_Changed" />
-            <TextBlock x:Name="DensityValue" Text="1,600 particles" Foreground="#CBD5E1" HorizontalAlignment="Right" />
-            <TextBlock Text="Particle size" Foreground="#94A3B8" Margin="0,14,0,2" />
-            <Slider x:Name="SizeSlider" Minimum="0.006" Maximum="0.05" Value="0.018" TickFrequency="0.002" ValueChanged="ParticleSettings_Changed" />
-            <TextBlock x:Name="SizeValue" Text="0.018" Foreground="#CBD5E1" HorizontalAlignment="Right" />
-          </StackPanel>
-        </Border>
-
-        <Border BorderBrush="#24324A" BorderThickness="0,1,0,0" Padding="0,16,0,0" Margin="0,16,0,0">
-          <StackPanel>
-            <TextBlock Text="Simulation" FontSize="15" FontWeight="SemiBold" />
-            <CheckBox x:Name="SoftBodyCheckBox" Content="Enable Soft Body" IsChecked="False" Click="SoftBody_Changed" Foreground="#CBD5E1" Margin="0,12,0,0" />
-            <CheckBox x:Name="GroundPlaneCheckBox" Content="Ground Plane" IsChecked="True" Click="GroundPlane_Changed" Foreground="#CBD5E1" Margin="0,10,0,0" />
-            <TextBlock Text="Chaos" Foreground="#94A3B8" Margin="0,14,0,2" />
-            <Slider x:Name="ChaosSlider" Minimum="0" Maximum="1" Value="0.15" TickFrequency="0.1" />
-            <TextBlock x:Name="ChaosValue" Text="15%" Foreground="#CBD5E1" HorizontalAlignment="Right" />
-            <TextBlock Text="Momentum" Foreground="#94A3B8" Margin="0,10,0,2" />
-            <Slider x:Name="MomentumSlider" Minimum="0" Maximum="1" Value="0.35" TickFrequency="0.1" />
-            <TextBlock x:Name="MomentumValue" Text="35%" Foreground="#CBD5E1" HorizontalAlignment="Right" />
-            <TextBlock Text="Drop Height" Foreground="#94A3B8" Margin="0,10,0,2" />
-            <Slider x:Name="DropHeightSlider" Minimum="0" Maximum="6" Value="2" TickFrequency="0.5" />
-            <TextBlock x:Name="DropHeightValue" Text="2.0" Foreground="#CBD5E1" HorizontalAlignment="Right" />
-            <Button Content="Reset Simulation" Click="ResetSimulation_Click" Margin="0,14,0,0" />
-            <StackPanel Visibility="Collapsed">
-              <Slider x:Name="SpringStiffnessSlider" Minimum="0" Maximum="1" Value="0.55" />
-              <TextBlock x:Name="SpringStiffnessValue" />
-              <Slider x:Name="SimulationStrengthSlider" Minimum="0" Maximum="20" Value="7" />
-              <TextBlock x:Name="SimulationStrengthValue" />
-              <Slider x:Name="DeformationResistanceSlider" Minimum="0" Maximum="1" Value="1" />
-              <TextBlock x:Name="DeformationResistanceValue" />
-              <Slider x:Name="ElasticitySlider" Minimum="0" Maximum="1" Value="0.5" />
-              <TextBlock x:Name="ElasticityValue" />
-              <Slider x:Name="BounceSlider" Minimum="0" Maximum="0.8" Value="0.35" />
-              <TextBlock x:Name="BounceValue" />
-              <Slider x:Name="DampingSlider" Minimum="0.75" Maximum="0.999" Value="0.92" />
-              <TextBlock x:Name="DampingValue" />
-              <Slider x:Name="TimeStepSlider" Minimum="0.005" Maximum="0.033" Value="0.016" />
-              <TextBlock x:Name="TimeStepValue" />
-            </StackPanel>
-          </StackPanel>
-        </Border>
-
-        <Border BorderBrush="#24324A" BorderThickness="0,1,0,0" Padding="0,16,0,0" Margin="0,16,0,0" Visibility="Collapsed">
-          <StackPanel>
-            <TextBlock Text="Scene" FontSize="15" FontWeight="SemiBold" />
-            <CheckBox x:Name="CollisionCheckBox" Content="Ground collision" IsChecked="True" Foreground="#CBD5E1" Margin="0,8,0,0" />
-            <TextBlock Text="Ground height" Foreground="#94A3B8" Margin="0,10,0,2" />
-            <Slider x:Name="GroundHeightSlider" Minimum="-3" Maximum="1" Value="-2" TickFrequency="0.25" />
-            <TextBlock x:Name="GroundHeightValue" Text="-2.00" Foreground="#CBD5E1" HorizontalAlignment="Right" />
-          </StackPanel>
-        </Border>
-
-        <Border BorderBrush="#24324A" BorderThickness="0,1,0,0" Padding="0,16,0,0" Margin="0,16,0,0">
-          <StackPanel>
-            <TextBlock Text="Rotation" FontSize="15" FontWeight="SemiBold" />
-            <TextBlock Text="Model rotation (Y axis)" Foreground="#94A3B8" Margin="0,12,0,2" />
-            <Slider x:Name="RotationSlider" Minimum="0" Maximum="360" Value="0" ValueChanged="RotationSlider_Changed" />
-            <TextBlock x:Name="RotationValue" Text="0°" Foreground="#CBD5E1" HorizontalAlignment="Right" />
-          </StackPanel>
-        </Border>
-
-        <TextBlock Text="Camera" FontSize="15" FontWeight="SemiBold" Margin="0,16,0,4" />
-        <Button Content="Reset View" Click="ResetCamera_Click" />
-        <Button Content="Reset Rotation" Click="ResetRotation_Click" />
-        <Button Content="Reset visualization" Click="ResetVisualization_Click" Visibility="Collapsed" />
-        <TextBlock Text="Drag to orbit • Scroll to zoom • R resets the camera" Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,18,0,0" />
-        <TextBlock Text="OBJ is supported in this phase. FBX is reserved for a future loader." Foreground="#64748B" FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" />
-      </StackPanel>
-    </ScrollViewer>
+    <TextBlock Grid.Row="2" Text="Left-drag to orbit • Scroll to zoom • R resets the view" Foreground="#7E8796" FontSize="11" Margin="0,12,0,0" />
   </Grid>
 </Window>

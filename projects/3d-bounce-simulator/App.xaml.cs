@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace ParticleModelViewer;
+namespace BounceSimulator;
 
 public partial class App : Application
 {
