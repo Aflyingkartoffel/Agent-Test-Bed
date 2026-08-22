@@ -1,0 +1,60 @@
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# VS Code and local editor settings
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Common logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Common JavaScript/TypeScript outputs and dependencies
+node_modules/
+dist/
+build/
+.next/
+.nuxt/
+.vite/
+coverage/
+
+# Python caches and environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
+
+# Other common build/cache directories
+out/
+target/
+.cache/
+.gradle/
+.vs/
+bin/
+obj/
+
+# Visual Studio and .NET user files
+*.user
+*.suo
+
+# Local databases and generated data
+*.sqlite
+*.sqlite3
+*.db

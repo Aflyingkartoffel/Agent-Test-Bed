@@ -1,0 +1,54 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #111827;
+  color: #f8fafc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  display: grid;
+  min-height: 100vh;
+  margin: 0;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(circle at top, #263453 0%, #111827 48%, #090d16 100%);
+}
+
+.calculator {
+  width: min(100%, 390px);
+  padding: 28px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 28px;
+  background: rgb(15 23 42 / 88%);
+  box-shadow: 0 24px 70px rgb(0 0 0 / 35%);
+  backdrop-filter: blur(14px);
+}
+
+.calculator__header { margin-bottom: 22px; }
+.eyebrow { margin: 0 0 6px; color: #8b9cff; font-size: .76rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+h1 { margin: 0; font-size: 1.7rem; letter-spacing: -.04em; }
+
+.display { min-height: 124px; margin-bottom: 18px; padding: 18px 16px; overflow: hidden; border-radius: 18px; background: #080d18; text-align: right; }
+.display__expression { min-height: 24px; color: #94a3b8; font-size: .9rem; white-space: nowrap; }
+.display__value { margin-top: 8px; overflow: hidden; font-size: clamp(2.5rem, 12vw, 4rem); font-weight: 700; letter-spacing: -.06em; text-overflow: ellipsis; white-space: nowrap; }
+
+.keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.key { min-height: 58px; border: 0; border-radius: 15px; background: #26334d; color: #f8fafc; cursor: pointer; font: inherit; font-size: 1.25rem; font-weight: 650; transition: transform .12s ease, background .12s ease; }
+.key:hover { background: #344563; }
+.key:active { transform: scale(.96); }
+.key:focus-visible { outline: 3px solid #a5b4fc; outline-offset: 2px; }
+.key--wide { grid-column: span 2; }
+.key--operator { background: #33419a; color: #dbe4ff; }
+.key--operator:hover { background: #4656bc; }
+.key--equals { grid-row: span 2; background: #6366f1; font-size: 1.6rem; }
+.key--equals:hover { background: #818cf8; }
+.key--utility { background: #1d293e; color: #c7d2fe; font-size: 1rem; }
+.key--utility:hover { background: #2a3954; }
+.keyboard-hint { margin: 20px 0 0; color: #64748b; font-size: .78rem; text-align: center; }
+
+@media (max-width: 420px) {
+  .calculator { padding: 20px; border-radius: 22px; }
+  .key { min-height: 54px; }
+}
