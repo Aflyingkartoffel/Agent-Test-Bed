@@ -1,4 +1,5 @@
 using System.Numerics;
+using InsectLightSimulation.Animation;
 using InsectLightSimulation.Simulation.Behaviors;
 
 namespace InsectLightSimulation.Simulation;
@@ -57,7 +58,8 @@ public sealed class SimulationEngine
             velocity *= Settings.BaseSpeed * (0.55f + Random.NextSingle() * 0.65f);
             Vector2 position = new(Random.NextSingle() * Width, Random.NextSingle() * Height);
             agents.Add(new Agent(position, velocity, 0.75f + Random.NextSingle() * 0.5f,
-                0.75f + Random.NextSingle() * 0.5f, 0.7f + Random.NextSingle() * 0.6f));
+                0.75f + Random.NextSingle() * 0.5f, 0.7f + Random.NextSingle() * 0.6f,
+                Random.NextSingle() * WingAnimation.FrameCount, 7.2f + Random.NextSingle() * 2.4f));
         }
     }
 
@@ -141,6 +143,7 @@ public sealed class SimulationEngine
 
             agent.Position += agent.Velocity * deltaTime;
             ApplyBoundary(agent);
+            agent.AnimationPhase = WingAnimation.AdvancePhase(agent.AnimationPhase, agent.WingAnimationSpeed, deltaTime);
         }
         SimulationTime += deltaTime;
     }

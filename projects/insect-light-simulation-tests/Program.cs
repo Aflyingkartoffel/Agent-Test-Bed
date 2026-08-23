@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Diagnostics;
+using InsectLightSimulation.Animation;
 using InsectLightSimulation.Simulation;
 using InsectLightSimulation.Simulation.Behaviors;
 using InsectLightSimulation.Rendering;
@@ -18,6 +19,10 @@ static class Tests
         Run("power is independent per light", PowerIsIndependent);
         Run("new light has default power", NewLightHasDefaultPower);
         Run("reset restores light power", ResetRestoresLightPower);
+        Run("wing frames select", WingFramesSelect);
+        Run("wing animation advances and loops", WingAnimationAdvancesAndLoops);
+        Run("agents have varied animation phases", AgentsHaveVariedAnimationPhases);
+        Run("sprite frames are cached", SpriteFramesAreCached);
         Run("multiple light forces combine", MultipleLightForcesCombine);
         Run("independent light radius", IndependentLightRadius);
         Run("add and remove lights", AddRemoveLights);
@@ -137,6 +142,31 @@ static class Tests
         Check(simulation.Lights.Count == 1 && simulation.Lights[0].Power == 1f, "reset should restore one default-power light");
     }
 
+    private static void WingFramesSelect()
+    {
+        for (int frame = 0; frame < WingAnimation.FrameCount; frame++)
+            Check(WingAnimation.GetFrameIndex(frame) == frame, "each wing frame should be selectable");
+    }
+
+    private static void WingAnimationAdvancesAndLoops()
+    {
+        float phase = WingAnimation.AdvancePhase(3.75f, 1f, 0.5f);
+        Check(Math.Abs(phase - 0.25f) < 0.001f && WingAnimation.GetFrameIndex(phase) == 0, "wing phase should advance and wrap");
+    }
+
+    private static void AgentsHaveVariedAnimationPhases()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings { InsectCount = 20 });
+        Check(simulation.Agents.Select(agent => agent.AnimationPhase).Distinct().Count() > 1, "agents should start at different animation phases");
+    }
+
+    private static void SpriteFramesAreCached()
+    {
+        var cache = new InsectSpriteCache();
+        IReadOnlyList<SpritePixel> first = cache.GetFrame(0, 0);
+        Check(ReferenceEquals(first, cache.GetFrame(0, 0)) && cache.GetFrame(0, 0).Count > 0, "sprite frame data should be reused");
+    }
+
     private static void MultipleLightForcesCombine()
     {
         var simulation = new SimulationEngine(new SimulationSettings());
@@ -234,7 +264,9 @@ static class Tests
     {
         var a = new SimulationEngine(new SimulationSettings { Seed = 7, InsectCount = 20 });
         var b = new SimulationEngine(new SimulationSettings { Seed = 7, InsectCount = 20 });
-        Check(a.Agents[5].Position == b.Agents[5].Position && a.Agents[5].Velocity == b.Agents[5].Velocity, "same seed should reproduce agents");
+        Check(a.Agents[5].Position == b.Agents[5].Position && a.Agents[5].Velocity == b.Agents[5].Velocity
+            && a.Agents[5].AnimationPhase == b.Agents[5].AnimationPhase
+            && a.Agents[5].WingAnimationSpeed == b.Agents[5].WingAnimationSpeed, "same seed should reproduce agents and animation state");
     }
 
     private static void Run(string name, Action test)

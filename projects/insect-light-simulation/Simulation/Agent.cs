@@ -12,8 +12,11 @@ public sealed class Agent
     public readonly float TurnResponsiveness;
     public readonly float WanderStrength;
     public float WanderAngle;
+    public float AnimationPhase;
+    public readonly float WingAnimationSpeed;
 
-    public Agent(Vector2 position, Vector2 velocity, float preferredSpeed, float turnResponsiveness, float wanderStrength)
+    public Agent(Vector2 position, Vector2 velocity, float preferredSpeed, float turnResponsiveness, float wanderStrength,
+        float animationPhase = 0, float wingAnimationSpeed = 8)
     {
         Position = position;
         Velocity = velocity;
@@ -21,5 +24,7 @@ public sealed class Agent
         PreferredSpeed = preferredSpeed;
         TurnResponsiveness = turnResponsiveness;
         WanderStrength = wanderStrength;
+        AnimationPhase = animationPhase;
+        WingAnimationSpeed = wingAnimationSpeed;
     }
 }

@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using InsectLightSimulation.Animation;
 using InsectLightSimulation.Simulation;
 
 namespace InsectLightSimulation.Rendering;
@@ -14,6 +15,7 @@ public sealed class PixelRenderer
     private int[] pixels = Array.Empty<int>();
     private int width;
     private int height;
+    private readonly InsectSpriteCache spriteCache = new();
 
     public WriteableBitmap? Bitmap => bitmap;
 
@@ -79,17 +81,27 @@ public sealed class PixelRenderer
 
     private void DrawInsect(Agent insect)
     {
-        int direction = (int)MathF.Round((insect.Heading + MathF.PI) / MathF.Tau * 8) & 7;
-        (int X, int Y)[] pattern = direction % 2 == 0 ? HorizontalInsectPattern : VerticalInsectPattern;
+        int direction = (int)MathF.Round(insect.Heading / MathF.Tau * InsectSpriteCache.RotationCount) & (InsectSpriteCache.RotationCount - 1);
+        int frame = WingAnimation.GetFrameIndex(insect.AnimationPhase);
+        IReadOnlyList<SpritePixel> pattern = spriteCache.GetFrame(frame, direction);
         int x = (int)insect.Position.X;
         int y = (int)insect.Position.Y;
-        foreach ((int dx, int dy) in pattern)
-            Plot(x + dx, y + dy, Color.FromRgb(105, 255, 100));
+        for (int i = 0; i < pattern.Count; i++)
+        {
+            SpritePixel pixel = pattern[i];
+            Plot(x + pixel.X, y + pixel.Y, pixel.Color);
+        }
     }
 
     private void Plot(int x, int y, Color color)
     {
         if ((uint)x >= (uint)width || (uint)y >= (uint)height) return;
         pixels[y * width + x] = (color.A << 24) | (color.R << 16) | (color.G << 8) | color.B;
+    }
+
+    private void Plot(int x, int y, int color)
+    {
+        if ((uint)x >= (uint)width || (uint)y >= (uint)height) return;
+        pixels[y * width + x] = color;
     }
 }
