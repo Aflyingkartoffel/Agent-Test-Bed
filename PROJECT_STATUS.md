@@ -18,3 +18,7 @@ Current projects:
 
 - `projects/calculator/`
 - `projects/3d-bounce-simulator/`
+
+## Creature features and smooth skin
+
+The creature laboratory now defaults to `2.0x` Simulation Speed while retaining Max Speed `720`. Procedural skin uses Catmull-Rom sampled side curves with rounded head/tail caps, derived from the existing node positions and radii. A reusable local-space `CreatureFeature` model replaces the eye-specific definition; Eye is the first supported type, with root parenting, manual local transforms, scale, visibility, mirrored rendering, Save/Load persistence, and migration from older eye JSON. Feature controls are Create-only; Play Mode keeps only visual attachment to simulated parents.

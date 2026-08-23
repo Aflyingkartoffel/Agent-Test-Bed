@@ -71,3 +71,9 @@ This log records useful programming concepts encountered while building the repo
 - **Events and event handlers:** A browser event represents an interaction, such as a click or key press. An event handler listens for it and runs the matching calculator function.
 - **Application state:** Variables such as the current expression and current input remember what the user has entered so the display and next operation stay synchronized.
 - **Operator precedence:** The calculator uses separate value and operator stacks so multiplication and division are applied before addition and subtraction.
+
+## Procedural features and visual sampling
+
+A procedural visual feature should store a local rule relative to its parent rather than a final world position. For example: `Head Position + Local Eye Offset = Eye World Position`. When the head moves or rotates, the eye follows automatically because the renderer resolves the local transform against the current parent transform.
+
+Structural nodes can remain low-resolution while the displayed skin is smoothed with interpolated visual samples. The creature still has the same nodes, connections, spacing, and radii; Catmull-Rom samples only refine the rendered silhouette between those authored points.
