@@ -7,6 +7,7 @@ public sealed class CreatureDefinition
     public ChainSettings ChainSettings { get; } = new();
     public BodySizeRamp BodySizeRamp { get; } = new();
     public float BaseRadius { get; set; } = 24;
+    public uint SkinColorArgb { get; set; } = 0xFF2E8B57;
     public List<CreatureFeature> Features { get; } = [];
     // Reserved for later milestones: branches, size ramps, constraints, and animation settings.
 }

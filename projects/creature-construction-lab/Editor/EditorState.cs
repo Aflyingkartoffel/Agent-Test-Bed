@@ -192,6 +192,21 @@ public sealed class EditorState
         Changed?.Invoke();
     }
 
+    public void SetPlayDisplay(bool solidBody, bool showSkeleton, bool showMuscles, bool showFeatures)
+    {
+        Display.PlaySolidBody = solidBody;
+        Display.PlayShowSkeleton = showSkeleton;
+        Display.PlayShowMuscles = showMuscles;
+        Display.PlayShowFeatures = showFeatures;
+        Changed?.Invoke();
+    }
+
+    public void SetSkinColor(uint argb)
+    {
+        Creature.SkinColorArgb = argb | 0xFF000000;
+        Changed?.Invoke();
+    }
+
     public CreatureFeature AddFeature(CreatureFeatureType type = CreatureFeatureType.Eye)
     {
         var parent = Creature.Nodes.FirstOrDefault();
@@ -218,7 +233,7 @@ public sealed class EditorState
         Changed?.Invoke();
     }
 
-    public void SetSelectedFeature(CreatureFeatureType type, Guid parentNodeId, Vector2 localPosition, float rotation, float scale, bool mirrored, bool visible, float eyeSize, float tongueLength, float tongueForkLength, float tongueForkAngle)
+    public void SetSelectedFeature(CreatureFeatureType type, Guid parentNodeId, Vector2 localPosition, float rotation, float scale, bool mirrored, bool visible, float eyeSize, float eyeWidth, float eyeHeight, float trackingStrength, float tongueLength, float tongueForkLength, float tongueForkAngle)
     {
         if (SelectedFeature is null) return;
         SelectedFeature.Type = type;
@@ -229,6 +244,9 @@ public sealed class EditorState
         SelectedFeature.Mirrored = SelectedFeature.SupportsMirroring && mirrored;
         SelectedFeature.Visible = visible;
         SelectedFeature.EyeSize = Math.Clamp(float.IsFinite(eyeSize) ? eyeSize : 5, 1, 20);
+        SelectedFeature.EyeWidth = Math.Clamp(float.IsFinite(eyeWidth) ? eyeWidth : 16, 6, 40);
+        SelectedFeature.EyeHeight = Math.Clamp(float.IsFinite(eyeHeight) ? eyeHeight : 9, 3, 24);
+        SelectedFeature.EyeTrackingStrength = Math.Clamp(float.IsFinite(trackingStrength) ? trackingStrength : 0.5f, 0, 1);
         SelectedFeature.TongueLength = Math.Clamp(float.IsFinite(tongueLength) ? tongueLength : 28, 2, 200);
         SelectedFeature.TongueForkLength = Math.Clamp(float.IsFinite(tongueForkLength) ? tongueForkLength : 12, 2, 100);
         SelectedFeature.TongueForkAngle = Math.Clamp(float.IsFinite(tongueForkAngle) ? tongueForkAngle : 28, 5, 75);
@@ -252,6 +270,7 @@ public sealed class EditorState
         Creature.ChainSettings.Stiffness = loaded.ChainSettings.Stiffness;
         Creature.ChainSettings.Damping = loaded.ChainSettings.Damping;
         Creature.BaseRadius = loaded.BaseRadius;
+        Creature.SkinColorArgb = loaded.SkinColorArgb;
         Creature.Features.Clear();
         Creature.Features.AddRange(loaded.Features);
         Creature.BodySizeRamp.Points.Clear();
@@ -273,12 +292,16 @@ public sealed class EditorState
         Creature.Connections.Clear();
         Creature.BodySizeRamp.Reset();
         Creature.BaseRadius = 24;
+        Creature.SkinColorArgb = 0xFF2E8B57;
         Creature.Features.Clear();
         Display.CreateShowNodes = true;
         Display.CreateShowSkin = true;
         Display.CreateShowFeatures = true;
         Display.PlayShowNodes = false;
         Display.PlayShowSkin = true;
+        Display.PlaySolidBody = true;
+        Display.PlayShowSkeleton = false;
+        Display.PlayShowMuscles = false;
         Display.PlayShowFeatures = true;
         Simulator.ResetSettings();
         SelectedNode = null;

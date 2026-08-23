@@ -7,5 +7,8 @@ public sealed class DisplaySettings
     public bool CreateShowFeatures { get; set; } = true;
     public bool PlayShowNodes { get; set; }
     public bool PlayShowSkin { get; set; } = true;
+    public bool PlaySolidBody { get; set; } = true;
+    public bool PlayShowSkeleton { get; set; }
+    public bool PlayShowMuscles { get; set; }
     public bool PlayShowFeatures { get; set; } = true;
 }

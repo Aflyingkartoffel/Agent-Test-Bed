@@ -57,3 +57,10 @@
 
 - Corrected head/tail cap orientation using explicit outward vectors and an unambiguous semicircle equation.
 - Added regression coverage for left-facing tails, outward cap midpoints, endpoint radii, and exact body/cap connection points.
+
+## Appearance, anatomy views, and bend stability
+
+- Added authored skin color with Create-mode color picker, opaque color persistence, and backward-compatible defaults.
+- Reworked eyes as almond outlines with configurable width, height, smooth Play pupil tracking, and mirrored support.
+- Added Play-only Skeleton and Muscles diagnostic overlays while defaulting Play to a solid body with features visible.
+- Added a 75-degree local bend constraint and rest-length reapplication after wave/deformation updates.

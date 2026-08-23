@@ -39,3 +39,9 @@ dotnet run
 ```
 
 Build with `dotnet build`. The project intentionally has no third-party dependencies.
+
+The appearance and anatomy-debug milestone adds authored skin color with a WPF Create-mode color picker, opaque `#AARRGGBB` persistence, almond-shaped eyes with width/height controls, smooth pupil tracking, and mirrored rendering. Play Mode now defaults to a solid colored body with features visible; Skeleton and Muscles are optional visual overlays and never participate in simulation. The muscle overlay is derived from simulated chain positions and radii.
+
+Play deformation now applies a local bend limit of 75 degrees after distance following and wave motion, then restores connection rest lengths. This is a stability constraint rather than self-collision: overlapping body segments are still allowed, while abrupt local turns are softened.
+
+The test harness covers the new appearance defaults, eye and skin persistence, backward-compatible color defaults, bend clamping, rest-length preservation, and long-chain finite-state behavior.

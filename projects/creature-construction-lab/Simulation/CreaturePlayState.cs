@@ -15,6 +15,7 @@ public sealed class CreaturePlayState
     public float AccelerationStrength { get; set; } = 420;
     public float Damping { get; set; } = 3.5f;
     public float SimulationSpeed { get; set; } = 2;
+    public float MaxBendDegrees { get; set; } = 75;
     public WaveMotionSettings Wave { get; } = new();
     public bool Paused { get; private set; }
     public float SimulationTime { get; private set; }
@@ -89,9 +90,45 @@ public sealed class CreaturePlayState
             Velocities[i] *= MathF.Exp(-Math.Clamp(connection?.Damping ?? 0.1f, 0, 20) * dt);
             Accelerations[i] = Vector2.Zero;
         }
+        ApplyBendConstraint(definition);
         ApplyWave(definition);
+        ApplyBendConstraint(definition);
+        ReapplyRestLengths(definition);
         SimulationTime += dt;
     }
+
+    private void ApplyBendConstraint(CreatureDefinition definition)
+    {
+        if (Positions.Count < 3) return;
+        var limit = Math.Clamp(MaxBendDegrees, 5, 135) * MathF.PI / 180;
+        for (var i = 1; i < Positions.Count - 1; i++)
+        {
+            var incoming = Positions[i] - Positions[i - 1];
+            var outgoing = Positions[i + 1] - Positions[i];
+            if (incoming.LengthSquared() < 0.0001f || outgoing.LengthSquared() < 0.0001f) continue;
+            incoming = Vector2.Normalize(incoming);
+            var angle = MathF.Atan2(Vector2.Dot(incoming, new Vector2(-outgoing.Y, outgoing.X)), Vector2.Dot(incoming, outgoing));
+            var clamped = Math.Clamp(angle, -limit, limit);
+            if (Math.Abs(angle - clamped) < 0.0001f) continue;
+            var restLength = i < definition.Connections.Count ? definition.Connections[i].RestLength : definition.ChainSettings.Spacing;
+            var direction = Rotate(incoming, clamped);
+            Positions[i + 1] = Positions[i] + direction * restLength;
+            Velocities[i + 1] = (Positions[i + 1] - Positions[i]) / FixedStep;
+        }
+    }
+
+    private void ReapplyRestLengths(CreatureDefinition definition)
+    {
+        for (var i = 1; i < Positions.Count; i++)
+        {
+            var delta = Positions[i] - Positions[i - 1];
+            if (delta.LengthSquared() < 0.0001f) continue;
+            var restLength = i - 1 < definition.Connections.Count ? definition.Connections[i - 1].RestLength : definition.ChainSettings.Spacing;
+            Positions[i] = Positions[i - 1] + Vector2.Normalize(delta) * restLength;
+        }
+    }
+
+    private static Vector2 Rotate(Vector2 vector, float radians) => new(vector.X * MathF.Cos(radians) - vector.Y * MathF.Sin(radians), vector.X * MathF.Sin(radians) + vector.Y * MathF.Cos(radians));
 
     private void ApplyWave(CreatureDefinition definition)
     {

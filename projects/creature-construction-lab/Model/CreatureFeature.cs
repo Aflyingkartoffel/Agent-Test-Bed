@@ -13,6 +13,9 @@ public sealed class CreatureFeature
     public bool Mirrored { get; set; } = true;
     public bool Visible { get; set; } = true;
     public float EyeSize { get; set; } = 5;
+    public float EyeWidth { get; set; } = 16;
+    public float EyeHeight { get; set; } = 9;
+    public float EyeTrackingStrength { get; set; } = 0.5f;
     public float TongueLength { get; set; } = 28;
     public float TongueForkLength { get; set; } = 12;
     public float TongueForkAngle { get; set; } = 28;

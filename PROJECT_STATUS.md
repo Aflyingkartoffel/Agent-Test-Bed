@@ -31,3 +31,9 @@ Terminal skin geometry now wraps explicitly around the first and last node radii
 Terminal skin geometry now wraps explicitly around the first and last node radii using sampled semicircular caps and one-sided endpoint tangents. The body still uses derived node positions/radii only. `ForkedTongue` extends the local-parent feature architecture with vector stem/fork geometry, length/fork-length/fork-angle controls, root parenting, singular non-mirrored behavior, Play attachment, and Save/Load persistence.
 
 The follow-up cap-orientation fix uses explicit outward tangent vectors so the head cap points opposite the body direction and the tail cap points away from the preceding node. Regression tests cover right-facing heads, left-facing tails, cap midpoints, endpoint radii, and curved chains. Final canvas-level visual confirmation remains user verification in this environment.
+
+## Appearance, anatomy views, and bend stability
+
+The current creature-lab milestone adds authored skin color with Create-mode color picking and JSON persistence, almond eyes with width/height controls, smooth Play pupil tracking, and mirrored feature rendering. Play Mode defaults to solid body plus features, with optional Skeleton and Muscles diagnostic overlays. Muscle lines are derived from the current chain positions/radii and do not affect simulation.
+
+Play deformation now applies a 75-degree local bend limit after distance following and wave motion, then restores authored connection rest lengths. This is a bend-stability constraint only; self-collision is intentionally not implemented. The lab test harness now has 94 passing tests covering the new appearance and deformation behavior.

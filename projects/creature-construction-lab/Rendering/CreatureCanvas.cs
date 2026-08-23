@@ -30,6 +30,7 @@ public sealed class CreatureCanvas : FrameworkElement
     private CreatureFeature? draggingFeature;
     private System.Windows.Vector dragOffset;
     private bool rotating;
+    private readonly Dictionary<string, Vector2> pupilOffsets = [];
 
     protected override int VisualChildrenCount => 1;
     protected override Visual GetVisualChild(int index) => visual;
@@ -46,14 +47,10 @@ public sealed class CreatureCanvas : FrameworkElement
         var positions = new System.Numerics.Vector2[State.Creature.Nodes.Count];
         var radii = new float[State.Creature.Nodes.Count];
         for (var i = 0; i < State.Creature.Nodes.Count; i++) { positions[i] = GetPosition(State.Creature.Nodes[i]); radii[i] = State.Creature.Nodes[i].Radius; }
-        if (ShowSkin && positions.Length > 0) DrawSkin(draw, CreatureSkinGeometry.Build(positions, radii));
-        var connectionPen = new Pen(new SolidColorBrush(Color.FromRgb(35, 120, 79)), 1.5);
-        foreach (var connection in State.Creature.Connections)
-        {
-            var parent = State.Creature.Nodes.FirstOrDefault(n => n.Id == connection.ParentNodeId);
-            var child = State.Creature.Nodes.FirstOrDefault(n => n.Id == connection.ChildNodeId);
-            if (parent is not null && child is not null) draw.DrawLine(connectionPen, ToPoint(GetPosition(parent)), ToPoint(GetPosition(child)));
-        }
+        if (ShowSkin && positions.Length > 0) DrawSkin(draw, CreatureSkinGeometry.Build(positions, radii), State.Mode != EditorMode.Play || State.Display.PlaySolidBody);
+        if (State.Mode == EditorMode.Create) DrawConnections(draw, positions, new Pen(new SolidColorBrush(Color.FromRgb(35, 120, 79)), 1.5));
+        if (State.Mode == EditorMode.Play && State.Display.PlayShowSkeleton) DrawSkeleton(draw, positions, radii);
+        if (State.Mode == EditorMode.Play && State.Display.PlayShowMuscles) DrawMuscles(draw, positions, radii);
         if (State.Mode == EditorMode.Create && State.SelectedNode is not null && State.SelectedFeature is null) DrawGizmo(draw, State.SelectedNode, State.Creature.ChainSettings.Spacing);
         if (ShowNodes) foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode, GetPosition(node));
         if (ShowFeatures) DrawFeatures(draw, positions, radii);
@@ -75,7 +72,33 @@ public sealed class CreatureCanvas : FrameworkElement
     private bool ShowSkin => State.Mode == EditorMode.Create ? State.Display.CreateShowSkin : State.Display.PlayShowSkin;
     private bool ShowFeatures => State.Mode == EditorMode.Create ? State.Display.CreateShowFeatures : State.Display.PlayShowFeatures;
 
-    private static void DrawSkin(DrawingContext draw, CreatureSkinGeometry skin)
+    private void DrawConnections(DrawingContext draw, System.Numerics.Vector2[] positions, Pen pen)
+    {
+        for (var i = 1; i < positions.Length; i++) draw.DrawLine(pen, ToPoint(positions[i - 1]), ToPoint(positions[i]));
+    }
+
+    private static void DrawSkeleton(DrawingContext draw, System.Numerics.Vector2[] positions, float[] radii)
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromRgb(90, 220, 150)), 1.5);
+        for (var i = 1; i < positions.Length; i++) draw.DrawLine(pen, ToPoint(positions[i - 1]), ToPoint(positions[i]));
+        for (var i = 0; i < positions.Length; i++) draw.DrawEllipse(new SolidColorBrush(Color.FromRgb(90, 220, 150)), null, ToPoint(positions[i]), Math.Max(2, Math.Min(5, radii[i] * 0.18)), Math.Max(2, Math.Min(5, radii[i] * 0.18)));
+    }
+
+    private static void DrawMuscles(DrawingContext draw, System.Numerics.Vector2[] positions, float[] radii)
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(190, 255, 180, 80)), 2);
+        for (var i = 1; i < positions.Length; i++)
+        {
+            var direction = positions[i] - positions[i - 1];
+            if (direction.LengthSquared() < 0.0001f) continue;
+            direction = Vector2.Normalize(direction);
+            var normal = new Vector2(-direction.Y, direction.X) * ((radii[i - 1] + radii[i]) * 0.22f);
+            draw.DrawLine(pen, ToPoint(positions[i - 1] + normal), ToPoint(positions[i] + normal));
+            draw.DrawLine(pen, ToPoint(positions[i - 1] - normal), ToPoint(positions[i] - normal));
+        }
+    }
+
+    private void DrawSkin(DrawingContext draw, CreatureSkinGeometry skin, bool solid)
     {
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
@@ -85,7 +108,8 @@ public sealed class CreatureCanvas : FrameworkElement
             for (var i = 1; i < skin.Outline.Length; i++) context.LineTo(ToPoint(skin.Outline[i]), true, false);
         }
         geometry.Freeze();
-        draw.DrawGeometry(new SolidColorBrush(Color.FromArgb(45, 85, 220, 140)), new Pen(new SolidColorBrush(Color.FromRgb(72, 190, 125)), 2), geometry);
+        var color = Color.FromArgb((byte)((State.Creature.SkinColorArgb >> 24) & 0xFF), (byte)((State.Creature.SkinColorArgb >> 16) & 0xFF), (byte)((State.Creature.SkinColorArgb >> 8) & 0xFF), (byte)(State.Creature.SkinColorArgb & 0xFF));
+        draw.DrawGeometry(solid ? new SolidColorBrush(color) : null, new Pen(Brushes.White, 2), geometry);
     }
 
     private void DrawFeatures(DrawingContext draw, System.Numerics.Vector2[] positions, float[] radii)
@@ -96,12 +120,12 @@ public sealed class CreatureCanvas : FrameworkElement
             var parentIndex = State.Creature.Nodes.FindIndex(n => n.Id == feature.ParentNodeId);
             if (parentIndex < 0 || parentIndex >= positions.Length) continue;
             var transform = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), false);
-            if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, transform.Position, feature.EyeSize * transform.Scale);
+            if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, feature, transform, false);
             else if (feature.Type == CreatureFeatureType.ForkedTongue) DrawForkedTongue(draw, feature, transform, radii[parentIndex]);
             if (feature.Type == CreatureFeatureType.Eye && feature.Mirrored)
             {
                 var mirrored = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), true);
-                if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, mirrored.Position, feature.EyeSize * mirrored.Scale);
+                if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, feature, mirrored, true);
             }
         }
     }
@@ -109,17 +133,46 @@ public sealed class CreatureCanvas : FrameworkElement
     private static void DrawForkedTongue(DrawingContext draw, CreatureFeature feature, FeatureWorldTransform transform, float headRadius)
     {
         var tongue = ForkedTongueGeometry.Build(feature, transform, headRadius);
-        var pen = new Pen(new SolidColorBrush(Color.FromRgb(238, 114, 129)), 2);
+        var pen = new Pen(Brushes.White, 2);
         draw.DrawLine(pen, ToPoint(tongue.Start), ToPoint(tongue.Junction));
         draw.DrawLine(pen, ToPoint(tongue.Junction), ToPoint(tongue.UpperTip));
         draw.DrawLine(pen, ToPoint(tongue.Junction), ToPoint(tongue.LowerTip));
     }
 
-    private void DrawEye(DrawingContext draw, System.Numerics.Vector2 position, float size)
+    private void DrawEye(DrawingContext draw, CreatureFeature feature, FeatureWorldTransform transform, bool mirrored)
     {
-        var center = ToPoint(position);
-        draw.DrawEllipse(Brushes.White, new Pen(Brushes.DarkGreen, 1), center, size, size);
-        draw.DrawEllipse(Brushes.Black, null, center, size * 0.42, size * 0.42);
+        var angle = transform.Rotation * MathF.PI / 180;
+        var forward = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+        var side = new Vector2(-forward.Y, forward.X);
+        var width = feature.EyeWidth * transform.Scale;
+        var height = feature.EyeHeight * transform.Scale;
+        var center = transform.Position;
+        var left = ToPoint(center - side * width * 0.5f);
+        var right = ToPoint(center + side * width * 0.5f);
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(left, false, true);
+            context.BezierTo(ToPoint(center + forward * height * 0.5f), ToPoint(center + forward * height * 0.5f), right, true, false);
+            context.BezierTo(ToPoint(center - forward * height * 0.5f), ToPoint(center - forward * height * 0.5f), left, true, false);
+        }
+        geometry.Freeze();
+        draw.DrawGeometry(null, new Pen(Brushes.White, 2), geometry);
+        var key = $"{feature.Id}:{mirrored}";
+        var target = State.Mode == EditorMode.Play ? State.Simulator.State.TargetPosition : center;
+        var delta = target - center;
+        var localTarget = delta.LengthSquared() < 0.0001f ? Vector2.Zero : new Vector2(Vector2.Dot(delta, side), Vector2.Dot(delta, forward));
+        var maxX = width * 0.24f;
+        var maxY = height * 0.24f;
+        var desired = localTarget.LengthSquared() < 0.0001f ? Vector2.Zero : Vector2.Normalize(localTarget) * Math.Min(localTarget.Length(), Math.Min(maxX, maxY)) * feature.EyeTrackingStrength;
+        desired.X = Math.Clamp(desired.X, -maxX, maxX);
+        desired.Y = Math.Clamp(desired.Y, -maxY, maxY);
+        var current = pupilOffsets.TryGetValue(key, out var stored) ? stored : Vector2.Zero;
+        current = Vector2.Lerp(current, desired, 1 - MathF.Exp(-8 * (1f / 60f)));
+        pupilOffsets[key] = new Vector2(Math.Clamp(current.X, -maxX, maxX), Math.Clamp(current.Y, -maxY, maxY));
+        var pupil = center + side * pupilOffsets[key].X + forward * pupilOffsets[key].Y;
+        draw.DrawEllipse(Brushes.White, null, ToPoint(pupil), Math.Max(1.5, height * 0.13), Math.Max(1.5, height * 0.13));
+        draw.DrawEllipse(Brushes.Black, null, ToPoint(pupil), Math.Max(0.6, height * 0.06), Math.Max(0.6, height * 0.06));
     }
 
     private System.Numerics.Vector2 GetHeadDirection()

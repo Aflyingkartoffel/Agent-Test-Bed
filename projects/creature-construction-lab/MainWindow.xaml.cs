@@ -62,8 +62,10 @@ public partial class MainWindow : Window
         InterpolationBox.IsEnabled = editing;
         CreateShowNodesBox.IsChecked = state.Display.CreateShowNodes;
         CreateShowSkinBox.IsChecked = state.Display.CreateShowSkin;
-        PlayShowNodesBox.IsChecked = state.Display.PlayShowNodes;
-        PlayShowSkinBox.IsChecked = state.Display.PlayShowSkin;
+        SkinColorBox.Text = $"#{state.Creature.SkinColorArgb:X8}";
+        PlaySolidBodyBox.IsChecked = state.Display.PlaySolidBody;
+        PlayShowSkeletonBox.IsChecked = state.Display.PlayShowSkeleton;
+        PlayShowMusclesBox.IsChecked = state.Display.PlayShowMuscles;
         PlayShowEyesBox.IsChecked = state.Display.PlayShowFeatures;
         FeatureListBox.Items.Clear();
         foreach (var feature in state.Creature.Features) FeatureListBox.Items.Add($"{feature.Type} {feature.Id.ToString()[..6].ToUpperInvariant()}");
@@ -77,7 +79,9 @@ public partial class MainWindow : Window
         FeatureYBox.Text = selectedFeature is null ? "" : selectedFeature.LocalPosition.Y.ToString("0.##", CultureInfo.InvariantCulture);
         FeatureRotationBox.Text = selectedFeature is null ? "" : selectedFeature.LocalRotation.ToString("0.##", CultureInfo.InvariantCulture);
         FeatureScaleBox.Text = selectedFeature is null ? "" : selectedFeature.Scale.ToString("0.##", CultureInfo.InvariantCulture);
-        FeatureEyeSizeBox.Text = selectedFeature is null ? "" : selectedFeature.EyeSize.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureEyeWidthBox.Text = selectedFeature is null ? "" : selectedFeature.EyeWidth.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureEyeHeightBox.Text = selectedFeature is null ? "" : selectedFeature.EyeHeight.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureTrackingBox.Text = selectedFeature is null ? "" : selectedFeature.EyeTrackingStrength.ToString("0.##", CultureInfo.InvariantCulture);
         TongueLengthBox.Text = selectedFeature is null ? "" : selectedFeature.TongueLength.ToString("0.##", CultureInfo.InvariantCulture);
         TongueForkLengthBox.Text = selectedFeature is null ? "" : selectedFeature.TongueForkLength.ToString("0.##", CultureInfo.InvariantCulture);
         TongueForkAngleBox.Text = selectedFeature is null ? "" : selectedFeature.TongueForkAngle.ToString("0.##", CultureInfo.InvariantCulture);
@@ -93,7 +97,9 @@ public partial class MainWindow : Window
         FeatureYBox.IsEnabled = featureEditing;
         FeatureRotationBox.IsEnabled = featureEditing;
         FeatureScaleBox.IsEnabled = featureEditing;
-        FeatureEyeSizeBox.IsEnabled = featureEditing;
+        FeatureEyeWidthBox.IsEnabled = featureEditing;
+        FeatureEyeHeightBox.IsEnabled = featureEditing;
+        FeatureTrackingBox.IsEnabled = featureEditing;
         TongueLengthBox.IsEnabled = featureEditing;
         TongueForkLengthBox.IsEnabled = featureEditing;
         TongueForkAngleBox.IsEnabled = featureEditing;
@@ -175,8 +181,25 @@ public partial class MainWindow : Window
     {
         if (!IsLoaded || refreshing) return;
         if (state.Mode == EditorMode.Create) state.SetDisplay(CreateShowNodesBox.IsChecked == true, CreateShowSkinBox.IsChecked == true, state.Display.CreateShowFeatures);
-        else state.SetDisplay(PlayShowNodesBox.IsChecked == true, PlayShowSkinBox.IsChecked == true, PlayShowEyesBox.IsChecked == true);
+        else state.SetPlayDisplay(PlaySolidBodyBox.IsChecked == true, PlayShowSkeletonBox.IsChecked == true, PlayShowMusclesBox.IsChecked == true, PlayShowEyesBox.IsChecked == true);
     }
+
+    private void SkinColor_LostFocus(object sender, RoutedEventArgs e) => ApplySkinColor();
+    private void PickSkinColor_Click(object sender, RoutedEventArgs e)
+    {
+        using var dialog = new System.Windows.Forms.ColorDialog { FullOpen = true, Color = ToFormsColor(state.Creature.SkinColorArgb) };
+        if (dialog.ShowDialog() != System.Windows.Forms.DialogResult.OK) return;
+        state.SetSkinColor((uint)(dialog.Color.ToArgb()));
+    }
+
+    private void ApplySkinColor()
+    {
+        var text = SkinColorBox.Text.Trim().TrimStart('#');
+        if (text.Length == 6) text = "FF" + text;
+        if (text.Length == 8 && uint.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var color)) state.SetSkinColor(color);
+    }
+
+    private static System.Drawing.Color ToFormsColor(uint argb) => System.Drawing.Color.FromArgb((int)argb);
 
     private void AddFeature_Click(object sender, RoutedEventArgs e)
     {
@@ -199,11 +222,11 @@ public partial class MainWindow : Window
     private void FeatureProperty_LostFocus(object sender, RoutedEventArgs e) => ApplyFeatureProperties();
     private void ApplyFeatureProperties()
     {
-        if (!IsLoaded || refreshing || state.SelectedFeature is null || !float.TryParse(FeatureXBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) || !float.TryParse(FeatureYBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y) || !float.TryParse(FeatureRotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) || !float.TryParse(FeatureScaleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) || !float.TryParse(FeatureEyeSizeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeSize) || !float.TryParse(TongueLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueLength) || !float.TryParse(TongueForkLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkLength) || !float.TryParse(TongueForkAngleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkAngle)) return;
+        if (!IsLoaded || refreshing || state.SelectedFeature is null || !float.TryParse(FeatureXBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) || !float.TryParse(FeatureYBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y) || !float.TryParse(FeatureRotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) || !float.TryParse(FeatureScaleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) || !float.TryParse(FeatureEyeWidthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeWidth) || !float.TryParse(FeatureEyeHeightBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeHeight) || !float.TryParse(FeatureTrackingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tracking) || !float.TryParse(TongueLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueLength) || !float.TryParse(TongueForkLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkLength) || !float.TryParse(TongueForkAngleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkAngle)) return;
         var parentIndex = FeatureParentBox.SelectedIndex;
         var parentId = parentIndex >= 0 && parentIndex < state.Creature.Nodes.Count ? state.Creature.Nodes[parentIndex].Id : Guid.Empty;
         var type = FeatureTypeBox.SelectedIndex == (int)CreatureFeatureType.ForkedTongue ? CreatureFeatureType.ForkedTongue : CreatureFeatureType.Eye;
-        state.SetSelectedFeature(type, parentId, new Vector2(x, y), rotation, scale, FeatureMirrorBox.IsChecked == true, FeatureVisibleBox.IsChecked == true, eyeSize, tongueLength, tongueForkLength, tongueForkAngle);
+        state.SetSelectedFeature(type, parentId, new Vector2(x, y), rotation, scale, FeatureMirrorBox.IsChecked == true, FeatureVisibleBox.IsChecked == true, Math.Clamp(eyeHeight / 2, 1, 20), eyeWidth, eyeHeight, tracking, tongueLength, tongueForkLength, tongueForkAngle);
     }
 
     private void ChainProperty_LostFocus(object sender, RoutedEventArgs e)

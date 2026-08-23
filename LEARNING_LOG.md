@@ -90,3 +90,9 @@ Interpolating through side points is not sufficient for terminal geometry. A ter
 Feature capabilities should belong to the feature type rather than being assumed universal. Eyes are mirrorable, while Forked Tongue is singular. A `SupportsMirroring` rule keeps the editor and renderer from inventing a second visual for a feature that should only exist once.
 
 For terminal geometry, direction should be named explicitly. The head cap points outward opposite the first body segment; the tail cap points along the final segment away from its predecessor. Building both from `outward + perpendicular` avoids relying on arc sweep or left/right ordering, which can silently turn a rounded cap into an inward crescent.
+
+## Appearance and stability constraints
+
+Authored appearance data belongs in the creature definition, while debug visibility belongs in display settings. That separation lets Save/Load preserve the chosen skin color without saving temporary Skeleton/Muscles visibility choices as geometry.
+
+A bend limit is a local constraint: measure the signed angle between adjacent segment directions, clamp it, then restore each segment's rest length. It improves deformation stability without pretending to solve self-collision or changing the authored chain.
