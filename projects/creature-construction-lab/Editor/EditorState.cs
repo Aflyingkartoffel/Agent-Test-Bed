@@ -15,6 +15,7 @@ public sealed class EditorState
     public CreatureSimulator Simulator { get; } = new();
 
     public event Action? Changed;
+    public event Action? SimulationUpdated;
 
     public CreatureNode CreateNode(Vector2 position)
     {
@@ -147,7 +148,7 @@ public sealed class EditorState
     }
 
     public void SetPlayTarget(Vector2 target) => Simulator.SetTarget(target);
-    public void UpdateSimulation(float elapsedSeconds) { if (Mode == EditorMode.Play) { Simulator.Update(Creature, elapsedSeconds); Changed?.Invoke(); } }
+    public void UpdateSimulation(float elapsedSeconds) { if (Mode == EditorMode.Play) { Simulator.Update(Creature, elapsedSeconds); SimulationUpdated?.Invoke(); } }
     public void SetPaused(bool paused) { Simulator.State.SetPaused(paused); Changed?.Invoke(); }
     public void ResetSimulation() { Simulator.Reset(Creature); Changed?.Invoke(); }
     public void SetPlaySettings(float speed, float maxSpeed, float acceleration, float damping)
@@ -163,10 +164,31 @@ public sealed class EditorState
     {
         var wave = Simulator.State.Wave;
         wave.Enabled = enabled;
-        wave.Amplitude = Math.Clamp(float.IsFinite(amplitude) ? amplitude : 8, 0, Creature.ChainSettings.Spacing * 0.45f);
+        wave.Amplitude = Math.Clamp(float.IsFinite(amplitude) ? amplitude : 4, 0, Creature.ChainSettings.Spacing * 0.45f);
         wave.Frequency = Math.Clamp(float.IsFinite(frequency) ? frequency : 1.2f, 0, 10);
         wave.Phase = Math.Clamp(float.IsFinite(phase) ? phase : 2.8f, 0, 20);
         wave.Influence = Math.Clamp(float.IsFinite(influence) ? influence : 0.75f, 0, 1);
+        Changed?.Invoke();
+    }
+
+    public void LoadDefinition(CreatureDefinition loaded)
+    {
+        Creature.Nodes.Clear();
+        Creature.Connections.Clear();
+        Creature.Nodes.AddRange(loaded.Nodes);
+        Creature.Connections.AddRange(loaded.Connections);
+        Creature.ChainSettings.Spacing = loaded.ChainSettings.Spacing;
+        Creature.ChainSettings.Stiffness = loaded.ChainSettings.Stiffness;
+        Creature.ChainSettings.Damping = loaded.ChainSettings.Damping;
+        Creature.BaseRadius = loaded.BaseRadius;
+        Creature.BodySizeRamp.Points.Clear();
+        Creature.BodySizeRamp.Points.AddRange(loaded.BodySizeRamp.Points.Select(p => new RampPoint(p.Position, p.Value)));
+        SelectedNode = null;
+        Mode = EditorMode.Create;
+        Tool = EditorTool.Select;
+        StatusMessage = null;
+        RecalculateBodySizes();
+        Simulator.Reset(Creature);
         Changed?.Invoke();
     }
 
@@ -176,6 +198,7 @@ public sealed class EditorState
         Creature.Connections.Clear();
         Creature.BodySizeRamp.Reset();
         Creature.BaseRadius = 24;
+        Simulator.ResetSettings();
         SelectedNode = null;
         Mode = EditorMode.Create;
         Simulator.Reset(Creature);

@@ -6,7 +6,9 @@
       <TextBlock Text="  /  PROCEDURAL CONSTRUCTION" Foreground="#3D9A6A" VerticalAlignment="Center" Margin="12,0,24,0" />
       <Button x:Name="CreateModeButton" Content="CREATE" Click="CreateMode_Click" Width="88" Margin="0,0,6,0" />
       <Button x:Name="PlayModeButton" Content="PLAY" Click="PlayMode_Click" Width="88" Margin="0,0,18,0" />
-      <Button Content="RESET" Click="Reset_Click" Width="88" />
+      <Button Content="NEW" Click="Reset_Click" Width="72" Margin="0,0,6,0" />
+      <Button Content="SAVE" Click="Save_Click" Width="72" Margin="0,0,6,0" />
+      <Button Content="LOAD" Click="Load_Click" Width="72" />
     </DockPanel>
     <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="260"/></Grid.ColumnDefinitions>
       <Border Grid.Column="0" BorderBrush="#277A51" BorderThickness="1"><ContentControl x:Name="CanvasHost"/></Border>

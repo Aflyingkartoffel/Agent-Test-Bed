@@ -14,6 +14,8 @@ Milestone 4 adds functional Play Mode. The mouse is a target, not a direct attac
 
 Milestone 5 adds configurable procedural wave motion. `BodyWaveGenerator` evaluates a sinusoid using simulation time and normalized chain position, then applies the offset along the local perpendicular to each segment. Head influence is zero and tail influence increases with normalized position. Amplitude, Frequency, Phase, Influence, and Wave Enabled are available under BODY MOTION. The wave is folded into constrained child targets, so connection rest lengths remain stable; pause freezes wave time and Reset Simulation resets time while preserving wave settings.
 
+The final prototype polish uses a gentler default wave amplitude of `4` (previously `8`) and a faster default Max Speed of `360` (previously `180`), while retaining the full manual amplitude range. Save and Load use human-readable `.creature.json` files containing the authored node chain, connections, chain settings, Base Radius, and Body Size Ramp. Temporary Play Mode positions, velocities, acceleration, target, and pause state are never serialized. Loading validates JSON, IDs, references, finite numeric values, chain order, spacing, and ramp points; invalid files show an error and leave the current creature unchanged. `NEW` clears the authored creature and restores defaults.
+
 ## Run
 
 From this directory:

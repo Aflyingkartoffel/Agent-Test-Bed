@@ -11,7 +11,7 @@ public sealed class CreaturePlayState
     public List<Vector2> Velocities { get; } = [];
     public List<Vector2> Accelerations { get; } = [];
     public Vector2 TargetPosition { get; private set; }
-    public float MaxSpeed { get; set; } = 180;
+    public float MaxSpeed { get; set; } = 360;
     public float AccelerationStrength { get; set; } = 420;
     public float Damping { get; set; } = 3.5f;
     public float SimulationSpeed { get; set; } = 1;
@@ -19,6 +19,19 @@ public sealed class CreaturePlayState
     public bool Paused { get; private set; }
     public float SimulationTime { get; private set; }
     private float accumulator;
+
+    public void ResetSettings()
+    {
+        MaxSpeed = 360;
+        AccelerationStrength = 420;
+        Damping = 3.5f;
+        SimulationSpeed = 1;
+        Wave.Enabled = true;
+        Wave.Amplitude = 4;
+        Wave.Frequency = 1.2f;
+        Wave.Phase = 2.8f;
+        Wave.Influence = 0.75f;
+    }
 
     public void ResetFromDefinition(CreatureDefinition definition)
     {
@@ -67,7 +80,7 @@ public sealed class CreaturePlayState
             var offset = Positions[i] - parent;
             var fallback = ChainMath.GetDirectionFromRotation(definition.Nodes[i - 1].Rotation);
             var direction = offset.LengthSquared() < 0.0001f ? fallback : Vector2.Normalize(offset);
-            var connection = definition.Connections.FirstOrDefault(c => c.ParentNodeId == definition.Nodes[i - 1].Id && c.ChildNodeId == definition.Nodes[i].Id);
+            var connection = i - 1 < definition.Connections.Count ? definition.Connections[i - 1] : null;
             var restLength = connection?.RestLength ?? definition.ChainSettings.Spacing;
             var desired = parent + direction * restLength;
             var stiffness = Math.Clamp(connection?.Stiffness ?? 1, 0.1f, 1);
@@ -93,7 +106,7 @@ public sealed class CreaturePlayState
             var normal = new Vector2(-forward.Y, forward.X);
             var t = (float)i / (Positions.Count - 1);
             var waveOffset = BodyWaveGenerator.CalculateOffset(SimulationTime, t, normal, Wave, definition.ChainSettings.Spacing);
-            var connection = definition.Connections.FirstOrDefault(c => c.ParentNodeId == definition.Nodes[i - 1].Id && c.ChildNodeId == definition.Nodes[i].Id);
+            var connection = i - 1 < definition.Connections.Count ? definition.Connections[i - 1] : null;
             var restLength = connection?.RestLength ?? definition.ChainSettings.Spacing;
             var candidate = current + waveOffset;
             var direction = candidate - parent;

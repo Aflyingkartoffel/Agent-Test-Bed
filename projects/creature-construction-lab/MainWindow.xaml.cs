@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
 using CreatureConstructionLab.Editor;
+using CreatureConstructionLab.IO;
 using CreatureConstructionLab.Rendering;
 
 namespace CreatureConstructionLab;
@@ -73,6 +74,20 @@ public partial class MainWindow : Window
     private void NodeTool_Click(object sender, RoutedEventArgs e) => state.Tool = EditorTool.Node;
     private void SelectTool_Click(object sender, RoutedEventArgs e) => state.Tool = EditorTool.Select;
     private void Reset_Click(object sender, RoutedEventArgs e) => state.Reset();
+    private void Save_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog { Filter = "Creature definition (*.creature.json)|*.creature.json|JSON files (*.json)|*.json", DefaultExt = ".creature.json", AddExtension = true, FileName = "creature" };
+        if (dialog.ShowDialog() != true) return;
+        try { CreatureFileService.Save(dialog.FileName, state.Creature); state.SetStatus($"Saved authored creature to {System.IO.Path.GetFileName(dialog.FileName)}."); }
+        catch (Exception) { state.SetStatus("Could not save the creature definition."); }
+    }
+    private void Load_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Creature definition (*.creature.json;*.json)|*.creature.json;*.json|All files (*.*)|*.*", Multiselect = false };
+        if (dialog.ShowDialog() != true) return;
+        if (CreatureFileService.TryLoad(dialog.FileName, out var loaded, out var error) && loaded is not null) state.LoadDefinition(loaded);
+        else state.SetStatus($"Load failed: {error}");
+    }
     private void PlayPause_Click(object sender, RoutedEventArgs e) => state.SetPaused(!state.Simulator.State.Paused);
     private void ResetSimulation_Click(object sender, RoutedEventArgs e) => state.ResetSimulation();
     private void SimulationSpeed_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

@@ -18,6 +18,7 @@ public sealed class CreatureCanvas : FrameworkElement
         AddVisualChild(visual);
         AddLogicalChild(visual);
         State.Changed += InvalidateVisual;
+        State.SimulationUpdated += InvalidateVisual;
         MouseLeftButtonDown += OnMouseDown;
         MouseMove += OnMouseMove;
         MouseLeftButtonUp += OnMouseUp;
