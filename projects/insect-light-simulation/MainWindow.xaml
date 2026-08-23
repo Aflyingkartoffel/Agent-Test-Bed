@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Insect Light Simulation" Width="1280" Height="800"
         MinWidth="980" MinHeight="620" Background="#020502" Foreground="#7CFF74"
-        FontFamily="Consolas" Loaded="Window_Loaded" SizeChanged="Window_SizeChanged">
+        FontFamily="Consolas" Loaded="Window_Loaded" SizeChanged="Window_SizeChanged" KeyDown="Window_KeyDown">
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="42" />
@@ -21,7 +21,8 @@
             <Border Grid.Column="0" BorderBrush="#247A31" BorderThickness="1" Background="Black" Padding="1">
                 <Image x:Name="Viewport" Stretch="Fill" SnapsToDevicePixels="True"
                        MouseLeftButtonDown="Viewport_MouseLeftButtonDown"
-                       MouseMove="Viewport_MouseMove" MouseLeftButtonUp="Viewport_MouseLeftButtonUp" />
+                       MouseMove="Viewport_MouseMove" MouseLeftButtonUp="Viewport_MouseLeftButtonUp"
+                       MouseWheel="Viewport_MouseWheel" />
             </Border>
             <ScrollViewer Grid.Column="1" Margin="12,0,0,0" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
@@ -55,9 +56,12 @@
                 </StackPanel>
             </ScrollViewer>
         </Grid>
-        <DockPanel Grid.Row="2" Margin="0,10,0,0">
+        <Grid Grid.Row="2" Margin="0,10,0,0">
             <TextBlock x:Name="StatsText" Text="FPS: --   SIM TIME 0.0s   INSECTS 500   AVG SPEED --   LIGHTS 1" VerticalAlignment="Center" FontWeight="Bold" />
-            <TextBlock Text="BLACK FIELD / GREEN AGENTS / PSEUDO LIGHT" Foreground="#3CB84B" HorizontalAlignment="Right" />
-        </DockPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock x:Name="ZoomText" Text="ZOOM 100%" Foreground="#7CFF74" Margin="0,0,18,0" />
+                <TextBlock Text="BLACK FIELD / GREEN AGENTS / PSEUDO LIGHT" Foreground="#3CB84B" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

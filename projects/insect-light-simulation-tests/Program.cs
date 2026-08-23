@@ -19,6 +19,14 @@ static class Tests
         Run("power is independent per light", PowerIsIndependent);
         Run("new light has default power", NewLightHasDefaultPower);
         Run("reset restores light power", ResetRestoresLightPower);
+        Run("speed stays at base outside light", SpeedStaysAtBaseOutsideLight);
+        Run("speed increases near approaching light", SpeedIncreasesNearLight);
+        Run("speed boost is smooth", SpeedBoostIsSmooth);
+        Run("speed boost favors approach", SpeedBoostFavorsApproach);
+        Run("speed remains capped", SpeedRemainsCapped);
+        Run("camera zoom preserves simulation", CameraZoomPreservesSimulation);
+        Run("camera coordinates round trip", CameraCoordinatesRoundTrip);
+        Run("camera reset restores default zoom", CameraResetRestoresDefaultZoom);
         Run("wing frames select", WingFramesSelect);
         Run("wing animation advances and loops", WingAnimationAdvancesAndLoops);
         Run("agents have varied animation phases", AgentsHaveVariedAnimationPhases);
@@ -53,17 +61,19 @@ static class Tests
         var simulation = new SimulationEngine(new SimulationSettings { InsectCount = insectCount });
         while (simulation.Lights.Count < lightCount) simulation.AddLight();
         var renderer = new PixelRenderer();
+        var camera = new Camera2D();
+        camera.Resize(900, 600, simulation.Width, simulation.Height);
         for (int i = 0; i < 10; i++)
         {
             simulation.Update(1 / 60f);
-            renderer.Render(simulation, 0);
+            renderer.Render(simulation, camera, 0);
         }
         const int frames = 60;
         var stopwatch = Stopwatch.StartNew();
         for (int i = 0; i < frames; i++)
         {
             simulation.Update(1 / 60f);
-            renderer.Render(simulation, 0);
+            renderer.Render(simulation, camera, 0);
         }
         stopwatch.Stop();
         Console.WriteLine($"BENCH {name}: {frames / stopwatch.Elapsed.TotalSeconds:0.0} render/update frames per second");
@@ -140,6 +150,88 @@ static class Tests
         simulation.AddLight().SetPower(0.25f);
         simulation.Reset();
         Check(simulation.Lights.Count == 1 && simulation.Lights[0].Power == 1f, "reset should restore one default-power light");
+    }
+
+    private static void SpeedStaysAtBaseOutsideLight()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings { BaseSpeed = 60 });
+        Agent agent = new(Vector2.Zero, Vector2.UnitX * 60, 1, 1, 1);
+        simulation.Lights[0].Position = new Vector2(500, 0);
+        simulation.Lights[0].InfluenceRadius = 100;
+        Check(Math.Abs(simulation.CalculateDesiredSpeed(agent) - 60) < 0.001f, "outside influence speed should stay at base");
+    }
+
+    private static void SpeedIncreasesNearLight()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings { BaseSpeed = 60 });
+        Agent agent = new(Vector2.Zero, Vector2.UnitX * 60, 1, 1, 1);
+        simulation.Lights[0].Position = new Vector2(25, 0);
+        simulation.Lights[0].InfluenceRadius = 100;
+        Check(simulation.CalculateDesiredSpeed(agent) > 60, "approaching light should increase desired speed");
+    }
+
+    private static void SpeedBoostIsSmooth()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings { BaseSpeed = 60 });
+        simulation.Lights[0].InfluenceRadius = 100;
+        Agent far = new(new Vector2(-150, 0), Vector2.UnitX * 60, 1, 1, 1);
+        Agent middle = new(new Vector2(-50, 0), Vector2.UnitX * 60, 1, 1, 1);
+        Agent near = new(new Vector2(-10, 0), Vector2.UnitX * 60, 1, 1, 1);
+        simulation.Lights[0].Position = new Vector2(0, 0);
+        float farSpeed = simulation.CalculateDesiredSpeed(far);
+        float middleSpeed = simulation.CalculateDesiredSpeed(middle);
+        float nearSpeed = simulation.CalculateDesiredSpeed(near);
+        Check(farSpeed < middleSpeed && middleSpeed < nearSpeed, "speed should increase smoothly with proximity");
+    }
+
+    private static void SpeedBoostFavorsApproach()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings { BaseSpeed = 60 });
+        simulation.Lights[0].Position = new Vector2(25, 0);
+        simulation.Lights[0].InfluenceRadius = 100;
+        Agent approaching = new(Vector2.Zero, Vector2.UnitX * 60, 1, 1, 1);
+        Agent leaving = new(Vector2.Zero, -Vector2.UnitX * 60, 1, 1, 1);
+        Check(simulation.CalculateDesiredSpeed(approaching) > simulation.CalculateDesiredSpeed(leaving), "approaching insects should receive stronger boost");
+    }
+
+    private static void SpeedRemainsCapped()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings { BaseSpeed = 200 });
+        simulation.Lights[0].Position = new Vector2(1, 0);
+        simulation.Lights[0].InfluenceRadius = 1000;
+        Agent agent = new(Vector2.Zero, Vector2.UnitX * 200, 2, 1, 1);
+        Check(simulation.CalculateDesiredSpeed(agent) <= SimulationEngine.MaximumSpeed, "desired speed should be capped");
+    }
+
+    private static void CameraZoomPreservesSimulation()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings { InsectCount = 50 });
+        Vector2 firstPosition = simulation.Agents[0].Position;
+        int count = simulation.Agents.Count;
+        var camera = new Camera2D();
+        camera.Resize(900, 600, simulation.Width, simulation.Height);
+        camera.ZoomAt(new Vector2(450, 300), 2);
+        camera.ZoomAt(new Vector2(450, 300), 0.5f);
+        Check(simulation.Agents.Count == count && simulation.Agents[0].Position == firstPosition, "zoom should not modify simulation agents");
+    }
+
+    private static void CameraCoordinatesRoundTrip()
+    {
+        var camera = new Camera2D();
+        camera.Resize(900, 600, 900, 600);
+        camera.ZoomAt(new Vector2(600, 250), 2);
+        Vector2 world = new(500, 200);
+        Vector2 screen = camera.WorldToScreen(world);
+        Check(Vector2.Distance(world, camera.ScreenToWorld(screen)) < 0.001f, "camera coordinates should round trip");
+    }
+
+    private static void CameraResetRestoresDefaultZoom()
+    {
+        var camera = new Camera2D();
+        camera.Resize(900, 600, 900, 600);
+        camera.ZoomAt(new Vector2(450, 300), 3);
+        camera.Reset();
+        Check(Math.Abs(camera.Zoom - 1) < 0.001f, "camera reset should restore one-times zoom");
     }
 
     private static void WingFramesSelect()
@@ -228,7 +320,7 @@ static class Tests
         var settings = new SimulationSettings { InsectCount = 10, BaseSpeed = 40 };
         var simulation = new SimulationEngine(settings);
         for (int i = 0; i < 100; i++) simulation.Update(1 / 60f);
-        Check(simulation.Agents.All(a => a.Velocity.Length() <= 60.001f), "velocity should stay bounded");
+        Check(simulation.Agents.All(a => a.Velocity.Length() <= SimulationEngine.MaximumSpeed + 0.001f), "velocity should stay bounded");
     }
 
     private static void TurnRateLimit()

@@ -9,8 +9,6 @@ namespace InsectLightSimulation.Rendering;
 
 public sealed class PixelRenderer
 {
-    private static readonly (int X, int Y)[] HorizontalInsectPattern = [(0, 0), (-2, -1), (2, -1), (-1, 0), (1, 0), (0, 1)];
-    private static readonly (int X, int Y)[] VerticalInsectPattern = [(0, 0), (-1, -2), (1, -2), (0, -1), (0, 1), (0, 2)];
     private WriteableBitmap? bitmap;
     private int[] pixels = Array.Empty<int>();
     private int width;
@@ -19,7 +17,9 @@ public sealed class PixelRenderer
 
     public WriteableBitmap? Bitmap => bitmap;
 
-    public void Render(SimulationEngine simulation, int selectedLightIndex)
+    public const float DefaultInsectScale = 0.5f;
+
+    public void Render(SimulationEngine simulation, Camera2D camera, int selectedLightIndex)
     {
         int nextWidth = Math.Max(1, (int)Math.Round(simulation.Width));
         int nextHeight = Math.Max(1, (int)Math.Round(simulation.Height));
@@ -35,11 +35,11 @@ public sealed class PixelRenderer
         for (int i = 0; i < simulation.Lights.Count; i++)
         {
             LightSource light = simulation.Lights[i];
-            DrawGlow(light.Position, light.InfluenceRadius * 0.28f, light.VisualIntensity);
-            if (i == selectedLightIndex) DrawSelectionRing(light.Position);
+            DrawGlow(camera.WorldToScreen(light.Position), light.InfluenceRadius * 0.28f * camera.Zoom, light.VisualIntensity);
+            if (i == selectedLightIndex) DrawSelectionRing(camera.WorldToScreen(light.Position));
         }
         foreach (Agent insect in simulation.Agents)
-            DrawInsect(insect);
+            DrawInsect(insect, camera);
 
         bitmap.WritePixels(new Int32Rect(0, 0, width, height), pixels, width * 4, 0);
     }
@@ -79,17 +79,22 @@ public sealed class PixelRenderer
         }
     }
 
-    private void DrawInsect(Agent insect)
+    private void DrawInsect(Agent insect, Camera2D camera)
     {
         int direction = (int)MathF.Round(insect.Heading / MathF.Tau * InsectSpriteCache.RotationCount) & (InsectSpriteCache.RotationCount - 1);
         int frame = WingAnimation.GetFrameIndex(insect.AnimationPhase);
         IReadOnlyList<SpritePixel> pattern = spriteCache.GetFrame(frame, direction);
-        int x = (int)insect.Position.X;
-        int y = (int)insect.Position.Y;
+        Vector2 screenPosition = camera.WorldToScreen(insect.Position);
+        float scale = DefaultInsectScale * camera.Zoom;
+        if (screenPosition.X < -16 || screenPosition.X > width + 16 || screenPosition.Y < -16 || screenPosition.Y > height + 16)
+            return;
         for (int i = 0; i < pattern.Count; i++)
         {
             SpritePixel pixel = pattern[i];
-            Plot(x + pixel.X, y + pixel.Y, pixel.Color);
+            int x = (int)MathF.Round(screenPosition.X + pixel.X * scale);
+            int y = (int)MathF.Round(screenPosition.Y + pixel.Y * scale);
+            int blockSize = Math.Max(1, (int)MathF.Round(scale));
+            PlotBlock(x, y, blockSize, pixel.Color);
         }
     }
 
@@ -103,5 +108,12 @@ public sealed class PixelRenderer
     {
         if ((uint)x >= (uint)width || (uint)y >= (uint)height) return;
         pixels[y * width + x] = color;
+    }
+
+    private void PlotBlock(int x, int y, int size, int color)
+    {
+        for (int offsetY = 0; offsetY < size; offsetY++)
+            for (int offsetX = 0; offsetX < size; offsetX++)
+                Plot(x + offsetX, y + offsetY, color);
     }
 }

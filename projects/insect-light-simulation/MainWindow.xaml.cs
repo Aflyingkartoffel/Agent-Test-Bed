@@ -13,6 +13,7 @@ public partial class MainWindow : Window
     private readonly SimulationSettings settings = new();
     private readonly SimulationEngine simulation;
     private readonly PixelRenderer renderer = new();
+    private readonly Camera2D camera = new();
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly Stopwatch clock = Stopwatch.StartNew();
     private long lastTicks;
@@ -46,6 +47,7 @@ public partial class MainWindow : Window
     {
         if (Viewport.ActualWidth < 2 || Viewport.ActualHeight < 2) return;
         simulation.Resize((float)Viewport.ActualWidth, (float)Viewport.ActualHeight);
+        camera.Resize((float)Viewport.ActualWidth, (float)Viewport.ActualHeight, simulation.Width, simulation.Height);
         Render();
     }
 
@@ -62,8 +64,9 @@ public partial class MainWindow : Window
 
     private void Render()
     {
-        renderer.Render(simulation, selectedLightIndex);
+        renderer.Render(simulation, camera, selectedLightIndex);
         Viewport.Source = renderer.Bitmap as BitmapSource;
+        ZoomText.Text = $"ZOOM {camera.Zoom * 100:0}%";
         if (statsAccumulator >= 0.2)
         {
             statsAccumulator = 0;
@@ -140,7 +143,7 @@ public partial class MainWindow : Window
     private void Viewport_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         Point mousePoint = e.GetPosition(Viewport);
-        int hit = simulation.FindClosestLight(ViewportToSimulation(mousePoint), 16f);
+        int hit = simulation.FindClosestLight(ViewportToSimulation(mousePoint), 16f / camera.Zoom);
         if (hit < 0) return;
         selectedLightIndex = hit;
         draggingLight = true;
@@ -164,9 +167,26 @@ public partial class MainWindow : Window
 
     private System.Numerics.Vector2 ViewportToSimulation(Point viewportPoint)
     {
-        double xScale = simulation.Width / Math.Max(1, Viewport.ActualWidth);
-        double yScale = simulation.Height / Math.Max(1, Viewport.ActualHeight);
-        return new System.Numerics.Vector2((float)Math.Clamp(viewportPoint.X * xScale, 0, simulation.Width), (float)Math.Clamp(viewportPoint.Y * yScale, 0, simulation.Height));
+        return camera.ScreenToWorld(new System.Numerics.Vector2((float)viewportPoint.X, (float)viewportPoint.Y));
+    }
+
+    private void Viewport_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        Point point = e.GetPosition(Viewport);
+        float factor = e.Delta > 0 ? 1.15f : 1f / 1.15f;
+        camera.ZoomAt(new System.Numerics.Vector2((float)point.X, (float)point.Y), camera.Zoom * factor);
+        Render();
+        e.Handled = true;
+    }
+
+    private void Window_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.R)
+        {
+            camera.Reset();
+            Render();
+            e.Handled = true;
+        }
     }
 
     private void SyncLightControls()

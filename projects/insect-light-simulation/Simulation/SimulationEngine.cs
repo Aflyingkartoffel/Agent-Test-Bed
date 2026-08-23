@@ -6,6 +6,7 @@ namespace InsectLightSimulation.Simulation;
 
 public sealed class SimulationEngine
 {
+    public const float MaximumSpeed = 240f;
     private readonly List<IBehavior> behaviors = new();
     private readonly List<Agent> agents = new();
     private readonly List<LightSource> lights = new();
@@ -129,7 +130,7 @@ public sealed class SimulationEngine
 
             agent.Acceleration = totalForce;
             Vector2 desiredVelocity = agent.Velocity + agent.Acceleration * deltaTime * 60f;
-            float desiredSpeed = Math.Clamp(Settings.BaseSpeed * agent.PreferredSpeed, 18f, 240f);
+            float desiredSpeed = CalculateDesiredSpeed(agent);
             if (desiredVelocity.LengthSquared() > 0.001f)
             {
                 float currentAngle = MathF.Atan2(agent.Velocity.Y, agent.Velocity.X);
@@ -138,7 +139,10 @@ public sealed class SimulationEngine
                 float maxTurn = Settings.TurnRate * agent.TurnResponsiveness * deltaTime;
                 float newAngle = currentAngle + Math.Clamp(turn, -maxTurn, maxTurn);
                 agent.Heading = newAngle;
-                agent.Velocity = new Vector2(MathF.Cos(newAngle), MathF.Sin(newAngle)) * desiredSpeed;
+                float currentSpeed = agent.Velocity.Length();
+                float maximumSpeedChange = Math.Max(40f, Settings.BaseSpeed * 2.5f) * deltaTime;
+                float newSpeed = currentSpeed + Math.Clamp(desiredSpeed - currentSpeed, -maximumSpeedChange, maximumSpeedChange);
+                agent.Velocity = new Vector2(MathF.Cos(newAngle), MathF.Sin(newAngle)) * newSpeed;
             }
 
             agent.Position += agent.Velocity * deltaTime;
@@ -146,6 +150,31 @@ public sealed class SimulationEngine
             agent.AnimationPhase = WingAnimation.AdvancePhase(agent.AnimationPhase, agent.WingAnimationSpeed, deltaTime);
         }
         SimulationTime += deltaTime;
+    }
+
+    public float CalculateDesiredSpeed(Agent agent)
+    {
+        float strongestApproach = 0;
+        float currentSpeed = agent.Velocity.Length();
+        Vector2 velocityDirection = currentSpeed > 0.001f ? agent.Velocity / currentSpeed : Vector2.Zero;
+        for (int i = 0; i < lights.Count; i++)
+        {
+            LightSource light = lights[i];
+            Vector2 offset = light.Position - agent.Position;
+            float distance = offset.Length();
+            if (distance < 0.001f || distance >= light.InfluenceRadius) continue;
+            Vector2 toLight = offset / distance;
+            float proximity = 1f - distance / light.InfluenceRadius;
+            float smoothProximity = proximity * proximity * (3f - 2f * proximity);
+            float alignment = Vector2.Dot(velocityDirection, toLight);
+            float approaching = Math.Clamp(alignment, 0, 1);
+            float powerInfluence = Math.Clamp(light.AttractionStrength / LightSource.DefaultAttractionStrength, 0, 2f);
+            strongestApproach = Math.Max(strongestApproach, smoothProximity * approaching * powerInfluence);
+        }
+
+        float baseSpeed = Settings.BaseSpeed * agent.PreferredSpeed;
+        float desiredSpeed = baseSpeed * (1f + 0.75f * strongestApproach);
+        return Math.Clamp(desiredSpeed, 18f, MaximumSpeed);
     }
 
     private void ApplyBoundary(Agent agent)

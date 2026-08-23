@@ -37,6 +37,7 @@ dotnet publish projects/insect-light-simulation/insect-light-simulation.csproj -
 - `IBehavior` makes each force independently composable. Attraction, temporally coherent wander, and soft boundary steering are the first behaviors.
 - `PixelRenderer` converts floating-point positions into one cached `WriteableBitmap`. It draws a tiny green insect pattern and a yellow-white glow without creating a WPF object per insect.
 - `InsectSpriteCache` contains four reference-based top-view wing frames and eight precomputed heading rotations. The runtime draws cached packed pixels directly into the shared bitmap.
+- `Camera2D` separates world coordinates from screen coordinates. Mouse-wheel zoom ranges from 0.5x to 4x, is cursor-centered, and uses inverse conversion for light dragging without changing simulation agents.
 - `MainWindow` translates controls into shared simulation state, provides add/remove/select/drag interactions for lights, and displays actual runtime statistics.
 
 The movement model is position + velocity + acceleration. A behavior returns a steering force; the engine combines those forces, limits the turn rate, limits speed, integrates position, and applies the selected boundary mode. The attraction behavior sums the vector contribution from every light whose influence radius contains the insect. The simulation never reads rendered pixels: each light has a position, radius, attraction strength, and visual intensity in simulation space.
@@ -54,3 +55,5 @@ Implemented: pause/resume, reset, 10–2000 insects, speed multiplier, 1–16 se
 Not implemented yet: neighbor grids, trails, debug vectors, full flocking, GPU rendering, and a general-purpose procedural animation framework.
 
 The current polish pass caches the reference-based sprite frames and rotations, avoids LINQ in average-speed and light-ID calculations, and refreshes statistics five times per second instead of formatting them on every render frame. The pixel buffer and `WriteableBitmap` are still reused across frames.
+
+At the default 1.0x camera zoom, insects render at 0.5 visual scale; zoom changes their on-screen size without changing the asset or world state. Desired insect speed starts from `BaseSpeed` and can rise by up to 75% of the preferred baseline inside a light's influence when the insect is moving toward that light. The target speed is approached with a bounded acceleration and remains capped by the engine maximum.
