@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Insect Light Simulation" Width="1280" Height="800"
-        MinWidth="900" MinHeight="600" Background="#020502" Foreground="#7CFF74"
+        MinWidth="980" MinHeight="620" Background="#020502" Foreground="#7CFF74"
         FontFamily="Consolas" Loaded="Window_Loaded" SizeChanged="Window_SizeChanged">
     <Grid Margin="12">
         <Grid.RowDefinitions>
@@ -17,7 +17,7 @@
             <Button Content="RESET" Click="ResetButton_Click" Width="90" Margin="8,0,0,0" />
         </DockPanel>
         <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="300" /></Grid.ColumnDefinitions>
             <Border Grid.Column="0" BorderBrush="#247A31" BorderThickness="1" Background="Black" Padding="1">
                 <Image x:Name="Viewport" Stretch="Fill" SnapsToDevicePixels="True"
                        MouseLeftButtonDown="Viewport_MouseLeftButtonDown"
@@ -25,15 +25,15 @@
             </Border>
             <ScrollViewer Grid.Column="1" Margin="12,0,0,0" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
-                    <TextBlock Text="SIMULATION" FontWeight="Bold" Margin="0,0,0,8" />
-                    <TextBlock Text="SPEED" Foreground="#3CB84B" />
+                    <TextBlock Text="SIMULATION" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
+                    <TextBlock Text="SIMULATION SPEED" Foreground="#3CB84B" />
                     <ComboBox x:Name="SpeedBox" SelectedIndex="2" Margin="0,3,0,10" SelectionChanged="SpeedBox_SelectionChanged">
                         <ComboBoxItem Content="0.25x" /><ComboBoxItem Content="0.5x" /><ComboBoxItem Content="1.0x" /><ComboBoxItem Content="2.0x" /><ComboBoxItem Content="4.0x" />
                     </ComboBox>
-                    <TextBlock Text="INSECT COUNT" Foreground="#3CB84B" />
+                    <TextBlock Text="INSECT COUNT" Foreground="#3CB84B" Margin="0,2,0,0" />
                     <Slider x:Name="CountSlider" Minimum="10" Maximum="2000" Value="500" TickFrequency="100" IsSnapToTickEnabled="True" ValueChanged="CountSlider_ValueChanged" />
                     <TextBlock x:Name="CountValue" Text="500" HorizontalAlignment="Right" Margin="0,-4,0,10" />
-                    <TextBlock Text="LIGHT" FontWeight="Bold" Margin="0,4,0,8" />
+                    <TextBlock Text="LIGHT" FontSize="15" FontWeight="Bold" Margin="0,12,0,10" />
                     <TextBlock x:Name="SelectedLightText" Text="SELECTED LIGHT: 1" />
                     <TextBlock x:Name="LightPositionText" Text="POSITION: (0, 0)" Foreground="#3CB84B" Margin="0,2,0,4" />
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
@@ -44,13 +44,13 @@
                     <Slider x:Name="PowerSlider" Minimum="0" Maximum="2" Value="1" TickFrequency="0.25" IsSnapToTickEnabled="True" ValueChanged="SettingSlider_ValueChanged" />
                     <TextBlock x:Name="PowerValueText" Text="1.00" HorizontalAlignment="Right" Margin="0,-4,0,4" />
                     <TextBlock x:Name="LightValuesText" Text="ATTR 1.25   RADIUS 360   INTENSITY 1.00" Foreground="#3CB84B" Margin="0,0,0,6" />
-                    <TextBlock Text="BEHAVIOR" FontWeight="Bold" Margin="0,16,0,8" />
-                    <TextBlock Text="BASE SPEED" Foreground="#3CB84B" /><Slider x:Name="SpeedSlider" Minimum="20" Maximum="150" Value="72" ValueChanged="SettingSlider_ValueChanged" />
-                    <TextBlock Text="TURN RATE" Foreground="#3CB84B" /><Slider x:Name="TurnSlider" Minimum="0.5" Maximum="8" Value="3.4" ValueChanged="SettingSlider_ValueChanged" />
-                    <TextBlock Text="WANDER STRENGTH" Foreground="#3CB84B" /><Slider x:Name="WanderSlider" Minimum="0" Maximum="2" Value="0.75" ValueChanged="SettingSlider_ValueChanged" />
-                    <TextBlock Text="BOUNDARY" Foreground="#3CB84B" Margin="0,8,0,2" />
+                    <TextBlock Text="FLIGHT BEHAVIOR" FontSize="15" FontWeight="Bold" Margin="0,12,0,10" />
+                    <TextBlock Text="BASE SPEED" Foreground="#3CB84B" /><TextBlock x:Name="BaseSpeedValueText" Text="72" HorizontalAlignment="Right" Margin="0,-4,0,0" /><Slider x:Name="SpeedSlider" Minimum="20" Maximum="150" Value="72" ValueChanged="SettingSlider_ValueChanged" />
+                    <TextBlock Text="TURN RATE" Foreground="#3CB84B" /><TextBlock x:Name="TurnValueText" Text="3.40" HorizontalAlignment="Right" Margin="0,-4,0,0" /><Slider x:Name="TurnSlider" Minimum="0.5" Maximum="8" Value="3.4" ValueChanged="SettingSlider_ValueChanged" />
+                    <TextBlock Text="WANDER STRENGTH" Foreground="#3CB84B" /><TextBlock x:Name="WanderValueText" Text="0.75" HorizontalAlignment="Right" Margin="0,-4,0,0" /><Slider x:Name="WanderSlider" Minimum="0" Maximum="2" Value="0.75" ValueChanged="SettingSlider_ValueChanged" />
+                    <TextBlock Text="BOUNDARY" Foreground="#3CB84B" Margin="0,2,0,2" />
                     <ComboBox x:Name="BoundaryBox" SelectedIndex="0" SelectionChanged="BoundaryBox_SelectionChanged"><ComboBoxItem Content="WRAPAROUND" /><ComboBoxItem Content="SOFT BOUNCE" /></ComboBox>
-                    <TextBlock Text="STATS" FontWeight="Bold" Margin="0,16,0,8" />
+                    <TextBlock Text="STATS" FontSize="15" FontWeight="Bold" Margin="0,12,0,10" />
                     <TextBlock x:Name="StatsPanelText" Text="FPS: --&#xA;TIME: 0.0s&#xA;INSECTS: 500&#xA;AVG SPEED: --&#xA;LIGHTS: 1" />
                 </StackPanel>
             </ScrollViewer>

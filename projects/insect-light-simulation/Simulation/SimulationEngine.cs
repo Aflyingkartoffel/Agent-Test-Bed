@@ -64,7 +64,9 @@ public sealed class SimulationEngine
     public LightSource AddLight(Vector2? position = null)
     {
         if (lights.Count >= MaxLights) return lights[^1];
-        int id = lights.Count == 0 ? 1 : lights.Max(light => light.Id) + 1;
+        int id = 1;
+        for (int i = 0; i < lights.Count; i++)
+            id = Math.Max(id, lights[i].Id + 1);
         Vector2 newPosition = position ?? NewLightPosition(lights.Count);
         return AddLight(id, newPosition);
     }
@@ -160,7 +162,17 @@ public sealed class SimulationEngine
         }
     }
 
-    public float AverageSpeed => agents.Count == 0 ? 0 : agents.Average(agent => agent.Velocity.Length());
+    public float AverageSpeed
+    {
+        get
+        {
+            if (agents.Count == 0) return 0;
+            float total = 0;
+            for (int i = 0; i < agents.Count; i++)
+                total += agents[i].Velocity.Length();
+            return total / agents.Count;
+        }
+    }
 
     private static float WrapAngle(float angle)
     {

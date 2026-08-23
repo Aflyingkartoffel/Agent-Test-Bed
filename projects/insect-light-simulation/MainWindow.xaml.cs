@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private int selectedLightIndex;
     private bool updatingLightControls;
     private bool draggingLight;
+    private double statsAccumulator;
 
     public MainWindow()
     {
@@ -35,6 +36,7 @@ public partial class MainWindow : Window
         lastTicks = clock.ElapsedTicks;
         ResizeSimulation();
         SyncLightControls();
+        UpdateControlValueLabels();
         timer.Start();
     }
 
@@ -54,6 +56,7 @@ public partial class MainWindow : Window
         lastTicks = now;
         fpsCounter.Update(deltaTime);
         if (!paused) simulation.Update(deltaTime * (float)speedMultiplier);
+        statsAccumulator += deltaTime;
         Render();
     }
 
@@ -61,9 +64,17 @@ public partial class MainWindow : Window
     {
         renderer.Render(simulation, selectedLightIndex);
         Viewport.Source = renderer.Bitmap as BitmapSource;
+        if (statsAccumulator >= 0.2)
+        {
+            statsAccumulator = 0;
+            UpdateStatistics();
+        }
+    }
+
+    private void UpdateStatistics()
+    {
         StatsText.Text = $"FPS: {fpsCounter.Value,3:0}   SIM TIME {simulation.SimulationTime,5:0.0}s   INSECTS {simulation.Agents.Count,4}   AVG SPEED {simulation.AverageSpeed,5:0.0}   LIGHTS {simulation.Lights.Count}";
         StatsPanelText.Text = $"FPS: {fpsCounter.Value:0}\nTIME: {simulation.SimulationTime:0.0}s\nINSECTS: {simulation.Agents.Count}\nAVG SPEED: {simulation.AverageSpeed:0.0}\nLIGHTS: {simulation.Lights.Count}";
-        UpdateLightLabels();
     }
 
     private void PauseButton_Click(object sender, RoutedEventArgs e)
@@ -98,10 +109,12 @@ public partial class MainWindow : Window
         settings.BaseSpeed = (float)SpeedSlider.Value;
         settings.TurnRate = (float)TurnSlider.Value;
         settings.WanderStrength = (float)WanderSlider.Value;
+        UpdateControlValueLabels();
         if (!updatingLightControls && selectedLightIndex < simulation.Lights.Count)
         {
             LightSource light = simulation.Lights[selectedLightIndex];
             light.SetPower((float)PowerSlider.Value);
+            UpdatePowerLabels(light);
         }
     }
 
@@ -174,12 +187,19 @@ public partial class MainWindow : Window
         LightSource light = simulation.Lights[selectedLightIndex];
         SelectedLightText.Text = $"SELECTED LIGHT: {light.Id} / {simulation.Lights.Count}";
         LightPositionText.Text = $"POSITION: ({light.Position.X:0}, {light.Position.Y:0})";
-        UpdatePowerLabels(light);
     }
 
     private void UpdatePowerLabels(LightSource light)
     {
         PowerValueText.Text = light.Power.ToString("0.00");
         LightValuesText.Text = $"ATTR {light.AttractionStrength:0.00}   RADIUS {light.InfluenceRadius:0}   INTENSITY {light.VisualIntensity:0.00}";
+    }
+
+    private void UpdateControlValueLabels()
+    {
+        if (!IsInitialized) return;
+        BaseSpeedValueText.Text = SpeedSlider.Value.ToString("0");
+        TurnValueText.Text = TurnSlider.Value.ToString("0.00");
+        WanderValueText.Text = WanderSlider.Value.ToString("0.00");
     }
 }

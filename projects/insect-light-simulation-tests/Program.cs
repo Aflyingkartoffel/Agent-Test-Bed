@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Diagnostics;
 using InsectLightSimulation.Simulation;
 using InsectLightSimulation.Simulation.Behaviors;
 using InsectLightSimulation.Rendering;
@@ -7,8 +8,9 @@ static class Tests
 {
     private static int passed;
 
-    public static int Main()
+    public static int Main(string[] args)
     {
+        if (args.Contains("--benchmark")) return Benchmark();
         Run("attraction direction", AttractionDirection);
         Run("attraction falloff", AttractionFalloff);
         Run("default light power", DefaultLightPower);
@@ -29,6 +31,37 @@ static class Tests
         Run("deterministic seed", DeterministicSeed);
         Console.WriteLine($"{passed} simulation tests passed.");
         return 0;
+    }
+
+    private static int Benchmark()
+    {
+        RunBenchmark("500 insects / 1 light", 500, 1);
+        RunBenchmark("1000 insects / 1 light", 1000, 1);
+        RunBenchmark("2000 insects / 1 light", 2000, 1);
+        RunBenchmark("1000 insects / 8 lights", 1000, 8);
+        RunBenchmark("2000 insects / 16 lights", 2000, 16);
+        return 0;
+    }
+
+    private static void RunBenchmark(string name, int insectCount, int lightCount)
+    {
+        var simulation = new SimulationEngine(new SimulationSettings { InsectCount = insectCount });
+        while (simulation.Lights.Count < lightCount) simulation.AddLight();
+        var renderer = new PixelRenderer();
+        for (int i = 0; i < 10; i++)
+        {
+            simulation.Update(1 / 60f);
+            renderer.Render(simulation, 0);
+        }
+        const int frames = 60;
+        var stopwatch = Stopwatch.StartNew();
+        for (int i = 0; i < frames; i++)
+        {
+            simulation.Update(1 / 60f);
+            renderer.Render(simulation, 0);
+        }
+        stopwatch.Stop();
+        Console.WriteLine($"BENCH {name}: {frames / stopwatch.Elapsed.TotalSeconds:0.0} render/update frames per second");
     }
 
     private static void AttractionDirection()

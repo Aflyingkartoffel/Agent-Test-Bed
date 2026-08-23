@@ -8,6 +8,8 @@ namespace InsectLightSimulation.Rendering;
 
 public sealed class PixelRenderer
 {
+    private static readonly (int X, int Y)[] HorizontalInsectPattern = [(0, 0), (-2, -1), (2, -1), (-1, 0), (1, 0), (0, 1)];
+    private static readonly (int X, int Y)[] VerticalInsectPattern = [(0, 0), (-1, -2), (1, -2), (0, -1), (0, 1), (0, 2)];
     private WriteableBitmap? bitmap;
     private int[] pixels = Array.Empty<int>();
     private int width;
@@ -78,9 +80,7 @@ public sealed class PixelRenderer
     private void DrawInsect(Agent insect)
     {
         int direction = (int)MathF.Round((insect.Heading + MathF.PI) / MathF.Tau * 8) & 7;
-        ReadOnlySpan<(int X, int Y)> pattern = direction % 2 == 0
-            ? [(0, 0), (-2, -1), (2, -1), (-1, 0), (1, 0), (0, 1)]
-            : [(0, 0), (-1, -2), (1, -2), (0, -1), (0, 1), (0, 2)];
+        (int X, int Y)[] pattern = direction % 2 == 0 ? HorizontalInsectPattern : VerticalInsectPattern;
         int x = (int)insect.Position.X;
         int y = (int)insect.Position.Y;
         foreach ((int dx, int dy) in pattern)

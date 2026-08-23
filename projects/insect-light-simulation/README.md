@@ -18,6 +18,12 @@ Run the simulation-layer tests:
 dotnet run --project projects/insect-light-simulation-tests/insect-light-simulation-tests.csproj
 ```
 
+Run the headless render/update stress benchmark:
+
+```powershell
+dotnet run --project projects/insect-light-simulation-tests/insect-light-simulation-tests.csproj -- --benchmark
+```
+
 Optional self-contained Windows publish:
 
 ```powershell
@@ -42,4 +48,6 @@ The update is driven by a stable 16 ms UI tick and clamps unusually large frame 
 
 Implemented: pause/resume, reset, 10–2000 insects, speed multiplier, 1–16 selectable lights, add/remove controls, nearest-light hit testing, mouse dragging in simulation coordinates, selected-light power control, independent derived attraction/radius/intensity values, base speed, turn rate, wander strength, wraparound/soft-bounce boundaries, deterministic seed, pixel rendering, and smoothed actual FPS/average-speed/time statistics.
 
-Not implemented yet: neighbor grids, draggable light, trails, debug vectors, full flocking, GPU rendering, and a general-purpose procedural animation framework.
+Not implemented yet: neighbor grids, trails, debug vectors, full flocking, GPU rendering, and a general-purpose procedural animation framework.
+
+The current polish pass also caches the two insect sprite patterns, avoids LINQ in average-speed and light-ID calculations, and refreshes statistics five times per second instead of formatting them on every render frame. The pixel buffer and `WriteableBitmap` are still reused across frames.
