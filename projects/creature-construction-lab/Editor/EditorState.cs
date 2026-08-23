@@ -159,6 +159,17 @@ public sealed class EditorState
         Changed?.Invoke();
     }
 
+    public void SetWaveSettings(bool enabled, float amplitude, float frequency, float phase, float influence)
+    {
+        var wave = Simulator.State.Wave;
+        wave.Enabled = enabled;
+        wave.Amplitude = Math.Clamp(float.IsFinite(amplitude) ? amplitude : 8, 0, Creature.ChainSettings.Spacing * 0.45f);
+        wave.Frequency = Math.Clamp(float.IsFinite(frequency) ? frequency : 1.2f, 0, 10);
+        wave.Phase = Math.Clamp(float.IsFinite(phase) ? phase : 2.8f, 0, 20);
+        wave.Influence = Math.Clamp(float.IsFinite(influence) ? influence : 0.75f, 0, 1);
+        Changed?.Invoke();
+    }
+
     public void Reset()
     {
         Creature.Nodes.Clear();

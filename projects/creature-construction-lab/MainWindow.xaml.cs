@@ -58,6 +58,11 @@ public partial class MainWindow : Window
         AccelerationBox.Text = state.Simulator.State.AccelerationStrength.ToString("0.##", CultureInfo.InvariantCulture);
         PlayDampingBox.Text = state.Simulator.State.Damping.ToString("0.##", CultureInfo.InvariantCulture);
         SimulationSpeedBox.SelectedIndex = state.Simulator.State.SimulationSpeed switch { <= 0.3f => 0, <= 0.75f => 1, <= 1.5f => 2, _ => 3 };
+        WaveEnabledBox.IsChecked = state.Simulator.State.Wave.Enabled;
+        WaveAmplitudeBox.Text = state.Simulator.State.Wave.Amplitude.ToString("0.##", CultureInfo.InvariantCulture);
+        WaveFrequencyBox.Text = state.Simulator.State.Wave.Frequency.ToString("0.##", CultureInfo.InvariantCulture);
+        WavePhaseBox.Text = state.Simulator.State.Wave.Phase.ToString("0.##", CultureInfo.InvariantCulture);
+        WaveInfluenceBox.Text = state.Simulator.State.Wave.Influence.ToString("0.##", CultureInfo.InvariantCulture);
         StatusText.Text = $"{state.Mode.ToString().ToUpperInvariant()} MODE  /  {state.Creature.Nodes.Count} NODE{(state.Creature.Nodes.Count == 1 ? "" : "S")}";
         CreateModeButton.Background = state.Mode == EditorMode.Create ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(18, 70, 43)) : null;
         PlayModeButton.Background = state.Mode == EditorMode.Play ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(18, 70, 43)) : null;
@@ -80,6 +85,13 @@ public partial class MainWindow : Window
     {
         if (float.TryParse(MaxSpeedBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var maxSpeed) && float.TryParse(AccelerationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var acceleration) && float.TryParse(PlayDampingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var damping))
             state.SetPlaySettings(state.Simulator.State.SimulationSpeed, maxSpeed, acceleration, damping);
+    }
+    private void WaveSetting_Changed(object sender, RoutedEventArgs e) => ApplyWaveSettings();
+    private void WaveSetting_LostFocus(object sender, RoutedEventArgs e) => ApplyWaveSettings();
+    private void ApplyWaveSettings()
+    {
+        if (!IsLoaded || !float.TryParse(WaveAmplitudeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amplitude) || !float.TryParse(WaveFrequencyBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var frequency) || !float.TryParse(WavePhaseBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var phase) || !float.TryParse(WaveInfluenceBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var influence)) return;
+        state.SetWaveSettings(WaveEnabledBox.IsChecked == true, amplitude, frequency, phase, influence);
     }
     private void ResetCurve_Click(object sender, RoutedEventArgs e) { if (state.Mode == EditorMode.Create) state.ResetBodySizeRamp(); }
     private void BaseRadius_LostFocus(object sender, RoutedEventArgs e)

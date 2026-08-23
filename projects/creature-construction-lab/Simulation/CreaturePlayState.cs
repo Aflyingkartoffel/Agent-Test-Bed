@@ -15,6 +15,7 @@ public sealed class CreaturePlayState
     public float AccelerationStrength { get; set; } = 420;
     public float Damping { get; set; } = 3.5f;
     public float SimulationSpeed { get; set; } = 1;
+    public WaveMotionSettings Wave { get; } = new();
     public bool Paused { get; private set; }
     public float SimulationTime { get; private set; }
     private float accumulator;
@@ -75,6 +76,30 @@ public sealed class CreaturePlayState
             Velocities[i] *= MathF.Exp(-Math.Clamp(connection?.Damping ?? 0.1f, 0, 20) * dt);
             Accelerations[i] = Vector2.Zero;
         }
+        ApplyWave(definition);
         SimulationTime += dt;
+    }
+
+    private void ApplyWave(CreatureDefinition definition)
+    {
+        if (!Wave.Enabled || Positions.Count < 2) return;
+        for (var i = 1; i < Positions.Count; i++)
+        {
+            var parent = Positions[i - 1];
+            var current = Positions[i];
+            var forward = parent - current;
+            if (forward.LengthSquared() < 0.0001f) forward = -ChainMath.GetDirectionFromRotation(definition.Nodes[i - 1].Rotation);
+            forward = Vector2.Normalize(forward);
+            var normal = new Vector2(-forward.Y, forward.X);
+            var t = (float)i / (Positions.Count - 1);
+            var waveOffset = BodyWaveGenerator.CalculateOffset(SimulationTime, t, normal, Wave, definition.ChainSettings.Spacing);
+            var connection = definition.Connections.FirstOrDefault(c => c.ParentNodeId == definition.Nodes[i - 1].Id && c.ChildNodeId == definition.Nodes[i].Id);
+            var restLength = connection?.RestLength ?? definition.ChainSettings.Spacing;
+            var candidate = current + waveOffset;
+            var direction = candidate - parent;
+            if (direction.LengthSquared() < 0.0001f) direction = -forward;
+            Positions[i] = parent + Vector2.Normalize(direction) * restLength;
+            Velocities[i] = (Positions[i] - parent) / FixedStep;
+        }
     }
 }

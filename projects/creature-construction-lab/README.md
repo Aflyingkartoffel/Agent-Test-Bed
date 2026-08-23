@@ -12,6 +12,8 @@ The right inspector includes a compact curve editor: drag points, double-click t
 
 Milestone 4 adds functional Play Mode. The mouse is a target, not a direct attachment: the root uses velocity, limited acceleration, maximum speed, and damping to follow it. The body follows through fixed-step rest-length constraints using connection stiffness and damping. Play positions and velocities live in `CreaturePlayState`; the constructed `CreatureDefinition` is not mutated during simulation. Pause, Resume, Reset Simulation, simulation speed, Max Speed, Acceleration, and Damping are available in the Play panel. Returning to Create restores the exact constructed pose, while the Create-mode Reset/Clear still removes the creature and restores the default ramp.
 
+Milestone 5 adds configurable procedural wave motion. `BodyWaveGenerator` evaluates a sinusoid using simulation time and normalized chain position, then applies the offset along the local perpendicular to each segment. Head influence is zero and tail influence increases with normalized position. Amplitude, Frequency, Phase, Influence, and Wave Enabled are available under BODY MOTION. The wave is folded into constrained child targets, so connection rest lengths remain stable; pause freezes wave time and Reset Simulation resets time while preserving wave settings.
+
 ## Run
 
 From this directory:

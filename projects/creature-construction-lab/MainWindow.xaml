@@ -27,6 +27,12 @@
           <StackPanel Orientation="Horizontal" Margin="0,8,0,4"><TextBlock Text="Max Speed" Width="90"/><TextBox x:Name="MaxSpeedBox" Width="108" LostFocus="PlaySetting_LostFocus"/></StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="Acceleration" Width="90"/><TextBox x:Name="AccelerationBox" Width="108" LostFocus="PlaySetting_LostFocus"/></StackPanel>
           <StackPanel Orientation="Horizontal"><TextBlock Text="Damping" Width="90"/><TextBox x:Name="PlayDampingBox" Width="108" LostFocus="PlaySetting_LostFocus"/></StackPanel>
+          <TextBlock Text="BODY MOTION" FontSize="15" FontWeight="Bold" Margin="0,14,0,8" />
+          <CheckBox x:Name="WaveEnabledBox" Content="WAVE ENABLED" Checked="WaveSetting_Changed" Unchecked="WaveSetting_Changed" Margin="0,0,0,6" />
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="Amplitude" Width="90"/><TextBox x:Name="WaveAmplitudeBox" Width="108" LostFocus="WaveSetting_LostFocus"/></StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="Frequency" Width="90"/><TextBox x:Name="WaveFrequencyBox" Width="108" LostFocus="WaveSetting_LostFocus"/></StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="Phase" Width="90"/><TextBox x:Name="WavePhaseBox" Width="108" LostFocus="WaveSetting_LostFocus"/></StackPanel>
+          <StackPanel Orientation="Horizontal"><TextBlock Text="Influence" Width="90"/><TextBox x:Name="WaveInfluenceBox" Width="108" LostFocus="WaveSetting_LostFocus"/></StackPanel>
         </StackPanel>
         <TextBlock Text="BODY SIZE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
         <ContentControl x:Name="RampHost" Height="130" Margin="0,0,0,6" />
