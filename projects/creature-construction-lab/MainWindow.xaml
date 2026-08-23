@@ -19,14 +19,22 @@
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Stiffness" Width="90" VerticalAlignment="Center"/><TextBox x:Name="StiffnessBox" Text="1" Width="108" LostFocus="ChainProperty_LostFocus" /></StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Damping" Width="90" VerticalAlignment="Center"/><TextBox x:Name="DampingBox" Text="0.1" Width="108" LostFocus="ChainProperty_LostFocus" /></StackPanel>
         <Button Content="ADD NEXT NODE" Click="AddNextNode_Click" Margin="0,6,0,20" />
+        <TextBlock Text="BODY SIZE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
+        <ContentControl x:Name="RampHost" Height="130" Margin="0,0,0,6" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Base Radius" Width="90" VerticalAlignment="Center"/><TextBox x:Name="BaseRadiusBox" Width="108" LostFocus="BaseRadius_LostFocus" /></StackPanel>
+        <Button Content="RESET CURVE" Click="ResetCurve_Click" Margin="0,0,0,10" />
+        <TextBlock Text="Double-click to add. Drag points to edit. Delete removes intermediate points." Foreground="#3D9A6A" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,14" />
         <TextBlock Text="SELECTED NODE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
         <TextBlock x:Name="SelectionText" Text="NONE" Foreground="#3D9A6A" Margin="0,0,0,12" />
         <Grid><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
           <TextBlock Text="Position X" Grid.Row="0"/><TextBox x:Name="XBox" Grid.Row="0" Grid.Column="1" Margin="0,0,0,6" LostFocus="Property_LostFocus" />
           <TextBlock Text="Position Y" Grid.Row="1"/><TextBox x:Name="YBox" Grid.Row="1" Grid.Column="1" Margin="0,0,0,6" LostFocus="Property_LostFocus" />
-          <TextBlock Text="Radius" Grid.Row="2"/><TextBox x:Name="RadiusBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,6" LostFocus="Property_LostFocus" />
-          <TextBlock Text="Rotation" Grid.Row="3"/><TextBox x:Name="RotationBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,6" LostFocus="Property_LostFocus" />
+          <TextBlock Text="Norm Pos" Grid.Row="2"/><TextBlock x:Name="NormalizedText" Grid.Row="2" Grid.Column="1" Margin="0,0,0,6" />
+          <TextBlock Text="Ramp Value" Grid.Row="3"/><TextBlock x:Name="RampValueText" Grid.Row="3" Grid.Column="1" Margin="0,0,0,6" />
         </Grid>
+        <StackPanel Orientation="Horizontal" Margin="0,4,0,0"><TextBlock Text="Radius" Width="90"/><TextBlock x:Name="RadiusText" /></StackPanel>
+        <TextBlock Text="Derived from Body Size Ramp" Foreground="#3D9A6A" FontSize="11" Margin="0,2,0,0" />
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,0"><TextBlock Text="Rotation" Width="90"/><TextBox x:Name="RotationBox" Width="108" LostFocus="Property_LostFocus" /></StackPanel>
         <TextBlock x:Name="HelpText" Text="Drag the root to move the whole chain. Drag the bright direction handle to rotate. Press DELETE to remove the selected node and its descendants." Foreground="#3D9A6A" FontSize="11" TextWrapping="Wrap" Margin="0,14,0,0" />
       </StackPanel>
     </Grid>

@@ -17,6 +17,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         canvas = new CreatureCanvas(state);
         CanvasHost.Content = canvas;
+        RampHost.Content = new BodySizeRampCanvas(state);
         state.Changed += Refresh;
         Refresh();
     }
@@ -27,8 +28,11 @@ public partial class MainWindow : Window
         var node = state.SelectedNode;
         XBox.Text = node is null ? "" : node.Position.X.ToString("0.##", CultureInfo.InvariantCulture);
         YBox.Text = node is null ? "" : node.Position.Y.ToString("0.##", CultureInfo.InvariantCulture);
-        RadiusBox.Text = node is null ? "" : node.Radius.ToString("0.##", CultureInfo.InvariantCulture);
+        NormalizedText.Text = node is null ? "" : node.NormalizedPosition.ToString("0.##", CultureInfo.InvariantCulture);
+        RampValueText.Text = node is null ? "" : node.RampValue.ToString("0.##", CultureInfo.InvariantCulture);
+        RadiusText.Text = node is null ? "" : node.Radius.ToString("0.##", CultureInfo.InvariantCulture);
         RotationBox.Text = node is null ? "" : node.Rotation.ToString("0.##", CultureInfo.InvariantCulture);
+        BaseRadiusBox.Text = state.Creature.BaseRadius.ToString("0.##", CultureInfo.InvariantCulture);
         SpacingBox.Text = state.Creature.ChainSettings.Spacing.ToString("0.##", CultureInfo.InvariantCulture);
         StiffnessBox.Text = state.Creature.ChainSettings.Stiffness.ToString("0.##", CultureInfo.InvariantCulture);
         DampingBox.Text = state.Creature.ChainSettings.Damping.ToString("0.##", CultureInfo.InvariantCulture);
@@ -43,6 +47,11 @@ public partial class MainWindow : Window
     private void NodeTool_Click(object sender, RoutedEventArgs e) => state.Tool = EditorTool.Node;
     private void SelectTool_Click(object sender, RoutedEventArgs e) => state.Tool = EditorTool.Select;
     private void Reset_Click(object sender, RoutedEventArgs e) => state.Reset();
+    private void ResetCurve_Click(object sender, RoutedEventArgs e) => state.ResetBodySizeRamp();
+    private void BaseRadius_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (float.TryParse(BaseRadiusBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var radius)) state.SetBaseRadius(radius);
+    }
     private void AddNextNode_Click(object sender, RoutedEventArgs e)
     {
         if (state.SelectedNode is null) { state.ClearStatus(); return; }
@@ -60,7 +69,6 @@ public partial class MainWindow : Window
         var node = state.SelectedNode;
         if (node is null) return;
         if (float.TryParse(XBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) && float.TryParse(YBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) node.Position = new Vector2(x, y);
-        if (float.TryParse(RadiusBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var radius)) node.Radius = Math.Max(4, radius);
         if (float.TryParse(RotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation)) node.Rotation = rotation;
         state.Select(node);
     }

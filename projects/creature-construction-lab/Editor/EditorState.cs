@@ -19,6 +19,7 @@ public sealed class EditorState
         var node = new CreatureNode { Position = position };
         Creature.Nodes.Add(node);
         SelectedNode = node;
+        RecalculateBodySizes();
         Changed?.Invoke();
         return node;
     }
@@ -33,6 +34,7 @@ public sealed class EditorState
         Creature.Nodes.Add(child);
         Creature.Connections.Add(new CreatureConnection { ParentNodeId = SelectedNode.Id, ChildNodeId = child.Id, RestLength = Creature.ChainSettings.Spacing, Stiffness = Creature.ChainSettings.Stiffness, Damping = Creature.ChainSettings.Damping });
         SelectedNode = child;
+        RecalculateBodySizes();
         StatusMessage = null;
         Changed?.Invoke();
         return child;
@@ -43,6 +45,54 @@ public sealed class EditorState
         Creature.ChainSettings.Spacing = Math.Max(4, spacing);
         ChainMath.RebuildChainSpacing(Creature);
         Changed?.Invoke();
+    }
+
+    public void RecalculateBodySizes()
+    {
+        for (var i = 0; i < Creature.Nodes.Count; i++)
+        {
+            var node = Creature.Nodes[i];
+            node.NormalizedPosition = Creature.Nodes.Count > 1 ? (float)i / (Creature.Nodes.Count - 1) : 0;
+            node.RampValue = Creature.BodySizeRamp.Sample(node.NormalizedPosition);
+            node.Radius = Math.Max(2, Creature.BaseRadius * node.RampValue);
+        }
+        Changed?.Invoke();
+    }
+
+    public void SetBaseRadius(float radius)
+    {
+        Creature.BaseRadius = Math.Clamp(float.IsFinite(radius) ? radius : 24, 4, 100);
+        RecalculateBodySizes();
+    }
+
+    public void ResetBodySizeRamp()
+    {
+        Creature.BodySizeRamp.Reset();
+        RecalculateBodySizes();
+    }
+
+    public void SetRampPoint(RampPoint point, float position, float value)
+    {
+        if (Creature.BodySizeRamp.Points[0] == point) position = 0;
+        if (Creature.BodySizeRamp.Points[^1] == point) position = 1;
+        point.Position = position;
+        point.Value = value;
+        Creature.BodySizeRamp.SortAndClamp();
+        RecalculateBodySizes();
+    }
+
+    public RampPoint? AddRampPoint(float position, float value)
+    {
+        var point = Creature.BodySizeRamp.AddPoint(position, value);
+        RecalculateBodySizes();
+        return point;
+    }
+
+    public bool RemoveRampPoint(RampPoint point)
+    {
+        var removed = Creature.BodySizeRamp.RemovePoint(point);
+        if (removed) RecalculateBodySizes();
+        return removed;
     }
 
     public void SetChainSettings(float stiffness, float damping)
@@ -91,6 +141,8 @@ public sealed class EditorState
     {
         Creature.Nodes.Clear();
         Creature.Connections.Clear();
+        Creature.BodySizeRamp.Reset();
+        Creature.BaseRadius = 24;
         SelectedNode = null;
         Mode = EditorMode.Create;
         Tool = EditorTool.Select;
