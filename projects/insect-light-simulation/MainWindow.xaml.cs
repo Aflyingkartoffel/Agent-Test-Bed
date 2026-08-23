@@ -101,9 +101,7 @@ public partial class MainWindow : Window
         if (!updatingLightControls && selectedLightIndex < simulation.Lights.Count)
         {
             LightSource light = simulation.Lights[selectedLightIndex];
-            light.AttractionStrength = (float)AttractionSlider.Value;
-            light.InfluenceRadius = (float)RadiusSlider.Value;
-            light.VisualIntensity = (float)IntensitySlider.Value;
+            light.SetPower((float)PowerSlider.Value);
         }
     }
 
@@ -164,10 +162,9 @@ public partial class MainWindow : Window
         if (selectedLightIndex < 0) return;
         LightSource light = simulation.Lights[selectedLightIndex];
         updatingLightControls = true;
-        AttractionSlider.Value = light.AttractionStrength;
-        RadiusSlider.Value = light.InfluenceRadius;
-        IntensitySlider.Value = light.VisualIntensity;
+        PowerSlider.Value = light.Power;
         updatingLightControls = false;
+        UpdatePowerLabels(light);
         UpdateLightLabels();
     }
 
@@ -177,5 +174,12 @@ public partial class MainWindow : Window
         LightSource light = simulation.Lights[selectedLightIndex];
         SelectedLightText.Text = $"SELECTED LIGHT: {light.Id} / {simulation.Lights.Count}";
         LightPositionText.Text = $"POSITION: ({light.Position.X:0}, {light.Position.Y:0})";
+        UpdatePowerLabels(light);
+    }
+
+    private void UpdatePowerLabels(LightSource light)
+    {
+        PowerValueText.Text = light.Power.ToString("0.00");
+        LightValuesText.Text = $"ATTR {light.AttractionStrength:0.00}   RADIUS {light.InfluenceRadius:0}   INTENSITY {light.VisualIntensity:0.00}";
     }
 }

@@ -94,7 +94,9 @@ public sealed class SimulationEngine
 
     private LightSource AddLight(int id, Vector2 position)
     {
-        var light = new LightSource(id, position, 1.25f, 360f, 1f);
+        var light = new LightSource(id, position, LightSource.DefaultAttractionStrength,
+            LightSource.DefaultInfluenceRadius, LightSource.DefaultVisualIntensity);
+        light.SetPower(1f);
         lights.Add(light);
         return light;
     }

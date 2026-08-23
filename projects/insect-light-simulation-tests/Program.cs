@@ -11,6 +11,11 @@ static class Tests
     {
         Run("attraction direction", AttractionDirection);
         Run("attraction falloff", AttractionFalloff);
+        Run("default light power", DefaultLightPower);
+        Run("power scales light attributes", PowerScalesAttributes);
+        Run("power is independent per light", PowerIsIndependent);
+        Run("new light has default power", NewLightHasDefaultPower);
+        Run("reset restores light power", ResetRestoresLightPower);
         Run("multiple light forces combine", MultipleLightForcesCombine);
         Run("independent light radius", IndependentLightRadius);
         Run("add and remove lights", AddRemoveLights);
@@ -48,6 +53,55 @@ static class Tests
         float nearForce = new LightAttractionBehavior().CalculateForce(near, simulation, 1 / 60f).Length();
         float farForce = new LightAttractionBehavior().CalculateForce(far, simulation, 1 / 60f).Length();
         Check(nearForce > farForce && farForce == 0, "force should fall off to zero outside radius");
+    }
+
+    private static void DefaultLightPower()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        LightSource light = simulation.Lights[0];
+        Check(light.Power == 1f && light.AttractionStrength == LightSource.DefaultAttractionStrength
+            && light.InfluenceRadius == LightSource.DefaultInfluenceRadius
+            && light.VisualIntensity == LightSource.DefaultVisualIntensity, "default power should produce default values");
+    }
+
+    private static void PowerScalesAttributes()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        LightSource light = simulation.Lights[0];
+        light.SetPower(1.5f);
+        Check(light.AttractionStrength > LightSource.DefaultAttractionStrength
+            && light.InfluenceRadius > LightSource.DefaultInfluenceRadius
+            && light.VisualIntensity > LightSource.DefaultVisualIntensity, "higher power should increase all attributes");
+        light.SetPower(0.5f);
+        Check(light.AttractionStrength < LightSource.DefaultAttractionStrength
+            && light.InfluenceRadius < LightSource.DefaultInfluenceRadius
+            && light.VisualIntensity < LightSource.DefaultVisualIntensity, "lower power should decrease all attributes");
+    }
+
+    private static void PowerIsIndependent()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        LightSource first = simulation.Lights[0];
+        LightSource second = simulation.AddLight();
+        first.SetPower(0.5f);
+        second.SetPower(1.5f);
+        Check(first.Power == 0.5f && second.Power == 1.5f && first.VisualIntensity != second.VisualIntensity, "each light should retain its own power");
+    }
+
+    private static void NewLightHasDefaultPower()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        LightSource light = simulation.AddLight();
+        Check(light.Power == 1f && light.AttractionStrength == LightSource.DefaultAttractionStrength, "new light should use default power");
+    }
+
+    private static void ResetRestoresLightPower()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        simulation.Lights[0].SetPower(1.75f);
+        simulation.AddLight().SetPower(0.25f);
+        simulation.Reset();
+        Check(simulation.Lights.Count == 1 && simulation.Lights[0].Power == 1f, "reset should restore one default-power light");
     }
 
     private static void MultipleLightForcesCombine()

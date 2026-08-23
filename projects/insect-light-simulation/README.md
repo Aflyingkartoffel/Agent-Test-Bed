@@ -34,10 +34,12 @@ dotnet publish projects/insect-light-simulation/insect-light-simulation.csproj -
 
 The movement model is position + velocity + acceleration. A behavior returns a steering force; the engine combines those forces, limits the turn rate, limits speed, integrates position, and applies the selected boundary mode. The attraction behavior sums the vector contribution from every light whose influence radius contains the insect. The simulation never reads rendered pixels: each light has a position, radius, attraction strength, and visual intensity in simulation space.
 
+The LIGHT POWER slider is a UI abstraction for the selected light. Power ranges from 0 to 2, with 1 as the default. It scales that light's attraction strength, influence radius, and visual intensity while keeping those three underlying properties separate for the simulation and renderer. Selecting a different light loads that light's independent power value.
+
 The update is driven by a stable 16 ms UI tick and clamps unusually large frame gaps. The speed control scales elapsed simulation time, while the underlying behavior equations stay unchanged.
 
 ## Current milestone
 
-Implemented: pause/resume, reset, 10–2000 insects, speed multiplier, 1–16 selectable lights, add/remove controls, nearest-light hit testing, mouse dragging in simulation coordinates, selected-light controls, attraction strength, influence radius, light intensity, base speed, turn rate, wander strength, wraparound/soft-bounce boundaries, deterministic seed, pixel rendering, and smoothed actual FPS/average-speed/time statistics.
+Implemented: pause/resume, reset, 10–2000 insects, speed multiplier, 1–16 selectable lights, add/remove controls, nearest-light hit testing, mouse dragging in simulation coordinates, selected-light power control, independent derived attraction/radius/intensity values, base speed, turn rate, wander strength, wraparound/soft-bounce boundaries, deterministic seed, pixel rendering, and smoothed actual FPS/average-speed/time statistics.
 
 Not implemented yet: neighbor grids, draggable light, trails, debug vectors, full flocking, GPU rendering, and a general-purpose procedural animation framework.
