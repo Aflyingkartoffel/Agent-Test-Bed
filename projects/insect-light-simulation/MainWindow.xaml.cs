@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media.Imaging;
+using System.Windows.Input;
 using System.Windows.Threading;
 using InsectLightSimulation.Rendering;
 using InsectLightSimulation.Simulation;
@@ -15,9 +16,12 @@ public partial class MainWindow : Window
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly Stopwatch clock = Stopwatch.StartNew();
     private long lastTicks;
-    private double fps;
+    private readonly Rendering.FpsCounter fpsCounter = new();
     private double speedMultiplier = 1;
     private bool paused;
+    private int selectedLightIndex;
+    private bool updatingLightControls;
+    private bool draggingLight;
 
     public MainWindow()
     {
@@ -30,6 +34,7 @@ public partial class MainWindow : Window
     {
         lastTicks = clock.ElapsedTicks;
         ResizeSimulation();
+        SyncLightControls();
         timer.Start();
     }
 
@@ -47,16 +52,18 @@ public partial class MainWindow : Window
         long now = clock.ElapsedTicks;
         float deltaTime = (float)(now - lastTicks) / Stopwatch.Frequency;
         lastTicks = now;
-        fps = fps * 0.92 + (1 / Math.Max(0.001, deltaTime)) * 0.08;
+        fpsCounter.Update(deltaTime);
         if (!paused) simulation.Update(deltaTime * (float)speedMultiplier);
         Render();
     }
 
     private void Render()
     {
-        renderer.Render(simulation, settings.LightIntensity);
+        renderer.Render(simulation, selectedLightIndex);
         Viewport.Source = renderer.Bitmap as BitmapSource;
-        StatsText.Text = $"SIM TIME {simulation.SimulationTime,5:0.0}s   FPS {fps,4:0}   INSECTS {simulation.Agents.Count,4}   AVG SPEED {simulation.AverageSpeed,5:0.0}";
+        StatsText.Text = $"FPS: {fpsCounter.Value,3:0}   SIM TIME {simulation.SimulationTime,5:0.0}s   INSECTS {simulation.Agents.Count,4}   AVG SPEED {simulation.AverageSpeed,5:0.0}   LIGHTS {simulation.Lights.Count}";
+        StatsPanelText.Text = $"FPS: {fpsCounter.Value:0}\nTIME: {simulation.SimulationTime:0.0}s\nINSECTS: {simulation.Agents.Count}\nAVG SPEED: {simulation.AverageSpeed:0.0}\nLIGHTS: {simulation.Lights.Count}";
+        UpdateLightLabels();
     }
 
     private void PauseButton_Click(object sender, RoutedEventArgs e)
@@ -65,7 +72,12 @@ public partial class MainWindow : Window
         PauseButton.Content = paused ? "RESUME" : "PAUSE";
     }
 
-    private void ResetButton_Click(object sender, RoutedEventArgs e) => simulation.Reset();
+    private void ResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        simulation.Reset();
+        selectedLightIndex = 0;
+        SyncLightControls();
+    }
 
     private void SpeedBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
@@ -83,16 +95,87 @@ public partial class MainWindow : Window
     private void SettingSlider_ValueChanged(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e)
     {
         if (!IsInitialized) return;
-        settings.AttractionStrength = (float)AttractionSlider.Value;
-        settings.InfluenceRadius = (float)RadiusSlider.Value;
-        settings.LightIntensity = (float)IntensitySlider.Value;
         settings.BaseSpeed = (float)SpeedSlider.Value;
         settings.TurnRate = (float)TurnSlider.Value;
         settings.WanderStrength = (float)WanderSlider.Value;
+        if (!updatingLightControls && selectedLightIndex < simulation.Lights.Count)
+        {
+            LightSource light = simulation.Lights[selectedLightIndex];
+            light.AttractionStrength = (float)AttractionSlider.Value;
+            light.InfluenceRadius = (float)RadiusSlider.Value;
+            light.VisualIntensity = (float)IntensitySlider.Value;
+        }
     }
 
     private void BoundaryBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (IsInitialized) settings.BoundaryMode = BoundaryBox.SelectedIndex == 1 ? BoundaryMode.SoftBounce : BoundaryMode.Wrap;
+    }
+
+    private void AddLightButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (simulation.Lights.Count >= SimulationEngine.MaxLights) return;
+        simulation.AddLight();
+        selectedLightIndex = simulation.Lights.Count - 1;
+        SyncLightControls();
+    }
+
+    private void RemoveLightButton_Click(object sender, RoutedEventArgs e)
+    {
+        selectedLightIndex = simulation.RemoveLight(selectedLightIndex);
+        SyncLightControls();
+    }
+
+    private void Viewport_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        Point mousePoint = e.GetPosition(Viewport);
+        int hit = simulation.FindClosestLight(ViewportToSimulation(mousePoint), 16f);
+        if (hit < 0) return;
+        selectedLightIndex = hit;
+        draggingLight = true;
+        Viewport.CaptureMouse();
+        SyncLightControls();
+        e.Handled = true;
+    }
+
+    private void Viewport_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!draggingLight || selectedLightIndex >= simulation.Lights.Count) return;
+        simulation.Lights[selectedLightIndex].Position = ViewportToSimulation(e.GetPosition(Viewport));
+        UpdateLightLabels();
+    }
+
+    private void Viewport_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        draggingLight = false;
+        Viewport.ReleaseMouseCapture();
+    }
+
+    private System.Numerics.Vector2 ViewportToSimulation(Point viewportPoint)
+    {
+        double xScale = simulation.Width / Math.Max(1, Viewport.ActualWidth);
+        double yScale = simulation.Height / Math.Max(1, Viewport.ActualHeight);
+        return new System.Numerics.Vector2((float)Math.Clamp(viewportPoint.X * xScale, 0, simulation.Width), (float)Math.Clamp(viewportPoint.Y * yScale, 0, simulation.Height));
+    }
+
+    private void SyncLightControls()
+    {
+        if (selectedLightIndex >= simulation.Lights.Count) selectedLightIndex = simulation.Lights.Count - 1;
+        if (selectedLightIndex < 0) return;
+        LightSource light = simulation.Lights[selectedLightIndex];
+        updatingLightControls = true;
+        AttractionSlider.Value = light.AttractionStrength;
+        RadiusSlider.Value = light.InfluenceRadius;
+        IntensitySlider.Value = light.VisualIntensity;
+        updatingLightControls = false;
+        UpdateLightLabels();
+    }
+
+    private void UpdateLightLabels()
+    {
+        if (selectedLightIndex < 0 || selectedLightIndex >= simulation.Lights.Count) return;
+        LightSource light = simulation.Lights[selectedLightIndex];
+        SelectedLightText.Text = $"SELECTED LIGHT: {light.Id} / {simulation.Lights.Count}";
+        LightPositionText.Text = $"POSITION: ({light.Position.X:0}, {light.Position.Y:0})";
     }
 }

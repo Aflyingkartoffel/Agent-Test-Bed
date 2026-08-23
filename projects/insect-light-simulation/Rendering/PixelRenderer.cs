@@ -15,7 +15,7 @@ public sealed class PixelRenderer
 
     public WriteableBitmap? Bitmap => bitmap;
 
-    public void Render(SimulationEngine simulation, double intensity)
+    public void Render(SimulationEngine simulation, int selectedLightIndex)
     {
         int nextWidth = Math.Max(1, (int)Math.Round(simulation.Width));
         int nextHeight = Math.Max(1, (int)Math.Round(simulation.Height));
@@ -28,14 +28,19 @@ public sealed class PixelRenderer
         }
 
         Array.Clear(pixels);
-        DrawGlow(simulation.Light.Position, simulation.Settings.InfluenceRadius * 0.28f, intensity);
+        for (int i = 0; i < simulation.Lights.Count; i++)
+        {
+            LightSource light = simulation.Lights[i];
+            DrawGlow(light.Position, light.InfluenceRadius * 0.28f, light.VisualIntensity);
+            if (i == selectedLightIndex) DrawSelectionRing(light.Position);
+        }
         foreach (Agent insect in simulation.Agents)
             DrawInsect(insect);
 
         bitmap.WritePixels(new Int32Rect(0, 0, width, height), pixels, width * 4, 0);
     }
 
-    private void DrawGlow(Vector2 center, float radius, double intensity)
+    private void DrawGlow(Vector2 center, float radius, float intensity)
     {
         int minX = Math.Max(0, (int)(center.X - radius));
         int maxX = Math.Min(width - 1, (int)(center.X + radius));
@@ -47,7 +52,7 @@ public sealed class PixelRenderer
             {
                 float distance = Vector2.Distance(center, new Vector2(x, y));
                 float glow = Math.Clamp(1f - distance * inverseRadius, 0, 1);
-                glow *= glow * (float)Math.Clamp(intensity, 0.1, 2.0);
+                glow *= glow * Math.Clamp(intensity, 0.1f, 2f);
                 int red = (int)Math.Clamp(255 * glow, 0, 255);
                 int green = (int)Math.Clamp(240 * glow, 0, 255);
                 int blue = (int)Math.Clamp(110 * glow, 0, 255);
@@ -57,6 +62,17 @@ public sealed class PixelRenderer
         Plot((int)center.X, (int)center.Y, Color.FromRgb(255, 255, 235));
         Plot((int)center.X + 1, (int)center.Y, Color.FromRgb(255, 255, 235));
         Plot((int)center.X, (int)center.Y + 1, Color.FromRgb(255, 255, 235));
+    }
+
+    private void DrawSelectionRing(Vector2 center)
+    {
+        int x = (int)center.X;
+        int y = (int)center.Y;
+        for (int i = 0; i < 12; i++)
+        {
+            double angle = i * Math.PI / 6;
+            Plot(x + (int)(Math.Cos(angle) * 8), y + (int)(Math.Sin(angle) * 8), Color.FromRgb(255, 255, 150));
+        }
     }
 
     private void DrawInsect(Agent insect)

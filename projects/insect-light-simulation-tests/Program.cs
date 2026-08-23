@@ -1,6 +1,7 @@
 using System.Numerics;
 using InsectLightSimulation.Simulation;
 using InsectLightSimulation.Simulation.Behaviors;
+using InsectLightSimulation.Rendering;
 
 static class Tests
 {
@@ -10,6 +11,12 @@ static class Tests
     {
         Run("attraction direction", AttractionDirection);
         Run("attraction falloff", AttractionFalloff);
+        Run("multiple light forces combine", MultipleLightForcesCombine);
+        Run("independent light radius", IndependentLightRadius);
+        Run("add and remove lights", AddRemoveLights);
+        Run("nearest light selection", NearestLightSelection);
+        Run("light position persists", LightPositionPersists);
+        Run("FPS measurement", FpsMeasurement);
         Run("speed limit", SpeedLimit);
         Run("turn rate limit", TurnRateLimit);
         Run("wrap boundary", WrapBoundary);
@@ -21,9 +28,10 @@ static class Tests
 
     private static void AttractionDirection()
     {
-        var settings = new SimulationSettings { InfluenceRadius = 100 };
+        var settings = new SimulationSettings();
         var simulation = new SimulationEngine(settings);
-        simulation.Light.Position = new Vector2(10, 0);
+        simulation.Lights[0].InfluenceRadius = 100;
+        simulation.Lights[0].Position = new Vector2(10, 0);
         var agent = new Agent(Vector2.Zero, Vector2.UnitY, 1, 1, 1);
         Vector2 force = new LightAttractionBehavior().CalculateForce(agent, simulation, 1 / 60f);
         Check(force.X > 0 && Math.Abs(force.Y) < 0.001f, "force should point right");
@@ -31,14 +39,71 @@ static class Tests
 
     private static void AttractionFalloff()
     {
-        var settings = new SimulationSettings { InfluenceRadius = 100 };
+        var settings = new SimulationSettings();
         var simulation = new SimulationEngine(settings);
-        simulation.Light.Position = new Vector2(50, 0);
+        simulation.Lights[0].InfluenceRadius = 100;
+        simulation.Lights[0].Position = new Vector2(50, 0);
         var near = new Agent(Vector2.Zero, Vector2.UnitY, 1, 1, 1);
         var far = new Agent(new Vector2(-50, 0), Vector2.UnitY, 1, 1, 1);
         float nearForce = new LightAttractionBehavior().CalculateForce(near, simulation, 1 / 60f).Length();
         float farForce = new LightAttractionBehavior().CalculateForce(far, simulation, 1 / 60f).Length();
         Check(nearForce > farForce && farForce == 0, "force should fall off to zero outside radius");
+    }
+
+    private static void MultipleLightForcesCombine()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        simulation.Lights[0].Position = new Vector2(10, 0);
+        simulation.Lights[0].InfluenceRadius = 100;
+        LightSource second = simulation.AddLight(new Vector2(-10, 0));
+        second.InfluenceRadius = 100;
+        var agent = new Agent(Vector2.Zero, Vector2.UnitY, 1, 1, 1);
+        Vector2 force = new LightAttractionBehavior().CalculateForce(agent, simulation, 1 / 60f);
+        Check(force.Length() < 0.001f, "equal opposite light forces should cancel");
+    }
+
+    private static void IndependentLightRadius()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        simulation.Lights[0].Position = new Vector2(10, 0);
+        simulation.Lights[0].InfluenceRadius = 20;
+        LightSource second = simulation.AddLight(new Vector2(100, 0));
+        second.InfluenceRadius = 20;
+        var agent = new Agent(Vector2.Zero, Vector2.UnitY, 1, 1, 1);
+        Vector2 force = new LightAttractionBehavior().CalculateForce(agent, simulation, 1 / 60f);
+        Check(force.X > 0, "a light inside its radius should still influence the agent");
+    }
+
+    private static void AddRemoveLights()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        simulation.AddLight();
+        Check(simulation.Lights.Count == 2, "adding a light should increase the count");
+        simulation.RemoveLight(1);
+        Check(simulation.Lights.Count == 1, "removing a light should decrease the count");
+    }
+
+    private static void NearestLightSelection()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        simulation.Lights[0].Position = new Vector2(100, 100);
+        simulation.AddLight(new Vector2(120, 100));
+        Check(simulation.FindClosestLight(new Vector2(118, 100), 16) == 1, "selection should choose the closest light");
+    }
+
+    private static void LightPositionPersists()
+    {
+        var simulation = new SimulationEngine(new SimulationSettings());
+        simulation.Lights[0].Position = new Vector2(123, 234);
+        simulation.Update(1 / 60f);
+        Check(simulation.Lights[0].Position == new Vector2(123, 234), "dragged simulation-space position should persist");
+    }
+
+    private static void FpsMeasurement()
+    {
+        var counter = new FpsCounter();
+        for (int i = 0; i < 30; i++) counter.Update(1 / 60d);
+        Check(counter.Value > 0 && counter.Value < 1000, "FPS measurement should be positive and bounded");
     }
 
     private static void SpeedLimit()
@@ -53,7 +118,7 @@ static class Tests
     {
         var settings = new SimulationSettings { InsectCount = 1, TurnRate = 1, BaseSpeed = 50 };
         var simulation = new SimulationEngine(settings);
-        simulation.Light.Position = simulation.Agents[0].Position - Vector2.Normalize(simulation.Agents[0].Velocity) * 100;
+        simulation.Lights[0].Position = simulation.Agents[0].Position - Vector2.Normalize(simulation.Agents[0].Velocity) * 100;
         float before = simulation.Agents[0].Heading;
         simulation.Update(1 / 60f);
         float after = simulation.Agents[0].Heading;

@@ -7,15 +7,17 @@ public sealed class SimulationEngine
 {
     private readonly List<IBehavior> behaviors = new();
     private readonly List<Agent> agents = new();
+    private readonly List<LightSource> lights = new();
     private int seed;
 
     public SimulationSettings Settings { get; }
-    public LightSource Light { get; } = new();
+    public IReadOnlyList<LightSource> Lights => lights;
     public IReadOnlyList<Agent> Agents => agents;
     public Random Random { get; private set; } = new(42);
     public float Width { get; private set; } = 900;
     public float Height { get; private set; } = 600;
     public double SimulationTime { get; private set; }
+    public const int MaxLights = 16;
 
     public SimulationEngine(SimulationSettings settings)
     {
@@ -32,7 +34,11 @@ public sealed class SimulationEngine
     {
         Width = Math.Max(1, width);
         Height = Math.Max(1, height);
-        Light.Position = new Vector2(Width * 0.5f, Height * 0.48f);
+        if (lights.Count == 0)
+            AddLight(new Vector2(Width * 0.5f, Height * 0.48f));
+        else
+            foreach (LightSource light in lights)
+                light.Position = new Vector2(Math.Clamp(light.Position.X, 0, Width), Math.Clamp(light.Position.Y, 0, Height));
     }
 
     public void SetSeed(int value) => seed = value;
@@ -41,6 +47,8 @@ public sealed class SimulationEngine
     {
         Random = new Random(seed);
         agents.Clear();
+        lights.Clear();
+        AddLight(new Vector2(Width * 0.5f, Height * 0.48f));
         SimulationTime = 0;
         for (int i = 0; i < Settings.InsectCount; i++)
         {
@@ -51,6 +59,51 @@ public sealed class SimulationEngine
             agents.Add(new Agent(position, velocity, 0.75f + Random.NextSingle() * 0.5f,
                 0.75f + Random.NextSingle() * 0.5f, 0.7f + Random.NextSingle() * 0.6f));
         }
+    }
+
+    public LightSource AddLight(Vector2? position = null)
+    {
+        if (lights.Count >= MaxLights) return lights[^1];
+        int id = lights.Count == 0 ? 1 : lights.Max(light => light.Id) + 1;
+        Vector2 newPosition = position ?? NewLightPosition(lights.Count);
+        return AddLight(id, newPosition);
+    }
+
+    public int RemoveLight(int index)
+    {
+        if (lights.Count <= 1 || index < 0 || index >= lights.Count) return Math.Clamp(index, 0, lights.Count - 1);
+        lights.RemoveAt(index);
+        return Math.Min(index, lights.Count - 1);
+    }
+
+    public int FindClosestLight(Vector2 position, float selectionRadius)
+    {
+        int closestIndex = -1;
+        float closestDistanceSquared = selectionRadius * selectionRadius;
+        for (int i = 0; i < lights.Count; i++)
+        {
+            float distanceSquared = Vector2.DistanceSquared(position, lights[i].Position);
+            if (distanceSquared <= closestDistanceSquared)
+            {
+                closestDistanceSquared = distanceSquared;
+                closestIndex = i;
+            }
+        }
+        return closestIndex;
+    }
+
+    private LightSource AddLight(int id, Vector2 position)
+    {
+        var light = new LightSource(id, position, 1.25f, 360f, 1f);
+        lights.Add(light);
+        return light;
+    }
+
+    private Vector2 NewLightPosition(int index)
+    {
+        float angle = index * 1.7f;
+        float radius = Math.Min(Width, Height) * 0.22f;
+        return new Vector2(Width * 0.5f + MathF.Cos(angle) * radius, Height * 0.48f + MathF.Sin(angle) * radius);
     }
 
     public void SetAgentCount(int count)

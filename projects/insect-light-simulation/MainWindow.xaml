@@ -19,7 +19,9 @@
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
             <Border Grid.Column="0" BorderBrush="#247A31" BorderThickness="1" Background="Black" Padding="1">
-                <Image x:Name="Viewport" Stretch="Fill" SnapsToDevicePixels="True" />
+                <Image x:Name="Viewport" Stretch="Fill" SnapsToDevicePixels="True"
+                       MouseLeftButtonDown="Viewport_MouseLeftButtonDown"
+                       MouseMove="Viewport_MouseMove" MouseLeftButtonUp="Viewport_MouseLeftButtonUp" />
             </Border>
             <ScrollViewer Grid.Column="1" Margin="12,0,0,0" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
@@ -32,6 +34,12 @@
                     <Slider x:Name="CountSlider" Minimum="10" Maximum="2000" Value="500" TickFrequency="100" IsSnapToTickEnabled="True" ValueChanged="CountSlider_ValueChanged" />
                     <TextBlock x:Name="CountValue" Text="500" HorizontalAlignment="Right" Margin="0,-4,0,10" />
                     <TextBlock Text="LIGHT" FontWeight="Bold" Margin="0,4,0,8" />
+                    <TextBlock x:Name="SelectedLightText" Text="SELECTED LIGHT: 1" />
+                    <TextBlock x:Name="LightPositionText" Text="POSITION: (0, 0)" Foreground="#3CB84B" Margin="0,2,0,4" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="+ ADD LIGHT" Click="AddLightButton_Click" Margin="0,0,5,0" />
+                        <Button Content="REMOVE SELECTED" Click="RemoveLightButton_Click" />
+                    </StackPanel>
                     <TextBlock Text="ATTRACTION STRENGTH" Foreground="#3CB84B" /><Slider x:Name="AttractionSlider" Minimum="0" Maximum="3" Value="1.25" ValueChanged="SettingSlider_ValueChanged" />
                     <TextBlock Text="INFLUENCE RADIUS" Foreground="#3CB84B" /><Slider x:Name="RadiusSlider" Minimum="80" Maximum="700" Value="360" ValueChanged="SettingSlider_ValueChanged" />
                     <TextBlock Text="LIGHT INTENSITY" Foreground="#3CB84B" /><Slider x:Name="IntensitySlider" Minimum="0.2" Maximum="2" Value="1" ValueChanged="SettingSlider_ValueChanged" />
@@ -41,11 +49,13 @@
                     <TextBlock Text="WANDER STRENGTH" Foreground="#3CB84B" /><Slider x:Name="WanderSlider" Minimum="0" Maximum="2" Value="0.75" ValueChanged="SettingSlider_ValueChanged" />
                     <TextBlock Text="BOUNDARY" Foreground="#3CB84B" Margin="0,8,0,2" />
                     <ComboBox x:Name="BoundaryBox" SelectedIndex="0" SelectionChanged="BoundaryBox_SelectionChanged"><ComboBoxItem Content="WRAPAROUND" /><ComboBoxItem Content="SOFT BOUNCE" /></ComboBox>
+                    <TextBlock Text="STATS" FontWeight="Bold" Margin="0,16,0,8" />
+                    <TextBlock x:Name="StatsPanelText" Text="FPS: --&#xA;TIME: 0.0s&#xA;INSECTS: 500&#xA;AVG SPEED: --&#xA;LIGHTS: 1" />
                 </StackPanel>
             </ScrollViewer>
         </Grid>
         <DockPanel Grid.Row="2" Margin="0,10,0,0">
-            <TextBlock x:Name="StatsText" Text="SIM TIME 0.0s   FPS --   INSECTS 500   AVG SPEED --" VerticalAlignment="Center" />
+            <TextBlock x:Name="StatsText" Text="FPS: --   SIM TIME 0.0s   INSECTS 500   AVG SPEED --   LIGHTS 1" VerticalAlignment="Center" FontWeight="Bold" />
             <TextBlock Text="BLACK FIELD / GREEN AGENTS / PSEUDO LIGHT" Foreground="#3CB84B" HorizontalAlignment="Right" />
         </DockPanel>
     </Grid>
