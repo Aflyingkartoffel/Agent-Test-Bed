@@ -185,15 +185,16 @@ public sealed class EditorState
         Changed?.Invoke();
     }
 
-    public void SetDisplay(bool showNodes, bool showSkin, bool showEyes)
+    public void SetDisplay(bool showNodes, bool showSkin, bool showMuscles, bool showEyes)
     {
-        if (Mode == EditorMode.Create) { Display.CreateShowNodes = showNodes; Display.CreateShowSkin = showSkin; Display.CreateShowFeatures = showEyes; }
+        if (Mode == EditorMode.Create) { Display.CreateShowNodes = showNodes; Display.CreateShowSkin = showSkin; Display.CreateShowMuscles = showMuscles; Display.CreateShowFeatures = showEyes; }
         else { Display.PlayShowNodes = showNodes; Display.PlayShowSkin = showSkin; Display.PlayShowFeatures = showEyes; }
         Changed?.Invoke();
     }
 
-    public void SetPlayDisplay(bool solidBody, bool showSkeleton, bool showMuscles, bool showFeatures)
+    public void SetPlayDisplay(bool showSkin, bool solidBody, bool showSkeleton, bool showMuscles, bool showFeatures)
     {
+        Display.PlayShowSkin = showSkin;
         Display.PlaySolidBody = solidBody;
         Display.PlayShowSkeleton = showSkeleton;
         Display.PlayShowMuscles = showMuscles;
@@ -296,6 +297,7 @@ public sealed class EditorState
         Creature.Features.Clear();
         Display.CreateShowNodes = true;
         Display.CreateShowSkin = true;
+        Display.CreateShowMuscles = false;
         Display.CreateShowFeatures = true;
         Display.PlayShowNodes = false;
         Display.PlayShowSkin = true;

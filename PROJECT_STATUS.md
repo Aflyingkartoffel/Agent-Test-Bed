@@ -37,3 +37,9 @@ The follow-up cap-orientation fix uses explicit outward tangent vectors so the h
 The current creature-lab milestone adds authored skin color with Create-mode color picking and JSON persistence, almond eyes with width/height controls, smooth Play pupil tracking, and mirrored feature rendering. Play Mode defaults to solid body plus features, with optional Skeleton and Muscles diagnostic overlays. Muscle lines are derived from the current chain positions/radii and do not affect simulation.
 
 Play deformation now applies a 75-degree local bend limit after distance following and wave motion, then restores authored connection rest lengths. This is a bend-stability constraint only; self-collision is intentionally not implemented. The lab test harness now has 94 passing tests covering the new appearance and deformation behavior.
+
+## Soft bend and construction-circle visualization
+
+The previous bend solver hard-snapped each violating downstream child to the exact angular boundary, so sequential joints could overwrite one another and form alternating zig-zag bends. The replacement uses signed angles, six small distance/angular iterations, 25% angular stiffness, and lightweight correction sharing between the joint and child. It preserves dynamic Play curvature without targeting authored rotations.
+
+MUSCLES now renders the actual construction circles used by the procedural skin: one transparent radius outline per node. SKELETON remains centerline plus connections, and SKIN remains the smoothed outer envelope. Create and Play have independent display toggles. Full non-adjacent self-collision remains out of scope.

@@ -45,3 +45,7 @@ The appearance and anatomy-debug milestone adds authored skin color with a WPF C
 Play deformation now applies a local bend limit of 75 degrees after distance following and wave motion, then restores connection rest lengths. This is a stability constraint rather than self-collision: overlapping body segments are still allowed, while abrupt local turns are softened.
 
 The test harness covers the new appearance defaults, eye and skin persistence, backward-compatible color defaults, bend clamping, rest-length preservation, and long-chain finite-state behavior.
+
+The soft-bend and construction-visualization milestone replaces the former one-step angular snap with six small solver iterations. Each pass solves distances, applies a signed soft angular correction at 25% stiffness, and solves distances again. Corrections are shared between the incoming joint and outgoing child, preserving bend direction and allowing the root to lead while the body follows progressively. The 75-degree value remains a maximum local bend, not an authored pose target.
+
+The MUSCLES overlay now means construction circles: one transparent outline per structural node, centered at the current authored or simulated node position and using the exact derived node radius. SKELETON remains the centerline and connections; SKIN remains the smoothed envelope. Create and Play expose independent Skin, Skeleton, and Muscles display choices.

@@ -62,8 +62,10 @@ public partial class MainWindow : Window
         InterpolationBox.IsEnabled = editing;
         CreateShowNodesBox.IsChecked = state.Display.CreateShowNodes;
         CreateShowSkinBox.IsChecked = state.Display.CreateShowSkin;
+        CreateShowMusclesBox.IsChecked = state.Display.CreateShowMuscles;
         SkinColorBox.Text = $"#{state.Creature.SkinColorArgb:X8}";
         PlaySolidBodyBox.IsChecked = state.Display.PlaySolidBody;
+        PlayShowSkinBox.IsChecked = state.Display.PlayShowSkin;
         PlayShowSkeletonBox.IsChecked = state.Display.PlayShowSkeleton;
         PlayShowMusclesBox.IsChecked = state.Display.PlayShowMuscles;
         PlayShowEyesBox.IsChecked = state.Display.PlayShowFeatures;
@@ -180,8 +182,8 @@ public partial class MainWindow : Window
     private void DisplayToggle_Changed(object sender, RoutedEventArgs e)
     {
         if (!IsLoaded || refreshing) return;
-        if (state.Mode == EditorMode.Create) state.SetDisplay(CreateShowNodesBox.IsChecked == true, CreateShowSkinBox.IsChecked == true, state.Display.CreateShowFeatures);
-        else state.SetPlayDisplay(PlaySolidBodyBox.IsChecked == true, PlayShowSkeletonBox.IsChecked == true, PlayShowMusclesBox.IsChecked == true, PlayShowEyesBox.IsChecked == true);
+        if (state.Mode == EditorMode.Create) state.SetDisplay(CreateShowNodesBox.IsChecked == true, CreateShowSkinBox.IsChecked == true, CreateShowMusclesBox.IsChecked == true, state.Display.CreateShowFeatures);
+        else state.SetPlayDisplay(PlayShowSkinBox.IsChecked == true, PlaySolidBodyBox.IsChecked == true, PlayShowSkeletonBox.IsChecked == true, PlayShowMusclesBox.IsChecked == true, PlayShowEyesBox.IsChecked == true);
     }
 
     private void SkinColor_LostFocus(object sender, RoutedEventArgs e) => ApplySkinColor();

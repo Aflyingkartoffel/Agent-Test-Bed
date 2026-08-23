@@ -64,3 +64,10 @@
 - Reworked eyes as almond outlines with configurable width, height, smooth Play pupil tracking, and mirrored support.
 - Added Play-only Skeleton and Muscles diagnostic overlays while defaulting Play to a solid body with features visible.
 - Added a 75-degree local bend constraint and rest-length reapplication after wave/deformation updates.
+
+## Soft bend and construction-circle visualization
+
+- Replaced hard downstream bend snaps with six iterative signed-angle corrections at 25% stiffness.
+- Distributed angular correction between the incoming joint and outgoing child while retaining rest-length solving and gentle velocity damping.
+- Replaced arbitrary Muscle offset lines with one thin transparent construction circle per structural node.
+- Added independent Create/Play display toggles and regression coverage for circles, signed bend continuity, S-curves, and wave interaction.

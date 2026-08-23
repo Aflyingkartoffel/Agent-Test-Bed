@@ -16,6 +16,7 @@ public sealed class CreaturePlayState
     public float Damping { get; set; } = 3.5f;
     public float SimulationSpeed { get; set; } = 2;
     public float MaxBendDegrees { get; set; } = 75;
+    public float BendStiffness { get; set; } = 0.25f;
     public WaveMotionSettings Wave { get; } = new();
     public bool Paused { get; private set; }
     public float SimulationTime { get; private set; }
@@ -27,6 +28,8 @@ public sealed class CreaturePlayState
         AccelerationStrength = 420;
         Damping = 3.5f;
         SimulationSpeed = 2;
+        MaxBendDegrees = 75;
+        BendStiffness = 0.25f;
         Wave.Enabled = false;
         Wave.Amplitude = 4;
         Wave.Frequency = 1.2f;
@@ -75,11 +78,26 @@ public sealed class CreaturePlayState
         if (Velocities[0].LengthSquared() > MaxSpeed * MaxSpeed) Velocities[0] = Vector2.Normalize(Velocities[0]) * MaxSpeed;
         Positions[0] += Velocities[0] * dt;
 
+        SolveDistanceConstraints(definition, dt);
+        ApplyWave(definition);
+        for (var iteration = 0; iteration < 6; iteration++)
+        {
+            SolveDistanceConstraints(definition, dt);
+            ApplySoftBendConstraint(definition);
+            SolveDistanceConstraints(definition, dt);
+        }
+        ReapplyRestLengths(definition);
+        UpdateConstraintVelocities(definition, dt);
+        SimulationTime += dt;
+    }
+
+    private void SolveDistanceConstraints(CreatureDefinition definition, float dt)
+    {
         for (var i = 1; i < Positions.Count; i++)
         {
             var parent = Positions[i - 1];
             var offset = Positions[i] - parent;
-            var fallback = ChainMath.GetDirectionFromRotation(definition.Nodes[i - 1].Rotation);
+            var fallback = ChainMath.GetDirectionFromRotation(definition.Nodes[Math.Min(i - 1, definition.Nodes.Count - 1)].Rotation);
             var direction = offset.LengthSquared() < 0.0001f ? fallback : Vector2.Normalize(offset);
             var connection = i - 1 < definition.Connections.Count ? definition.Connections[i - 1] : null;
             var restLength = connection?.RestLength ?? definition.ChainSettings.Spacing;
@@ -90,30 +108,33 @@ public sealed class CreaturePlayState
             Velocities[i] *= MathF.Exp(-Math.Clamp(connection?.Damping ?? 0.1f, 0, 20) * dt);
             Accelerations[i] = Vector2.Zero;
         }
-        ApplyBendConstraint(definition);
-        ApplyWave(definition);
-        ApplyBendConstraint(definition);
-        ReapplyRestLengths(definition);
-        SimulationTime += dt;
     }
 
-    private void ApplyBendConstraint(CreatureDefinition definition)
+    private void ApplySoftBendConstraint(CreatureDefinition definition)
     {
         if (Positions.Count < 3) return;
         var limit = Math.Clamp(MaxBendDegrees, 5, 135) * MathF.PI / 180;
+        var stiffness = Math.Clamp(BendStiffness, 0.05f, 0.5f);
         for (var i = 1; i < Positions.Count - 1; i++)
         {
-            var incoming = Positions[i] - Positions[i - 1];
-            var outgoing = Positions[i + 1] - Positions[i];
-            if (incoming.LengthSquared() < 0.0001f || outgoing.LengthSquared() < 0.0001f) continue;
-            incoming = Vector2.Normalize(incoming);
-            var angle = MathF.Atan2(Vector2.Dot(incoming, new Vector2(-outgoing.Y, outgoing.X)), Vector2.Dot(incoming, outgoing));
-            var clamped = Math.Clamp(angle, -limit, limit);
-            if (Math.Abs(angle - clamped) < 0.0001f) continue;
-            var restLength = i < definition.Connections.Count ? definition.Connections[i].RestLength : definition.ChainSettings.Spacing;
-            var direction = Rotate(incoming, clamped);
-            Positions[i + 1] = Positions[i] + direction * restLength;
-            Velocities[i + 1] = (Positions[i + 1] - Positions[i]) / FixedStep;
+            var incomingVector = Positions[i] - Positions[i - 1];
+            var outgoingVector = Positions[i + 1] - Positions[i];
+            if (incomingVector.LengthSquared() < 0.0001f || outgoingVector.LengthSquared() < 0.0001f) continue;
+            var incoming = Vector2.Normalize(incomingVector);
+            var outgoing = Vector2.Normalize(outgoingVector);
+            var angle = SignedAngle(incoming, outgoing);
+            var excess = Math.Abs(angle) - limit;
+            if (excess <= 0) continue;
+
+            // Keep the signed bend direction and apply only part of the excess this pass.
+            var correction = MathF.CopySign(excess * stiffness, angle);
+            var upstreamShare = i <= 1 ? 0.15f : 0.3f;
+            var incomingCorrection = correction * upstreamShare;
+            var outgoingCorrection = correction - incomingCorrection;
+            var parent = Positions[i - 1];
+            var joint = parent + Rotate(incoming, incomingCorrection) * incomingVector.Length();
+            Positions[i] = joint;
+            Positions[i + 1] = joint + Rotate(outgoing, -outgoingCorrection) * outgoingVector.Length();
         }
     }
 
@@ -128,7 +149,23 @@ public sealed class CreaturePlayState
         }
     }
 
+    private void UpdateConstraintVelocities(CreatureDefinition definition, float dt)
+    {
+        for (var i = 1; i < Positions.Count; i++)
+        {
+            var parent = Positions[i - 1];
+            var delta = Positions[i] - parent;
+            if (delta.LengthSquared() < 0.0001f) continue;
+            var constrainedVelocity = delta / dt;
+            Velocities[i] = Vector2.Lerp(Velocities[i], constrainedVelocity, 0.35f);
+            var connection = i - 1 < definition.Connections.Count ? definition.Connections[i - 1] : null;
+            Velocities[i] *= MathF.Exp(-Math.Clamp(connection?.Damping ?? 0.1f, 0, 20) * dt);
+        }
+    }
+
     private static Vector2 Rotate(Vector2 vector, float radians) => new(vector.X * MathF.Cos(radians) - vector.Y * MathF.Sin(radians), vector.X * MathF.Sin(radians) + vector.Y * MathF.Cos(radians));
+
+    private static float SignedAngle(Vector2 from, Vector2 to) => MathF.Atan2(from.X * to.Y - from.Y * to.X, Vector2.Dot(from, to));
 
     private void ApplyWave(CreatureDefinition definition)
     {

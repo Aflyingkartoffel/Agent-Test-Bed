@@ -96,3 +96,7 @@ For terminal geometry, direction should be named explicitly. The head cap points
 Authored appearance data belongs in the creature definition, while debug visibility belongs in display settings. That separation lets Save/Load preserve the chosen skin color without saving temporary Skeleton/Muscles visibility choices as geometry.
 
 A bend limit is a local constraint: measure the signed angle between adjacent segment directions, clamp it, then restore each segment's rest length. It improves deformation stability without pretending to solve self-collision or changing the authored chain.
+
+An angular limit should be solved as an error over time, not as an immediate positional snap. Small signed corrections in repeated distance/angular passes let a flexible chain bend dynamically while avoiding the neighboring-joint sign flips that a sequential hard clamp can create.
+
+Debug visualizations should expose the same intermediate data that produces the final result. For this creature, Muscles is most useful when it draws the exact node centers and derived radii used to build Skin, while Skeleton separately exposes only the centerline constraints.

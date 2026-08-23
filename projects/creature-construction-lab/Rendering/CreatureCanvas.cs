@@ -50,7 +50,7 @@ public sealed class CreatureCanvas : FrameworkElement
         if (ShowSkin && positions.Length > 0) DrawSkin(draw, CreatureSkinGeometry.Build(positions, radii), State.Mode != EditorMode.Play || State.Display.PlaySolidBody);
         if (State.Mode == EditorMode.Create) DrawConnections(draw, positions, new Pen(new SolidColorBrush(Color.FromRgb(35, 120, 79)), 1.5));
         if (State.Mode == EditorMode.Play && State.Display.PlayShowSkeleton) DrawSkeleton(draw, positions, radii);
-        if (State.Mode == EditorMode.Play && State.Display.PlayShowMuscles) DrawMuscles(draw, positions, radii);
+        if ((State.Mode == EditorMode.Play && State.Display.PlayShowMuscles) || (State.Mode == EditorMode.Create && State.Display.CreateShowMuscles)) DrawMuscles(draw, positions, radii);
         if (State.Mode == EditorMode.Create && State.SelectedNode is not null && State.SelectedFeature is null) DrawGizmo(draw, State.SelectedNode, State.Creature.ChainSettings.Spacing);
         if (ShowNodes) foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode, GetPosition(node));
         if (ShowFeatures) DrawFeatures(draw, positions, radii);
@@ -86,15 +86,10 @@ public sealed class CreatureCanvas : FrameworkElement
 
     private static void DrawMuscles(DrawingContext draw, System.Numerics.Vector2[] positions, float[] radii)
     {
-        var pen = new Pen(new SolidColorBrush(Color.FromArgb(190, 255, 180, 80)), 2);
-        for (var i = 1; i < positions.Length; i++)
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(155, 255, 210, 110)), 1);
+        foreach (var circle in ConstructionCircleGeometry.Build(positions, radii))
         {
-            var direction = positions[i] - positions[i - 1];
-            if (direction.LengthSquared() < 0.0001f) continue;
-            direction = Vector2.Normalize(direction);
-            var normal = new Vector2(-direction.Y, direction.X) * ((radii[i - 1] + radii[i]) * 0.22f);
-            draw.DrawLine(pen, ToPoint(positions[i - 1] + normal), ToPoint(positions[i] + normal));
-            draw.DrawLine(pen, ToPoint(positions[i - 1] - normal), ToPoint(positions[i] - normal));
+            draw.DrawEllipse(null, pen, ToPoint(circle.Center), circle.Radius, circle.Radius);
         }
     }
 
