@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Media;
 using CreatureConstructionLab.Editor;
 using CreatureConstructionLab.Model;
+using System.Windows.Input;
 
 namespace CreatureConstructionLab.Rendering;
 
@@ -24,6 +25,7 @@ public sealed class CreatureCanvas : FrameworkElement
 
     private CreatureNode? dragging;
     private Vector dragOffset;
+    private bool rotating;
 
     protected override int VisualChildrenCount => 1;
     protected override Visual GetVisualChild(int index) => visual;
@@ -37,12 +39,33 @@ public sealed class CreatureCanvas : FrameworkElement
         for (double x = 0; x < ActualWidth; x += 32) draw.DrawLine(gridPen, new Point(x, 0), new Point(x, ActualHeight));
         for (double y = 0; y < ActualHeight; y += 32) draw.DrawLine(gridPen, new Point(0, y), new Point(ActualWidth, y));
 
+        var connectionPen = new Pen(new SolidColorBrush(Color.FromRgb(35, 120, 79)), 1.5);
+        foreach (var connection in State.Creature.Connections)
+        {
+            var parent = State.Creature.Nodes.FirstOrDefault(n => n.Id == connection.ParentNodeId);
+            var child = State.Creature.Nodes.FirstOrDefault(n => n.Id == connection.ChildNodeId);
+            if (parent is not null && child is not null) draw.DrawLine(connectionPen, ToPoint(parent.Position), ToPoint(child.Position));
+        }
+        if (State.Mode == EditorMode.Create && State.SelectedNode is not null) DrawGizmo(draw, State.SelectedNode, State.Creature.ChainSettings.Spacing);
         foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode);
         if (State.Mode == EditorMode.Play)
         {
             var text = new FormattedText("PLAY MODE  /  SIMULATION NOT IMPLEMENTED IN MILESTONE 1", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Consolas"), 14, Brushes.SeaGreen, 1);
             draw.DrawText(text, new Point(24, 24));
         }
+    }
+
+    private static Point ToPoint(System.Numerics.Vector2 p) => new(p.X, p.Y);
+
+    private static void DrawGizmo(DrawingContext draw, CreatureNode node, float spacing)
+    {
+        var center = ToPoint(node.Position);
+        var guidePen = new Pen(new SolidColorBrush(Color.FromArgb(150, 83, 197, 139)), 1) { DashStyle = DashStyles.Dash };
+        draw.DrawEllipse(null, guidePen, center, spacing, spacing);
+        var direction = ChainMath.GetDirectionFromRotation(node.Rotation);
+        var handle = new Point(center.X + direction.X * spacing, center.Y + direction.Y * spacing);
+        draw.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(130, 255, 186)), 2), center, handle);
+        draw.DrawEllipse(new SolidColorBrush(Color.FromRgb(130, 255, 186)), null, handle, 5, 5);
     }
 
     private static void DrawNode(DrawingContext draw, CreatureNode node, bool selected)
@@ -60,6 +83,7 @@ public sealed class CreatureCanvas : FrameworkElement
         Focus();
         var world = State.Coordinates.ScreenToWorld(e.GetPosition(this));
         if (State.Mode != EditorMode.Create) return;
+        if (State.SelectedNode is not null && IsNearDirectionHandle(world, State.SelectedNode)) { rotating = true; CaptureMouse(); UpdateRotation(world); return; }
         if (State.Tool == EditorTool.Node && State.Creature.Nodes.All(n => System.Numerics.Vector2.Distance(n.Position, world) > n.Radius))
         {
             State.CreateNode(world); CaptureMouse(); dragging = State.SelectedNode; dragOffset = new Vector(0, 0); return;
@@ -70,11 +94,28 @@ public sealed class CreatureCanvas : FrameworkElement
 
     private void OnMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        if (dragging is null || e.LeftButton != System.Windows.Input.MouseButtonState.Pressed || State.Mode != EditorMode.Create) return;
+        if (e.LeftButton != MouseButtonState.Pressed || State.Mode != EditorMode.Create) return;
         var world = State.Coordinates.ScreenToWorld(e.GetPosition(this));
-        dragging.Position = new System.Numerics.Vector2((float)(world.X + dragOffset.X), (float)(world.Y + dragOffset.Y));
+        if (rotating && State.SelectedNode is not null) { UpdateRotation(world); return; }
+        if (dragging is null) return;
+        if (State.Creature.Nodes.IndexOf(dragging) > 0) return;
+        var offset = new System.Numerics.Vector2((float)(world.X + dragOffset.X) - dragging.Position.X, (float)(world.Y + dragOffset.Y) - dragging.Position.Y);
+        foreach (var node in State.Creature.Nodes) node.Position += offset;
         State.Select(dragging);
     }
 
-    private void OnMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e) { dragging = null; ReleaseMouseCapture(); }
+    private void OnMouseUp(object sender, MouseButtonEventArgs e) { dragging = null; rotating = false; ReleaseMouseCapture(); }
+
+    private bool IsNearDirectionHandle(System.Numerics.Vector2 world, CreatureNode node)
+    {
+        var handle = node.Position + ChainMath.GetDirectionFromRotation(node.Rotation) * State.Creature.ChainSettings.Spacing;
+        return System.Numerics.Vector2.Distance(world, handle) <= 14;
+    }
+
+    private void UpdateRotation(System.Numerics.Vector2 world)
+    {
+        if (State.SelectedNode is null) return;
+        var delta = world - State.SelectedNode.Position;
+        if (delta.LengthSquared() > 0.001f) State.SetSelectedRotation(MathF.Atan2(delta.Y, delta.X) * 180 / MathF.PI);
+    }
 }

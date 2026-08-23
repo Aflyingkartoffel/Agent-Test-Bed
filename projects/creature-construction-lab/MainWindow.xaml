@@ -14,6 +14,11 @@
         <TextBlock Text="TOOLS" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
         <StackPanel Orientation="Horizontal"><Button x:Name="NodeToolButton" Content="NODE" Click="NodeTool_Click" Width="108" Margin="0,0,6,0"/><Button x:Name="SelectToolButton" Content="SELECT" Click="SelectTool_Click" Width="108"/></StackPanel>
         <TextBlock Text="NODE TOOL: click empty canvas to create" Foreground="#3D9A6A" FontSize="11" TextWrapping="Wrap" Margin="0,10,0,20" />
+        <TextBlock Text="CHAIN" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Spacing" Width="90" VerticalAlignment="Center"/><TextBox x:Name="SpacingBox" Text="50" Width="108" LostFocus="ChainProperty_LostFocus" /></StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Stiffness" Width="90" VerticalAlignment="Center"/><TextBox x:Name="StiffnessBox" Text="1" Width="108" LostFocus="ChainProperty_LostFocus" /></StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Damping" Width="90" VerticalAlignment="Center"/><TextBox x:Name="DampingBox" Text="0.1" Width="108" LostFocus="ChainProperty_LostFocus" /></StackPanel>
+        <Button Content="ADD NEXT NODE" Click="AddNextNode_Click" Margin="0,6,0,20" />
         <TextBlock Text="SELECTED NODE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
         <TextBlock x:Name="SelectionText" Text="NONE" Foreground="#3D9A6A" Margin="0,0,0,12" />
         <Grid><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -22,7 +27,7 @@
           <TextBlock Text="Radius" Grid.Row="2"/><TextBox x:Name="RadiusBox" Grid.Row="2" Grid.Column="1" Margin="0,0,0,6" LostFocus="Property_LostFocus" />
           <TextBlock Text="Rotation" Grid.Row="3"/><TextBox x:Name="RotationBox" Grid.Row="3" Grid.Column="1" Margin="0,0,0,6" LostFocus="Property_LostFocus" />
         </Grid>
-        <TextBlock Text="Drag nodes to move. Press DELETE to remove the selection." Foreground="#3D9A6A" FontSize="11" TextWrapping="Wrap" Margin="0,14,0,0" />
+        <TextBlock x:Name="HelpText" Text="Drag the root to move the whole chain. Drag the bright direction handle to rotate. Press DELETE to remove the selected node and its descendants." Foreground="#3D9A6A" FontSize="11" TextWrapping="Wrap" Margin="0,14,0,0" />
       </StackPanel>
     </Grid>
     <TextBlock Grid.Row="2" x:Name="StatusText" Text="CREATE MODE  /  0 NODES" Foreground="#3D9A6A" VerticalAlignment="Center" />

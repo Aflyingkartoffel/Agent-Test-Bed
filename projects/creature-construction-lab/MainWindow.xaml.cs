@@ -29,6 +29,10 @@ public partial class MainWindow : Window
         YBox.Text = node is null ? "" : node.Position.Y.ToString("0.##", CultureInfo.InvariantCulture);
         RadiusBox.Text = node is null ? "" : node.Radius.ToString("0.##", CultureInfo.InvariantCulture);
         RotationBox.Text = node is null ? "" : node.Rotation.ToString("0.##", CultureInfo.InvariantCulture);
+        SpacingBox.Text = state.Creature.ChainSettings.Spacing.ToString("0.##", CultureInfo.InvariantCulture);
+        StiffnessBox.Text = state.Creature.ChainSettings.Stiffness.ToString("0.##", CultureInfo.InvariantCulture);
+        DampingBox.Text = state.Creature.ChainSettings.Damping.ToString("0.##", CultureInfo.InvariantCulture);
+        HelpText.Text = state.StatusMessage ?? "Drag the root to move the whole chain. Drag the bright direction handle to rotate. Press DELETE to remove the selected node and its descendants.";
         StatusText.Text = $"{state.Mode.ToString().ToUpperInvariant()} MODE  /  {state.Creature.Nodes.Count} NODE{(state.Creature.Nodes.Count == 1 ? "" : "S")}";
         CreateModeButton.Background = state.Mode == EditorMode.Create ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(18, 70, 43)) : null;
         PlayModeButton.Background = state.Mode == EditorMode.Play ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(18, 70, 43)) : null;
@@ -39,6 +43,17 @@ public partial class MainWindow : Window
     private void NodeTool_Click(object sender, RoutedEventArgs e) => state.Tool = EditorTool.Node;
     private void SelectTool_Click(object sender, RoutedEventArgs e) => state.Tool = EditorTool.Select;
     private void Reset_Click(object sender, RoutedEventArgs e) => state.Reset();
+    private void AddNextNode_Click(object sender, RoutedEventArgs e)
+    {
+        if (state.SelectedNode is null) { state.ClearStatus(); return; }
+        if (state.AddNextNode() is null) { state.SetStatus("Only the current chain end can be extended."); }
+    }
+
+    private void ChainProperty_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (float.TryParse(SpacingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var spacing)) state.SetSpacing(spacing);
+        if (float.TryParse(StiffnessBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var stiffness) && float.TryParse(DampingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var damping)) state.SetChainSettings(stiffness, damping);
+    }
 
     private void Property_LostFocus(object sender, RoutedEventArgs e)
     {
