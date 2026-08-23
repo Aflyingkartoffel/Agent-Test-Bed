@@ -5,6 +5,8 @@ namespace CreatureConstructionLab.Editor;
 
 public static class ChainMath
 {
+    public const float MinimumTurnDegrees = -135;
+    public const float MaximumTurnDegrees = 135;
     public static Vector2 GetDirectionFromRotation(float degrees)
     {
         var radians = degrees * MathF.PI / 180;
@@ -20,6 +22,30 @@ public static class ChainMath
         if (direction.LengthSquared() < 0.0001f) direction = fallbackDirection;
         return GetPositionAtSpacing(parentPosition, direction, spacing);
     }
+
+    public static float NormalizeDegrees(float degrees)
+    {
+        degrees %= 360;
+        return degrees > 180 ? degrees - 360 : degrees <= -180 ? degrees + 360 : degrees;
+    }
+
+    public static float GetConstructionReferenceDegrees(CreatureDefinition creature, int nodeIndex)
+    {
+        if (nodeIndex <= 0 || nodeIndex >= creature.Nodes.Count) return 0;
+        var direction = creature.Nodes[nodeIndex].Position - creature.Nodes[nodeIndex - 1].Position;
+        return direction.LengthSquared() < 0.0001f ? creature.Nodes[nodeIndex - 1].Rotation : MathF.Atan2(direction.Y, direction.X) * 180 / MathF.PI;
+    }
+
+    public static float ClampConstructionRotation(CreatureDefinition creature, int nodeIndex, float rotation)
+    {
+        if (nodeIndex <= 0 || nodeIndex >= creature.Nodes.Count) return NormalizeDegrees(rotation);
+        var reference = GetConstructionReferenceDegrees(creature, nodeIndex);
+        var delta = NormalizeDegrees(rotation - reference);
+        return NormalizeDegrees(reference + Math.Clamp(delta, MinimumTurnDegrees, MaximumTurnDegrees));
+    }
+
+    public static float GetEffectiveConstructionRotation(CreatureDefinition creature, int nodeIndex)
+        => ClampConstructionRotation(creature, nodeIndex, creature.Nodes[nodeIndex].Rotation);
 
     public static void RebuildChainSpacing(CreatureDefinition creature)
     {

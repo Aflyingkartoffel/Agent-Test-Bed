@@ -1,13 +1,14 @@
 using System.Numerics;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CreatureConstructionLab.Model;
 
 namespace CreatureConstructionLab.IO;
 
 public static class CreatureFileService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true, Converters = { new JsonStringEnumConverter() } };
 
     public static void Save(string path, CreatureDefinition creature)
     {
@@ -16,7 +17,7 @@ public static class CreatureFileService
             Nodes = creature.Nodes.Select(n => new NodeFile { Id = n.Id.ToString(), PositionX = n.Position.X, PositionY = n.Position.Y, Rotation = n.Rotation }).ToList(),
             Connections = creature.Connections.Select(c => new ConnectionFile { ParentNodeId = c.ParentNodeId.ToString(), ChildNodeId = c.ChildNodeId.ToString(), RestLength = c.RestLength, Stiffness = c.Stiffness, Damping = c.Damping }).ToList(),
             Chain = new ChainFile { Spacing = creature.ChainSettings.Spacing, Stiffness = creature.ChainSettings.Stiffness, Damping = creature.ChainSettings.Damping },
-            Body = new BodyFile { BaseRadius = creature.BaseRadius, RampPoints = creature.BodySizeRamp.Points.Select(p => new RampPointFile { Position = p.Position, Value = p.Value }).ToList() }
+            Body = new BodyFile { BaseRadius = creature.BaseRadius, Interpolation = creature.BodySizeRamp.Interpolation, RampPoints = creature.BodySizeRamp.Points.Select(p => new RampPointFile { Position = p.Position, Value = p.Value }).ToList() }
         };
         File.WriteAllText(path, JsonSerializer.Serialize(file, JsonOptions));
     }
@@ -58,6 +59,7 @@ public static class CreatureFileService
             creature.ChainSettings.Stiffness = file.Chain.Stiffness;
             creature.ChainSettings.Damping = file.Chain.Damping;
             creature.BodySizeRamp.Points.Clear();
+            creature.BodySizeRamp.Interpolation = file.Body.Interpolation;
             foreach (var point in file.Body.RampPoints) creature.BodySizeRamp.Points.Add(new RampPoint(point.Position, point.Value));
             error = "";
             return true;
@@ -76,6 +78,6 @@ public static class CreatureFileService
     public sealed class NodeFile { public string? Id { get; set; } public float PositionX { get; set; } public float PositionY { get; set; } public float Rotation { get; set; } }
     public sealed class ConnectionFile { public string? ParentNodeId { get; set; } public string? ChildNodeId { get; set; } public float RestLength { get; set; } public float Stiffness { get; set; } public float Damping { get; set; } }
     public sealed class ChainFile { public float Spacing { get; set; } public float Stiffness { get; set; } public float Damping { get; set; } }
-    public sealed class BodyFile { public float BaseRadius { get; set; } public List<RampPointFile>? RampPoints { get; set; } }
+    public sealed class BodyFile { public float BaseRadius { get; set; } public RampInterpolationMode Interpolation { get; set; } = RampInterpolationMode.Linear; public List<RampPointFile>? RampPoints { get; set; } }
     public sealed class RampPointFile { public float Position { get; set; } public float Value { get; set; } }
 }

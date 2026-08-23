@@ -16,6 +16,8 @@ Milestone 5 adds configurable procedural wave motion. `BodyWaveGenerator` evalua
 
 The final prototype polish uses a gentler default wave amplitude of `4` (previously `8`) and a faster default Max Speed of `360` (previously `180`), while retaining the full manual amplitude range. Save and Load use human-readable `.creature.json` files containing the authored node chain, connections, chain settings, Base Radius, and Body Size Ramp. Temporary Play Mode positions, velocities, acceleration, target, and pause state are never serialized. Loading validates JSON, IDs, references, finite numeric values, chain order, spacing, and ramp points; invalid files show an error and leave the current creature unchanged. `NEW` clears the authored creature and restores defaults.
 
+The curve-and-turning upgrade limits new child construction to a 270-degree arc centered on the incoming segment direction (`-135°..+135°`), leaving a blocked rear 90-degree sector. The root remains unrestricted, and older authored geometry is preserved while future extension directions are clamped. Body Size supports up to 64 points and Linear, Smooth, or automatic-handle Bezier interpolation. The curve editor renders the sampled curve, updates radii immediately, and saves interpolation mode with backward-compatible Linear fallback.
+
 ## Run
 
 From this directory:

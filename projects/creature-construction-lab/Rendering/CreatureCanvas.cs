@@ -72,15 +72,42 @@ public sealed class CreatureCanvas : FrameworkElement
 
     private static Point ToPoint(System.Numerics.Vector2 p) => new(p.X, p.Y);
 
-    private static void DrawGizmo(DrawingContext draw, CreatureNode node, float spacing)
+    private void DrawGizmo(DrawingContext draw, CreatureNode node, float spacing)
     {
         var center = ToPoint(node.Position);
         var guidePen = new Pen(new SolidColorBrush(Color.FromArgb(150, 83, 197, 139)), 1) { DashStyle = DashStyles.Dash };
-        draw.DrawEllipse(null, guidePen, center, spacing, spacing);
-        var direction = ChainMath.GetDirectionFromRotation(node.Rotation);
+        var index = State.Creature.Nodes.IndexOf(node);
+        var reference = ChainMath.GetConstructionReferenceDegrees(State.Creature, index);
+        if (index == 0) draw.DrawEllipse(null, guidePen, center, spacing, spacing);
+        else
+        {
+            DrawArc(draw, center, spacing, reference - 135, 270, guidePen);
+            DrawArc(draw, center, spacing, reference + 135, 90, new Pen(new SolidColorBrush(Color.FromArgb(110, 180, 70, 70)), 1) { DashStyle = DashStyles.Dot });
+        }
+        var direction = ChainMath.GetDirectionFromRotation(ChainMath.GetEffectiveConstructionRotation(State.Creature, index));
         var handle = new Point(center.X + direction.X * spacing, center.Y + direction.Y * spacing);
         draw.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(130, 255, 186)), 2), center, handle);
         draw.DrawEllipse(new SolidColorBrush(Color.FromRgb(130, 255, 186)), null, handle, 5, 5);
+    }
+
+    private static void DrawArc(DrawingContext draw, Point center, double radius, double startDegrees, double sweepDegrees, Pen pen)
+    {
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            var start = PointOnCircle(center, radius, startDegrees);
+            context.BeginFigure(start, false, false);
+            var points = Math.Max(8, (int)Math.Abs(sweepDegrees) / 5);
+            for (var i = 1; i <= points; i++) context.LineTo(PointOnCircle(center, radius, startDegrees + sweepDegrees * i / points), true, false);
+        }
+        geometry.Freeze();
+        draw.DrawGeometry(null, pen, geometry);
+    }
+
+    private static Point PointOnCircle(Point center, double radius, double degrees)
+    {
+        var radians = degrees * Math.PI / 180;
+        return new Point(center.X + Math.Cos(radians) * radius, center.Y + Math.Sin(radians) * radius);
     }
 
     private static void DrawNode(DrawingContext draw, CreatureNode node, bool selected, System.Numerics.Vector2 position)
@@ -129,7 +156,8 @@ public sealed class CreatureCanvas : FrameworkElement
 
     private bool IsNearDirectionHandle(System.Numerics.Vector2 world, CreatureNode node)
     {
-        var handle = node.Position + ChainMath.GetDirectionFromRotation(node.Rotation) * State.Creature.ChainSettings.Spacing;
+        var index = State.Creature.Nodes.IndexOf(node);
+        var handle = node.Position + ChainMath.GetDirectionFromRotation(ChainMath.GetEffectiveConstructionRotation(State.Creature, index)) * State.Creature.ChainSettings.Spacing;
         return System.Numerics.Vector2.Distance(world, handle) <= 14;
     }
 

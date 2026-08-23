@@ -32,8 +32,9 @@ public sealed class EditorState
         if (SelectedNode is null) return null;
         var index = Creature.Nodes.IndexOf(SelectedNode);
         if (index != Creature.Nodes.Count - 1) return null;
-        var position = ChainMath.GetPositionAtSpacing(SelectedNode.Position, ChainMath.GetDirectionFromRotation(SelectedNode.Rotation), Creature.ChainSettings.Spacing);
-        var child = new CreatureNode { Position = position, Rotation = SelectedNode.Rotation };
+        var constructionRotation = ChainMath.ClampConstructionRotation(Creature, index, SelectedNode.Rotation);
+        var position = ChainMath.GetPositionAtSpacing(SelectedNode.Position, ChainMath.GetDirectionFromRotation(constructionRotation), Creature.ChainSettings.Spacing);
+        var child = new CreatureNode { Position = position, Rotation = constructionRotation };
         Creature.Nodes.Add(child);
         Creature.Connections.Add(new CreatureConnection { ParentNodeId = SelectedNode.Id, ChildNodeId = child.Id, RestLength = Creature.ChainSettings.Spacing, Stiffness = Creature.ChainSettings.Stiffness, Damping = Creature.ChainSettings.Damping });
         SelectedNode = child;
@@ -87,8 +88,14 @@ public sealed class EditorState
     public RampPoint? AddRampPoint(float position, float value)
     {
         var point = Creature.BodySizeRamp.AddPoint(position, value);
-        RecalculateBodySizes();
+        if (point is not null) RecalculateBodySizes();
         return point;
+    }
+
+    public void SetRampInterpolation(RampInterpolationMode mode)
+    {
+        Creature.BodySizeRamp.Interpolation = mode;
+        RecalculateBodySizes();
     }
 
     public bool RemoveRampPoint(RampPoint point)
@@ -109,7 +116,8 @@ public sealed class EditorState
     public void SetSelectedRotation(float rotation)
     {
         if (SelectedNode is null) return;
-        SelectedNode.Rotation = rotation;
+        var index = Creature.Nodes.IndexOf(SelectedNode);
+        SelectedNode.Rotation = ChainMath.ClampConstructionRotation(Creature, index, rotation);
         Changed?.Invoke();
     }
 
@@ -182,6 +190,7 @@ public sealed class EditorState
         Creature.ChainSettings.Damping = loaded.ChainSettings.Damping;
         Creature.BaseRadius = loaded.BaseRadius;
         Creature.BodySizeRamp.Points.Clear();
+        Creature.BodySizeRamp.Interpolation = loaded.BodySizeRamp.Interpolation;
         Creature.BodySizeRamp.Points.AddRange(loaded.BodySizeRamp.Points.Select(p => new RampPoint(p.Position, p.Value)));
         SelectedNode = null;
         Mode = EditorMode.Create;

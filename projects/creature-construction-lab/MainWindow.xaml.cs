@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using CreatureConstructionLab.Editor;
 using CreatureConstructionLab.IO;
+using CreatureConstructionLab.Model;
 using CreatureConstructionLab.Rendering;
 
 namespace CreatureConstructionLab;
@@ -38,6 +39,7 @@ public partial class MainWindow : Window
         RadiusText.Text = node is null ? "" : node.Radius.ToString("0.##", CultureInfo.InvariantCulture);
         RotationBox.Text = node is null ? "" : node.Rotation.ToString("0.##", CultureInfo.InvariantCulture);
         BaseRadiusBox.Text = state.Creature.BaseRadius.ToString("0.##", CultureInfo.InvariantCulture);
+        InterpolationBox.SelectedIndex = (int)state.Creature.BodySizeRamp.Interpolation;
         SpacingBox.Text = state.Creature.ChainSettings.Spacing.ToString("0.##", CultureInfo.InvariantCulture);
         StiffnessBox.Text = state.Creature.ChainSettings.Stiffness.ToString("0.##", CultureInfo.InvariantCulture);
         DampingBox.Text = state.Creature.ChainSettings.Damping.ToString("0.##", CultureInfo.InvariantCulture);
@@ -54,6 +56,7 @@ public partial class MainWindow : Window
         StiffnessBox.IsEnabled = editing;
         DampingBox.IsEnabled = editing;
         BaseRadiusBox.IsEnabled = editing;
+        InterpolationBox.IsEnabled = editing;
         PlayPauseButton.Content = state.Simulator.State.Paused ? "RESUME" : "PAUSE";
         MaxSpeedBox.Text = state.Simulator.State.MaxSpeed.ToString("0.##", CultureInfo.InvariantCulture);
         AccelerationBox.Text = state.Simulator.State.AccelerationStrength.ToString("0.##", CultureInfo.InvariantCulture);
@@ -109,6 +112,10 @@ public partial class MainWindow : Window
         state.SetWaveSettings(WaveEnabledBox.IsChecked == true, amplitude, frequency, phase, influence);
     }
     private void ResetCurve_Click(object sender, RoutedEventArgs e) { if (state.Mode == EditorMode.Create) state.ResetBodySizeRamp(); }
+    private void Interpolation_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (IsLoaded && state.Mode == EditorMode.Create && InterpolationBox.SelectedIndex >= 0) state.SetRampInterpolation((RampInterpolationMode)InterpolationBox.SelectedIndex);
+    }
     private void BaseRadius_LostFocus(object sender, RoutedEventArgs e)
     {
         if (state.Mode == EditorMode.Create && float.TryParse(BaseRadiusBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var radius)) state.SetBaseRadius(radius);

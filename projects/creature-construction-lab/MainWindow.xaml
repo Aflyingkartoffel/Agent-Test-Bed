@@ -39,6 +39,7 @@
         <TextBlock Text="BODY SIZE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
         <ContentControl x:Name="RampHost" Height="130" Margin="0,0,0,6" />
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Base Radius" Width="90" VerticalAlignment="Center"/><TextBox x:Name="BaseRadiusBox" Width="108" LostFocus="BaseRadius_LostFocus" /></StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Interpolation" Width="90" VerticalAlignment="Center"/><ComboBox x:Name="InterpolationBox" Width="108" SelectionChanged="Interpolation_Changed"><ComboBoxItem Content="LINEAR"/><ComboBoxItem Content="SMOOTH"/><ComboBoxItem Content="BEZIER"/></ComboBox></StackPanel>
         <Button x:Name="ResetCurveButton" Content="RESET CURVE" Click="ResetCurve_Click" Margin="0,0,0,10" />
         <TextBlock Text="Double-click to add. Drag points to edit. Delete removes intermediate points." Foreground="#3D9A6A" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,14" />
         <TextBlock Text="SELECTED NODE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />

@@ -44,7 +44,18 @@ public sealed class BodySizeRampCanvas : FrameworkElement
         }
         var curvePen = new Pen(new SolidColorBrush(Color.FromRgb(100, 230, 156)), 2);
         var points = state.Creature.BodySizeRamp.Points;
-        for (var i = 1; i < points.Count; i++) draw.DrawLine(curvePen, ToCanvas(points[i - 1]), ToCanvas(points[i]));
+        var curve = new StreamGeometry();
+        using (var curveContext = curve.Open())
+        {
+            curveContext.BeginFigure(ToCanvasValue(0), false, false);
+            for (var i = 1; i <= 120; i++)
+            {
+                var t = i / 120f;
+                curveContext.LineTo(ToCanvasValue(t), true, false);
+            }
+        }
+        curve.Freeze();
+        draw.DrawGeometry(null, curvePen, curve);
         foreach (var point in points)
         {
             var p = ToCanvas(point);
@@ -53,6 +64,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
     }
 
     private Point ToCanvas(RampPoint point) => new(point.Position * Math.Max(1, ActualWidth), ActualHeight - ValueToY(point.Value));
+    private Point ToCanvasValue(float position) => new(position * Math.Max(1, ActualWidth), ActualHeight - ValueToY(state.Creature.BodySizeRamp.Sample(position)));
     private double ValueToY(float value) => (value - BodySizeRamp.MinValue) / (BodySizeRamp.MaxValue - BodySizeRamp.MinValue) * Math.Max(1, ActualHeight);
     private (float Position, float Value) FromCanvas(Point point)
     {
