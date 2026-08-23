@@ -1,5 +1,6 @@
 using System.Numerics;
 using CreatureConstructionLab.Model;
+using CreatureConstructionLab.Simulation;
 
 namespace CreatureConstructionLab.Editor;
 
@@ -11,6 +12,7 @@ public sealed class EditorState
     public EditorTool Tool { get; set; } = EditorTool.Select;
     public CreatureNode? SelectedNode { get; private set; }
     public string? StatusMessage { get; private set; }
+    public CreatureSimulator Simulator { get; } = new();
 
     public event Action? Changed;
 
@@ -135,7 +137,27 @@ public sealed class EditorState
         Changed?.Invoke();
     }
 
-    public void SetMode(EditorMode mode) { Mode = mode; Changed?.Invoke(); }
+    public void SetMode(EditorMode mode)
+    {
+        if (Mode == mode) return;
+        if (mode == EditorMode.Play) Simulator.Reset(Creature);
+        else Simulator.Reset(Creature);
+        Mode = mode;
+        Changed?.Invoke();
+    }
+
+    public void SetPlayTarget(Vector2 target) => Simulator.SetTarget(target);
+    public void UpdateSimulation(float elapsedSeconds) { if (Mode == EditorMode.Play) { Simulator.Update(Creature, elapsedSeconds); Changed?.Invoke(); } }
+    public void SetPaused(bool paused) { Simulator.State.SetPaused(paused); Changed?.Invoke(); }
+    public void ResetSimulation() { Simulator.Reset(Creature); Changed?.Invoke(); }
+    public void SetPlaySettings(float speed, float maxSpeed, float acceleration, float damping)
+    {
+        Simulator.State.SimulationSpeed = Math.Clamp(speed, 0.25f, 4);
+        Simulator.State.MaxSpeed = Math.Clamp(maxSpeed, 10, 500);
+        Simulator.State.AccelerationStrength = Math.Clamp(acceleration, 10, 2000);
+        Simulator.State.Damping = Math.Clamp(damping, 0, 20);
+        Changed?.Invoke();
+    }
 
     public void Reset()
     {
@@ -145,6 +167,7 @@ public sealed class EditorState
         Creature.BaseRadius = 24;
         SelectedNode = null;
         Mode = EditorMode.Create;
+        Simulator.Reset(Creature);
         Tool = EditorTool.Select;
         Changed?.Invoke();
     }

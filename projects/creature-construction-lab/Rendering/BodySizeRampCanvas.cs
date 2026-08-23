@@ -63,6 +63,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
+        if (state.Mode != EditorMode.Create) return;
         Focus();
         var mouse = e.GetPosition(this);
         selectedPoint = state.Creature.BodySizeRamp.Points.OrderBy(p => (ToCanvas(p) - mouse).Length).FirstOrDefault();
@@ -73,7 +74,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
 
     private void OnDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (e.ClickCount != 2) return;
+        if (state.Mode != EditorMode.Create || e.ClickCount != 2) return;
         var value = FromCanvas(e.GetPosition(this));
         selectedPoint = state.AddRampPoint(value.Position, value.Value);
         InvalidateVisual();
@@ -81,7 +82,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
 
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
-        if (!dragging || selectedPoint is null || e.LeftButton != MouseButtonState.Pressed) return;
+        if (state.Mode != EditorMode.Create || !dragging || selectedPoint is null || e.LeftButton != MouseButtonState.Pressed) return;
         var value = FromCanvas(e.GetPosition(this));
         state.SetRampPoint(selectedPoint, value.Position, value.Value);
     }
@@ -90,7 +91,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key is Key.Delete or Key.Back && selectedPoint is not null)
+        if (state.Mode == EditorMode.Create && (e.Key is Key.Delete or Key.Back) && selectedPoint is not null)
         {
             if (state.RemoveRampPoint(selectedPoint)) selectedPoint = null;
             e.Handled = true;

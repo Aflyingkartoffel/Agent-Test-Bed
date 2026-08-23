@@ -3,6 +3,7 @@ using System.Windows.Media;
 using CreatureConstructionLab.Editor;
 using CreatureConstructionLab.Model;
 using System.Windows.Input;
+using CreatureConstructionLab.Simulation;
 
 namespace CreatureConstructionLab.Rendering;
 
@@ -44,15 +45,28 @@ public sealed class CreatureCanvas : FrameworkElement
         {
             var parent = State.Creature.Nodes.FirstOrDefault(n => n.Id == connection.ParentNodeId);
             var child = State.Creature.Nodes.FirstOrDefault(n => n.Id == connection.ChildNodeId);
-            if (parent is not null && child is not null) draw.DrawLine(connectionPen, ToPoint(parent.Position), ToPoint(child.Position));
+            if (parent is not null && child is not null) draw.DrawLine(connectionPen, ToPoint(GetPosition(parent)), ToPoint(GetPosition(child)));
         }
         if (State.Mode == EditorMode.Create && State.SelectedNode is not null) DrawGizmo(draw, State.SelectedNode, State.Creature.ChainSettings.Spacing);
-        foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode);
+        foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode, GetPosition(node));
         if (State.Mode == EditorMode.Play)
         {
-            var text = new FormattedText("PLAY MODE  /  SIMULATION NOT IMPLEMENTED IN MILESTONE 1", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Consolas"), 14, Brushes.SeaGreen, 1);
+            var text = new FormattedText(State.Simulator.State.Positions.Count == 0 ? "PLAY MODE  /  CREATE A CREATURE FIRST" : "PLAY MODE  /  MOUSE TARGET ACTIVE", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Consolas"), 14, Brushes.SeaGreen, 1);
             draw.DrawText(text, new Point(24, 24));
+            if (State.Simulator.State.Positions.Count > 0)
+            {
+                var target = ToPoint(State.Simulator.State.TargetPosition);
+                draw.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromRgb(80, 180, 120)), 1), target, 8, 8);
+                draw.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(80, 180, 120)), 1), new Point(target.X - 12, target.Y), new Point(target.X + 12, target.Y));
+                draw.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(80, 180, 120)), 1), new Point(target.X, target.Y - 12), new Point(target.X, target.Y + 12));
+            }
         }
+    }
+
+    private System.Numerics.Vector2 GetPosition(CreatureNode node)
+    {
+        var index = State.Creature.Nodes.IndexOf(node);
+        return State.Mode == EditorMode.Play && index >= 0 && index < State.Simulator.State.Positions.Count ? State.Simulator.State.Positions[index] : node.Position;
     }
 
     private static Point ToPoint(System.Numerics.Vector2 p) => new(p.X, p.Y);
@@ -68,9 +82,9 @@ public sealed class CreatureCanvas : FrameworkElement
         draw.DrawEllipse(new SolidColorBrush(Color.FromRgb(130, 255, 186)), null, handle, 5, 5);
     }
 
-    private static void DrawNode(DrawingContext draw, CreatureNode node, bool selected)
+    private static void DrawNode(DrawingContext draw, CreatureNode node, bool selected, System.Numerics.Vector2 position)
     {
-        var center = new Point(node.Position.X, node.Position.Y);
+        var center = new Point(position.X, position.Y);
         var brush = new SolidColorBrush(selected ? Color.FromArgb(70, 100, 255, 160) : Color.FromArgb(40, 40, 150, 90));
         var pen = new Pen(new SolidColorBrush(selected ? Color.FromRgb(115, 255, 180) : Color.FromRgb(53, 166, 110)), selected ? 2.5 : 1.5);
         draw.DrawEllipse(brush, pen, center, node.Radius, node.Radius);
@@ -82,7 +96,7 @@ public sealed class CreatureCanvas : FrameworkElement
     {
         Focus();
         var world = State.Coordinates.ScreenToWorld(e.GetPosition(this));
-        if (State.Mode != EditorMode.Create) return;
+        if (State.Mode != EditorMode.Create) { State.SetPlayTarget(world); InvalidateVisual(); return; }
         if (State.SelectedNode is not null && IsNearDirectionHandle(world, State.SelectedNode)) { rotating = true; CaptureMouse(); UpdateRotation(world); return; }
         if (State.Tool == EditorTool.Node && State.Creature.Nodes.All(n => System.Numerics.Vector2.Distance(n.Position, world) > n.Radius))
         {
@@ -94,6 +108,12 @@ public sealed class CreatureCanvas : FrameworkElement
 
     private void OnMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
+        if (State.Mode == EditorMode.Play)
+        {
+            State.SetPlayTarget(State.Coordinates.ScreenToWorld(e.GetPosition(this)));
+            InvalidateVisual();
+            return;
+        }
         if (e.LeftButton != MouseButtonState.Pressed || State.Mode != EditorMode.Create) return;
         var world = State.Coordinates.ScreenToWorld(e.GetPosition(this));
         if (rotating && State.SelectedNode is not null) { UpdateRotation(world); return; }

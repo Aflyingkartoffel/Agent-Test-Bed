@@ -10,6 +10,8 @@ Milestone 3 adds the procedural Body Size Ramp. The ramp has fixed endpoints at 
 
 The right inspector includes a compact curve editor: drag points, double-click to add an intermediate point, Delete to remove one, and Reset Curve to restore the tapered default. Edits update node sizes immediately. Adding or deleting chain nodes re-samples the same ramp; Reset returns the editor to an empty creature with the default ramp.
 
+Milestone 4 adds functional Play Mode. The mouse is a target, not a direct attachment: the root uses velocity, limited acceleration, maximum speed, and damping to follow it. The body follows through fixed-step rest-length constraints using connection stiffness and damping. Play positions and velocities live in `CreaturePlayState`; the constructed `CreatureDefinition` is not mutated during simulation. Pause, Resume, Reset Simulation, simulation speed, Max Speed, Acceleration, and Damping are available in the Play panel. Returning to Create restores the exact constructed pose, while the Create-mode Reset/Clear still removes the creature and restores the default ramp.
+
 ## Run
 
 From this directory:

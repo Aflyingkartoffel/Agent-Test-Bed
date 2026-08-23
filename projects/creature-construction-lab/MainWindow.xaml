@@ -18,11 +18,20 @@
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Spacing" Width="90" VerticalAlignment="Center"/><TextBox x:Name="SpacingBox" Text="50" Width="108" LostFocus="ChainProperty_LostFocus" /></StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Stiffness" Width="90" VerticalAlignment="Center"/><TextBox x:Name="StiffnessBox" Text="1" Width="108" LostFocus="ChainProperty_LostFocus" /></StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Damping" Width="90" VerticalAlignment="Center"/><TextBox x:Name="DampingBox" Text="0.1" Width="108" LostFocus="ChainProperty_LostFocus" /></StackPanel>
-        <Button Content="ADD NEXT NODE" Click="AddNextNode_Click" Margin="0,6,0,20" />
+        <Button x:Name="AddNextButton" Content="ADD NEXT NODE" Click="AddNextNode_Click" Margin="0,6,0,20" />
+        <StackPanel x:Name="PlayPanel" Visibility="Collapsed" Margin="0,0,0,18">
+          <TextBlock Text="PLAY MODE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
+          <StackPanel Orientation="Horizontal"><Button x:Name="PlayPauseButton" Content="PAUSE" Click="PlayPause_Click" Width="108" Margin="0,0,6,0"/><Button Content="RESET SIM" Click="ResetSimulation_Click" Width="108"/></StackPanel>
+          <TextBlock Text="Simulation Speed" Foreground="#3D9A6A" Margin="0,10,0,2" />
+          <ComboBox x:Name="SimulationSpeedBox" SelectedIndex="2" SelectionChanged="SimulationSpeed_Changed"><ComboBoxItem Content="0.25x"/><ComboBoxItem Content="0.5x"/><ComboBoxItem Content="1.0x"/><ComboBoxItem Content="2.0x"/></ComboBox>
+          <StackPanel Orientation="Horizontal" Margin="0,8,0,4"><TextBlock Text="Max Speed" Width="90"/><TextBox x:Name="MaxSpeedBox" Width="108" LostFocus="PlaySetting_LostFocus"/></StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4"><TextBlock Text="Acceleration" Width="90"/><TextBox x:Name="AccelerationBox" Width="108" LostFocus="PlaySetting_LostFocus"/></StackPanel>
+          <StackPanel Orientation="Horizontal"><TextBlock Text="Damping" Width="90"/><TextBox x:Name="PlayDampingBox" Width="108" LostFocus="PlaySetting_LostFocus"/></StackPanel>
+        </StackPanel>
         <TextBlock Text="BODY SIZE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
         <ContentControl x:Name="RampHost" Height="130" Margin="0,0,0,6" />
         <StackPanel Orientation="Horizontal" Margin="0,0,0,6"><TextBlock Text="Base Radius" Width="90" VerticalAlignment="Center"/><TextBox x:Name="BaseRadiusBox" Width="108" LostFocus="BaseRadius_LostFocus" /></StackPanel>
-        <Button Content="RESET CURVE" Click="ResetCurve_Click" Margin="0,0,0,10" />
+        <Button x:Name="ResetCurveButton" Content="RESET CURVE" Click="ResetCurve_Click" Margin="0,0,0,10" />
         <TextBlock Text="Double-click to add. Drag points to edit. Delete removes intermediate points." Foreground="#3D9A6A" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,14" />
         <TextBlock Text="SELECTED NODE" FontSize="15" FontWeight="Bold" Margin="0,0,0,10" />
         <TextBlock x:Name="SelectionText" Text="NONE" Foreground="#3D9A6A" Margin="0,0,0,12" />
