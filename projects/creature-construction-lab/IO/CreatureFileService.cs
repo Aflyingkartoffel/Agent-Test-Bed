@@ -84,13 +84,13 @@ public static class CreatureFileService
         catch (Exception) { error = "The creature file has an invalid structure."; return false; }
     }
 
-    private static FeatureFile ToFile(CreatureFeature feature) => new() { Id = feature.Id.ToString(), Type = feature.Type, ParentNodeId = feature.ParentNodeId.ToString(), LocalX = feature.LocalPosition.X, LocalY = feature.LocalPosition.Y, Rotation = feature.LocalRotation, Scale = feature.Scale, Mirrored = feature.Mirrored, Visible = feature.Visible, EyeSize = feature.EyeSize };
+    private static FeatureFile ToFile(CreatureFeature feature) => new() { Id = feature.Id.ToString(), Type = feature.Type, ParentNodeId = feature.ParentNodeId.ToString(), LocalX = feature.LocalPosition.X, LocalY = feature.LocalPosition.Y, Rotation = feature.LocalRotation, Scale = feature.Scale, Mirrored = feature.Mirrored, Visible = feature.Visible, EyeSize = feature.EyeSize, TongueLength = feature.TongueLength, TongueForkLength = feature.TongueForkLength, TongueForkAngle = feature.TongueForkAngle };
 
     private static bool TryFeature(FeatureFile file, HashSet<Guid> nodeIds, out CreatureFeature? feature)
     {
         feature = null;
-        if (!Guid.TryParse(file.Id, out var id) || !Guid.TryParse(file.ParentNodeId, out var parent) || !nodeIds.Contains(parent) || !Finite(file.LocalX) || !Finite(file.LocalY) || !Finite(file.Rotation) || !FinitePositive(file.Scale) || !FinitePositive(file.EyeSize)) return false;
-        feature = new CreatureFeature { Id = id, Type = file.Type, ParentNodeId = parent, LocalPosition = new Vector2(file.LocalX, file.LocalY), LocalRotation = file.Rotation, Scale = Math.Clamp(file.Scale, 0.1f, 10), Mirrored = file.Mirrored, Visible = file.Visible, EyeSize = Math.Clamp(file.EyeSize, 1, 20) };
+        if (file.Type is not CreatureFeatureType.Eye and not CreatureFeatureType.ForkedTongue || !Guid.TryParse(file.Id, out var id) || !Guid.TryParse(file.ParentNodeId, out var parent) || !nodeIds.Contains(parent) || !Finite(file.LocalX) || !Finite(file.LocalY) || !Finite(file.Rotation) || !FinitePositive(file.Scale) || !FinitePositive(file.EyeSize) || !FinitePositive(file.TongueLength) || !FinitePositive(file.TongueForkLength) || !FinitePositive(file.TongueForkAngle)) return false;
+        feature = new CreatureFeature { Id = id, Type = file.Type, ParentNodeId = parent, LocalPosition = new Vector2(file.LocalX, file.LocalY), LocalRotation = file.Rotation, Scale = Math.Clamp(file.Scale, 0.1f, 10), Mirrored = file.Type == CreatureFeatureType.Eye && file.Mirrored, Visible = file.Visible, EyeSize = Math.Clamp(file.EyeSize, 1, 20), TongueLength = Math.Clamp(file.TongueLength, 2, 200), TongueForkLength = Math.Clamp(file.TongueForkLength, 2, 100), TongueForkAngle = Math.Clamp(file.TongueForkAngle, 5, 75) };
         return true;
     }
 
@@ -104,6 +104,6 @@ public static class CreatureFileService
     public sealed class ChainFile { public float Spacing { get; set; } public float Stiffness { get; set; } public float Damping { get; set; } }
     public sealed class BodyFile { public float BaseRadius { get; set; } public RampInterpolationMode Interpolation { get; set; } public List<RampPointFile>? RampPoints { get; set; } }
     public sealed class RampPointFile { public float Position { get; set; } public float Value { get; set; } }
-    public sealed class FeatureFile { public string? Id { get; set; } public CreatureFeatureType Type { get; set; } public string? ParentNodeId { get; set; } public float LocalX { get; set; } public float LocalY { get; set; } public float Rotation { get; set; } public float Scale { get; set; } = 1; public bool Mirrored { get; set; } = true; public bool Visible { get; set; } = true; public float EyeSize { get; set; } = 5; }
+    public sealed class FeatureFile { public string? Id { get; set; } public CreatureFeatureType Type { get; set; } public string? ParentNodeId { get; set; } public float LocalX { get; set; } public float LocalY { get; set; } public float Rotation { get; set; } public float Scale { get; set; } = 1; public bool Mirrored { get; set; } = true; public bool Visible { get; set; } = true; public float EyeSize { get; set; } = 5; public float TongueLength { get; set; } = 28; public float TongueForkLength { get; set; } = 12; public float TongueForkAngle { get; set; } = 28; }
     public sealed class EyeFile { public bool Enabled { get; set; } = true; public float Size { get; set; } = 5; public float Spacing { get; set; } = 18; public float ForwardOffset { get; set; } = 18; }
 }

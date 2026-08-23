@@ -147,6 +147,7 @@ public sealed class EditorState
         var removed = Creature.Nodes.Skip(index).ToHashSet();
         Creature.Nodes.RemoveRange(index, Creature.Nodes.Count - index);
         Creature.Connections.RemoveAll(c => removed.Any(n => n.Id == c.ParentNodeId || n.Id == c.ChildNodeId));
+        Creature.Features.RemoveAll(feature => removed.Any(n => n.Id == feature.ParentNodeId));
         SelectedNode = null;
         Changed?.Invoke();
     }
@@ -194,7 +195,7 @@ public sealed class EditorState
     public CreatureFeature AddFeature(CreatureFeatureType type = CreatureFeatureType.Eye)
     {
         var parent = Creature.Nodes.FirstOrDefault();
-        var feature = new CreatureFeature { Type = type, ParentNodeId = parent?.Id ?? Guid.Empty };
+        var feature = new CreatureFeature { Type = type, ParentNodeId = parent?.Id ?? Guid.Empty, Mirrored = type == CreatureFeatureType.Eye };
         Creature.Features.Add(feature);
         SelectedFeature = feature;
         SelectedNode = null;
@@ -217,7 +218,7 @@ public sealed class EditorState
         Changed?.Invoke();
     }
 
-    public void SetSelectedFeature(CreatureFeatureType type, Guid parentNodeId, Vector2 localPosition, float rotation, float scale, bool mirrored, bool visible, float eyeSize)
+    public void SetSelectedFeature(CreatureFeatureType type, Guid parentNodeId, Vector2 localPosition, float rotation, float scale, bool mirrored, bool visible, float eyeSize, float tongueLength, float tongueForkLength, float tongueForkAngle)
     {
         if (SelectedFeature is null) return;
         SelectedFeature.Type = type;
@@ -225,9 +226,12 @@ public sealed class EditorState
         SelectedFeature.LocalPosition = localPosition;
         SelectedFeature.LocalRotation = float.IsFinite(rotation) ? rotation : 0;
         SelectedFeature.Scale = Math.Clamp(float.IsFinite(scale) ? scale : 1, 0.1f, 10);
-        SelectedFeature.Mirrored = mirrored;
+        SelectedFeature.Mirrored = SelectedFeature.SupportsMirroring && mirrored;
         SelectedFeature.Visible = visible;
         SelectedFeature.EyeSize = Math.Clamp(float.IsFinite(eyeSize) ? eyeSize : 5, 1, 20);
+        SelectedFeature.TongueLength = Math.Clamp(float.IsFinite(tongueLength) ? tongueLength : 28, 2, 200);
+        SelectedFeature.TongueForkLength = Math.Clamp(float.IsFinite(tongueForkLength) ? tongueForkLength : 12, 2, 100);
+        SelectedFeature.TongueForkAngle = Math.Clamp(float.IsFinite(tongueForkAngle) ? tongueForkAngle : 28, 5, 75);
         Changed?.Invoke();
     }
 

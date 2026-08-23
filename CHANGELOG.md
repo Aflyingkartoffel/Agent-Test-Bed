@@ -46,3 +46,9 @@
 - Doubled the creature lab default Simulation Speed from `1.0x` to `2.0x`.
 - Smoothed the derived skin with Catmull-Rom samples and rounded caps without changing structural chain geometry.
 - Replaced special-purpose eye data with local-parented `CreatureFeature` attachments; Eye is the first supported type.
+
+## Creature tongue and skin-cap milestone
+
+- Fixed terminal skin inversion/pinching with explicit radius-bearing head and tail caps.
+- Added one-sided endpoint tangent handling for stable body interpolation.
+- Added singular vector `ForkedTongue` feature with local parenting, length, fork length, fork angle, scale, Play attachment, and Save/Load support.

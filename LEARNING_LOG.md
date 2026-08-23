@@ -77,3 +77,9 @@ This log records useful programming concepts encountered while building the repo
 A procedural visual feature should store a local rule relative to its parent rather than a final world position. For example: `Head Position + Local Eye Offset = Eye World Position`. When the head moves or rotates, the eye follows automatically because the renderer resolves the local transform against the current parent transform.
 
 Structural nodes can remain low-resolution while the displayed skin is smoothed with interpolated visual samples. The creature still has the same nodes, connections, spacing, and radii; Catmull-Rom samples only refine the rendered silhouette between those authored points.
+
+## Terminal geometry and feature capability
+
+Interpolating through side points is not sufficient for terminal geometry. A terminal node is a volume-bearing part of the creature, so the silhouette must explicitly wrap around its radius with a cap. Body interpolation can remain smooth, but the first and last circles need their own tangent-aware semicircular geometry.
+
+Feature capabilities should belong to the feature type rather than being assumed universal. Eyes are mirrorable, while Forked Tongue is singular. A `SupportsMirroring` rule keeps the editor and renderer from inventing a second visual for a feature that should only exist once.

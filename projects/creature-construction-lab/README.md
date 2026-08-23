@@ -24,6 +24,10 @@ The features-and-skin milestone doubles the default Simulation Speed from `1.0x`
 
 Eyes are now the first member of a general `CreatureFeature` system. A feature stores an ID, type, parent node ID, local position, local rotation, scale, mirror state, visibility, and Eye size. Features are parent-local rules: `head position + local eye offset = eye world position`, so movement and rotation carry the feature automatically. Create Mode provides add/select/edit/delete controls and canvas dragging; Play Mode renders features from simulated parent transforms but hides editing controls. Feature collections save to `.creature.json`; older files without `Features` remain valid, and the previous `Eyes` section migrates to one mirrored Eye feature when possible.
 
+The tongue-and-cap milestone replaces the endpoint line/arc transition with explicit sampled semicircular caps. The head cap uses the outgoing tangent and the actual head radius; the tail cap uses the incoming tangent and actual tail radius. A one-node creature renders a complete circle, while a two-node creature becomes a capsule-like outline. Body-side interpolation uses one-sided Hermite endpoint tangents to avoid pulling terminal samples inward.
+
+`ForkedTongue` is the second supported `CreatureFeature` type. It stores local transform, length, fork length, fork angle, scale, and visibility, and is singular: its mirror capability is unavailable even if older data requests mirroring. The vector renderer draws one stem and two symmetric fork lines from the head surface. Tongue features follow the simulated head in Play Mode, do not affect simulation, and persist through Save/Load.
+
 ## Run
 
 From this directory:

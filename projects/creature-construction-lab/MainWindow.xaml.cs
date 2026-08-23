@@ -78,7 +78,13 @@ public partial class MainWindow : Window
         FeatureRotationBox.Text = selectedFeature is null ? "" : selectedFeature.LocalRotation.ToString("0.##", CultureInfo.InvariantCulture);
         FeatureScaleBox.Text = selectedFeature is null ? "" : selectedFeature.Scale.ToString("0.##", CultureInfo.InvariantCulture);
         FeatureEyeSizeBox.Text = selectedFeature is null ? "" : selectedFeature.EyeSize.ToString("0.##", CultureInfo.InvariantCulture);
-        FeatureMirrorBox.IsChecked = selectedFeature?.Mirrored == true;
+        TongueLengthBox.Text = selectedFeature is null ? "" : selectedFeature.TongueLength.ToString("0.##", CultureInfo.InvariantCulture);
+        TongueForkLengthBox.Text = selectedFeature is null ? "" : selectedFeature.TongueForkLength.ToString("0.##", CultureInfo.InvariantCulture);
+        TongueForkAngleBox.Text = selectedFeature is null ? "" : selectedFeature.TongueForkAngle.ToString("0.##", CultureInfo.InvariantCulture);
+        var isEye = selectedFeature?.Type == CreatureFeatureType.Eye;
+        EyeSettingsPanel.Visibility = isEye ? Visibility.Visible : Visibility.Collapsed;
+        TongueSettingsPanel.Visibility = selectedFeature?.Type == CreatureFeatureType.ForkedTongue ? Visibility.Visible : Visibility.Collapsed;
+        FeatureMirrorBox.IsChecked = isEye && selectedFeature?.Mirrored == true;
         FeatureVisibleBox.IsChecked = selectedFeature?.Visible == true;
         var featureEditing = editing && selectedFeature is not null;
         FeatureTypeBox.IsEnabled = featureEditing;
@@ -88,7 +94,10 @@ public partial class MainWindow : Window
         FeatureRotationBox.IsEnabled = featureEditing;
         FeatureScaleBox.IsEnabled = featureEditing;
         FeatureEyeSizeBox.IsEnabled = featureEditing;
-        FeatureMirrorBox.IsEnabled = featureEditing;
+        TongueLengthBox.IsEnabled = featureEditing;
+        TongueForkLengthBox.IsEnabled = featureEditing;
+        TongueForkAngleBox.IsEnabled = featureEditing;
+        FeatureMirrorBox.IsEnabled = featureEditing && isEye;
         FeatureVisibleBox.IsEnabled = featureEditing;
         PlayPauseButton.Content = state.Simulator.State.Paused ? "RESUME" : "PAUSE";
         MaxSpeedBox.Text = state.Simulator.State.MaxSpeed.ToString("0.##", CultureInfo.InvariantCulture);
@@ -171,7 +180,7 @@ public partial class MainWindow : Window
 
     private void AddFeature_Click(object sender, RoutedEventArgs e)
     {
-        if (state.Mode == EditorMode.Create && state.Creature.Nodes.Count > 0) state.AddFeature();
+        if (state.Mode == EditorMode.Create && state.Creature.Nodes.Count > 0) state.AddFeature((CreatureFeatureType)AddFeatureTypeBox.SelectedIndex);
         else state.SetStatus("Create a head node before adding a feature.");
     }
 
@@ -190,10 +199,11 @@ public partial class MainWindow : Window
     private void FeatureProperty_LostFocus(object sender, RoutedEventArgs e) => ApplyFeatureProperties();
     private void ApplyFeatureProperties()
     {
-        if (!IsLoaded || refreshing || state.SelectedFeature is null || !float.TryParse(FeatureXBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) || !float.TryParse(FeatureYBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y) || !float.TryParse(FeatureRotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) || !float.TryParse(FeatureScaleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) || !float.TryParse(FeatureEyeSizeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeSize)) return;
+        if (!IsLoaded || refreshing || state.SelectedFeature is null || !float.TryParse(FeatureXBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) || !float.TryParse(FeatureYBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y) || !float.TryParse(FeatureRotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) || !float.TryParse(FeatureScaleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) || !float.TryParse(FeatureEyeSizeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeSize) || !float.TryParse(TongueLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueLength) || !float.TryParse(TongueForkLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkLength) || !float.TryParse(TongueForkAngleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkAngle)) return;
         var parentIndex = FeatureParentBox.SelectedIndex;
         var parentId = parentIndex >= 0 && parentIndex < state.Creature.Nodes.Count ? state.Creature.Nodes[parentIndex].Id : Guid.Empty;
-        state.SetSelectedFeature(CreatureFeatureType.Eye, parentId, new Vector2(x, y), rotation, scale, FeatureMirrorBox.IsChecked == true, FeatureVisibleBox.IsChecked == true, eyeSize);
+        var type = FeatureTypeBox.SelectedIndex == (int)CreatureFeatureType.ForkedTongue ? CreatureFeatureType.ForkedTongue : CreatureFeatureType.Eye;
+        state.SetSelectedFeature(type, parentId, new Vector2(x, y), rotation, scale, FeatureMirrorBox.IsChecked == true, FeatureVisibleBox.IsChecked == true, eyeSize, tongueLength, tongueForkLength, tongueForkAngle);
     }
 
     private void ChainProperty_LostFocus(object sender, RoutedEventArgs e)
