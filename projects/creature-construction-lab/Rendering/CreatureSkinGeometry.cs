@@ -5,24 +5,28 @@ namespace CreatureConstructionLab.Rendering;
 public sealed class CreatureSkinGeometry
 {
     private const int SamplesPerSegment = 8;
-    private const int CapSamples = 10;
+    public const int CapSamples = 10;
     public Vector2[] Left { get; }
     public Vector2[] Right { get; }
     public float[] Radii { get; }
     public Vector2[] Outline { get; }
+    public Vector2[] HeadCap { get; }
+    public Vector2[] TailCap { get; }
 
-    private CreatureSkinGeometry(Vector2[] left, Vector2[] right, float[] radii, Vector2[] outline)
+    private CreatureSkinGeometry(Vector2[] left, Vector2[] right, float[] radii, Vector2[] outline, Vector2[] headCap, Vector2[] tailCap)
     {
         Left = left;
         Right = right;
         Radii = radii;
         Outline = outline;
+        HeadCap = headCap;
+        TailCap = tailCap;
     }
 
     public static CreatureSkinGeometry Build(IReadOnlyList<Vector2> positions, IReadOnlyList<float> radii)
     {
         var count = Math.Min(positions.Count, radii.Count);
-        if (count == 0) return new CreatureSkinGeometry([], [], [], []);
+        if (count == 0) return new CreatureSkinGeometry([], [], [], [], [], []);
         var left = new Vector2[count];
         var right = new Vector2[count];
         var safeRadii = new float[count];
@@ -35,34 +39,42 @@ public sealed class CreatureSkinGeometry
             right[i] = positions[i] - normal * safeRadii[i];
         }
 
-        if (count == 1) return new CreatureSkinGeometry(left, right, safeRadii, BuildCircle(positions[0], safeRadii[0]));
+        if (count == 1)
+        {
+            var circle = BuildCircle(positions[0], safeRadii[0]);
+            return new CreatureSkinGeometry(left, right, safeRadii, circle, circle, circle);
+        }
+
         var sampledLeft = SampleSide(left);
         var sampledRight = SampleSide(right);
         var sampledRadii = SampleRadii(safeRadii);
-        return new CreatureSkinGeometry(sampledLeft, sampledRight, sampledRadii, BuildOutline(positions, safeRadii, sampledLeft, sampledRight));
+        var headOutward = -GetDirection(positions, 0);
+        var tailOutward = GetDirection(positions, positions.Count - 1);
+        var headCap = BuildCap(positions[0], safeRadii[0], headOutward);
+        var tailCap = BuildCap(positions[^1], safeRadii[^1], tailOutward);
+        return new CreatureSkinGeometry(sampledLeft, sampledRight, sampledRadii, BuildOutline(sampledLeft, sampledRight, headCap, tailCap), headCap, tailCap);
     }
 
-    private static Vector2[] BuildOutline(IReadOnlyList<Vector2> positions, IReadOnlyList<float> radii, Vector2[] left, Vector2[] right)
+    private static Vector2[] BuildOutline(Vector2[] left, Vector2[] right, Vector2[] headCap, Vector2[] tailCap)
     {
-        var outline = new List<Vector2>(left.Length + right.Length + CapSamples * 2);
-        var headTangent = GetDirection(positions, 0);
-        var headNormal = new Vector2(-headTangent.Y, headTangent.X);
-        AddCap(outline, positions[0], headTangent, headNormal, radii[0], MathF.PI / 2, -MathF.PI / 2);
+        var outline = new List<Vector2>(left.Length + right.Length + headCap.Length + tailCap.Length);
+        outline.AddRange(headCap);
         for (var i = 1; i < right.Length; i++) outline.Add(right[i]);
-        var tailTangent = GetDirection(positions, positions.Count - 1);
-        var tailNormal = new Vector2(-tailTangent.Y, tailTangent.X);
-        AddCap(outline, positions[^1], tailTangent, tailNormal, radii[^1], -MathF.PI / 2, -3 * MathF.PI / 2);
+        outline.AddRange(tailCap);
         for (var i = left.Length - 2; i >= 0; i--) outline.Add(left[i]);
         return outline.ToArray();
     }
 
-    private static void AddCap(List<Vector2> outline, Vector2 center, Vector2 tangent, Vector2 normal, float radius, float start, float end)
+    private static Vector2[] BuildCap(Vector2 center, float radius, Vector2 outward)
     {
+        var normal = new Vector2(-outward.Y, outward.X);
+        var cap = new Vector2[CapSamples + 1];
         for (var i = 0; i <= CapSamples; i++)
         {
-            var angle = start + (end - start) * i / CapSamples;
-            outline.Add(center + tangent * (MathF.Cos(angle) * radius) + normal * (MathF.Sin(angle) * radius));
+            var theta = -MathF.PI / 2 + MathF.PI * i / CapSamples;
+            cap[i] = center + outward * (MathF.Cos(theta) * radius) + normal * (MathF.Sin(theta) * radius);
         }
+        return cap;
     }
 
     private static Vector2[] BuildCircle(Vector2 center, float radius)

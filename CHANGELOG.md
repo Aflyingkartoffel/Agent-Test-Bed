@@ -52,3 +52,8 @@
 - Fixed terminal skin inversion/pinching with explicit radius-bearing head and tail caps.
 - Added one-sided endpoint tangent handling for stable body interpolation.
 - Added singular vector `ForkedTongue` feature with local parenting, length, fork length, fork angle, scale, Play attachment, and Save/Load support.
+
+## Skin cap orientation correction
+
+- Corrected head/tail cap orientation using explicit outward vectors and an unambiguous semicircle equation.
+- Added regression coverage for left-facing tails, outward cap midpoints, endpoint radii, and exact body/cap connection points.

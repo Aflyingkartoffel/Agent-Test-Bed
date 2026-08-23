@@ -83,3 +83,10 @@ Structural nodes can remain low-resolution while the displayed skin is smoothed 
 Interpolating through side points is not sufficient for terminal geometry. A terminal node is a volume-bearing part of the creature, so the silhouette must explicitly wrap around its radius with a cap. Body interpolation can remain smooth, but the first and last circles need their own tangent-aware semicircular geometry.
 
 Feature capabilities should belong to the feature type rather than being assumed universal. Eyes are mirrorable, while Forked Tongue is singular. A `SupportsMirroring` rule keeps the editor and renderer from inventing a second visual for a feature that should only exist once.
+## Terminal geometry and feature capability
+
+Interpolating through side points is not sufficient for terminal geometry. A terminal node is a volume-bearing part of the creature, so the silhouette must explicitly wrap around its radius with a cap. Body interpolation can remain smooth, but the first and last circles need their own tangent-aware semicircular geometry.
+
+Feature capabilities should belong to the feature type rather than being assumed universal. Eyes are mirrorable, while Forked Tongue is singular. A `SupportsMirroring` rule keeps the editor and renderer from inventing a second visual for a feature that should only exist once.
+
+For terminal geometry, direction should be named explicitly. The head cap points outward opposite the first body segment; the tail cap points along the final segment away from its predecessor. Building both from `outward + perpendicular` avoids relying on arc sweep or left/right ordering, which can silently turn a rounded cap into an inward crescent.

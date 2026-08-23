@@ -28,6 +28,8 @@ The tongue-and-cap milestone replaces the endpoint line/arc transition with expl
 
 `ForkedTongue` is the second supported `CreatureFeature` type. It stores local transform, length, fork length, fork angle, scale, and visibility, and is singular: its mirror capability is unavailable even if older data requests mirroring. The vector renderer draws one stem and two symmetric fork lines from the head surface. Tongue features follow the simulated head in Play Mode, do not affect simulation, and persist through Save/Load.
 
+The endpoint-orientation fix defines caps from explicit outward vectors: the head uses `-normalize(Node1 - Node0)`, while the tail uses `normalize(Tail - Previous)`. Each cap uses `center + outward * cos(theta) * radius + normal * sin(theta) * radius` for `theta` from `-π/2` to `+π/2`, so its midpoint always bulges away from the body. Body-side samples retain exact structural cap endpoints.
+
 ## Run
 
 From this directory:

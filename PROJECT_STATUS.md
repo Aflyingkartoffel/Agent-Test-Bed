@@ -26,3 +26,8 @@ The creature laboratory now defaults to `2.0x` Simulation Speed while retaining 
 ## Creature tongue and skin-cap milestone
 
 Terminal skin geometry now wraps explicitly around the first and last node radii using sampled semicircular caps and one-sided endpoint tangents. The body still uses derived node positions/radii only. `ForkedTongue` extends the local-parent feature architecture with vector stem/fork geometry, length/fork-length/fork-angle controls, root parenting, singular non-mirrored behavior, Play attachment, and Save/Load persistence.
+## Creature tongue and skin-cap milestone
+
+Terminal skin geometry now wraps explicitly around the first and last node radii using sampled semicircular caps and one-sided endpoint tangents. The body still uses derived node positions/radii only. `ForkedTongue` extends the local-parent feature architecture with vector stem/fork geometry, length/fork-length/fork-angle controls, root parenting, singular non-mirrored behavior, Play attachment, and Save/Load persistence.
+
+The follow-up cap-orientation fix uses explicit outward tangent vectors so the head cap points opposite the body direction and the tail cap points away from the preceding node. Regression tests cover right-facing heads, left-facing tails, cap midpoints, endpoint radii, and curved chains. Final canvas-level visual confirmation remains user verification in this environment.
