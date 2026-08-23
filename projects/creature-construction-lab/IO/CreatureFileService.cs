@@ -18,7 +18,7 @@ public static class CreatureFileService
             Connections = creature.Connections.Select(c => new ConnectionFile { ParentNodeId = c.ParentNodeId.ToString(), ChildNodeId = c.ChildNodeId.ToString(), RestLength = c.RestLength, Stiffness = c.Stiffness, Damping = c.Damping }).ToList(),
             Chain = new ChainFile { Spacing = creature.ChainSettings.Spacing, Stiffness = creature.ChainSettings.Stiffness, Damping = creature.ChainSettings.Damping },
             Body = new BodyFile { BaseRadius = creature.BaseRadius, Interpolation = creature.BodySizeRamp.Interpolation, RampPoints = creature.BodySizeRamp.Points.Select(p => new RampPointFile { Position = p.Position, Value = p.Value }).ToList() },
-            Eyes = new EyeFile { Enabled = creature.Eyes.Enabled, Size = creature.Eyes.Size, Spacing = creature.Eyes.Spacing, ForwardOffset = creature.Eyes.ForwardOffset }
+            Features = creature.Features.Select(ToFile).ToList()
         };
         File.WriteAllText(path, JsonSerializer.Serialize(file, JsonOptions));
     }
@@ -32,7 +32,6 @@ public static class CreatureFileService
             if (file is null) { error = "The file is empty."; return false; }
             if (file.Nodes is null || file.Connections is null || file.Chain is null || file.Body is null || file.Body.RampPoints is null) { error = "The file is missing required sections."; return false; }
             if (!FinitePositive(file.Chain.Spacing) || !FiniteNonNegative(file.Chain.Stiffness) || !FiniteNonNegative(file.Chain.Damping) || !FinitePositive(file.Body.BaseRadius)) { error = "The file contains invalid settings."; return false; }
-            if (file.Eyes is not null && (!FinitePositive(file.Eyes.Size) || !FiniteNonNegative(file.Eyes.Spacing) || !Finite(file.Eyes.ForwardOffset))) { error = "The file contains invalid eye settings."; return false; }
             if (file.Body.RampPoints.Count < 2 || file.Body.RampPoints[0].Position != 0 || file.Body.RampPoints[^1].Position != 1) { error = "The ramp must have valid 0 and 1 endpoints."; return false; }
             for (var i = 0; i < file.Body.RampPoints.Count; i++)
             {
@@ -60,16 +59,22 @@ public static class CreatureFileService
             creature.ChainSettings.Spacing = file.Chain.Spacing;
             creature.ChainSettings.Stiffness = file.Chain.Stiffness;
             creature.ChainSettings.Damping = file.Chain.Damping;
-            if (file.Eyes is not null)
-            {
-                creature.Eyes.Enabled = file.Eyes.Enabled;
-                creature.Eyes.Size = file.Eyes.Size;
-                creature.Eyes.Spacing = file.Eyes.Spacing;
-                creature.Eyes.ForwardOffset = file.Eyes.ForwardOffset;
-            }
             creature.BodySizeRamp.Points.Clear();
             creature.BodySizeRamp.Interpolation = file.Body.Interpolation;
             foreach (var point in file.Body.RampPoints) creature.BodySizeRamp.Points.Add(new RampPoint(point.Position, point.Value));
+
+            if (file.Features is not null)
+            {
+                foreach (var saved in file.Features)
+                {
+                    if (!TryFeature(saved, ids, out var feature)) { error = "The file contains invalid feature data."; return false; }
+                    creature.Features.Add(feature!);
+                }
+            }
+            else if (file.Eyes is { Enabled: true } oldEye && nodes.Count > 0)
+            {
+                creature.Features.Add(new CreatureFeature { ParentNodeId = nodes[0].Id, LocalPosition = new Vector2(oldEye.ForwardOffset, oldEye.Spacing / 2), EyeSize = oldEye.Size, Mirrored = true });
+            }
             error = "";
             return true;
         }
@@ -79,15 +84,26 @@ public static class CreatureFileService
         catch (Exception) { error = "The creature file has an invalid structure."; return false; }
     }
 
+    private static FeatureFile ToFile(CreatureFeature feature) => new() { Id = feature.Id.ToString(), Type = feature.Type, ParentNodeId = feature.ParentNodeId.ToString(), LocalX = feature.LocalPosition.X, LocalY = feature.LocalPosition.Y, Rotation = feature.LocalRotation, Scale = feature.Scale, Mirrored = feature.Mirrored, Visible = feature.Visible, EyeSize = feature.EyeSize };
+
+    private static bool TryFeature(FeatureFile file, HashSet<Guid> nodeIds, out CreatureFeature? feature)
+    {
+        feature = null;
+        if (!Guid.TryParse(file.Id, out var id) || !Guid.TryParse(file.ParentNodeId, out var parent) || !nodeIds.Contains(parent) || !Finite(file.LocalX) || !Finite(file.LocalY) || !Finite(file.Rotation) || !FinitePositive(file.Scale) || !FinitePositive(file.EyeSize)) return false;
+        feature = new CreatureFeature { Id = id, Type = file.Type, ParentNodeId = parent, LocalPosition = new Vector2(file.LocalX, file.LocalY), LocalRotation = file.Rotation, Scale = Math.Clamp(file.Scale, 0.1f, 10), Mirrored = file.Mirrored, Visible = file.Visible, EyeSize = Math.Clamp(file.EyeSize, 1, 20) };
+        return true;
+    }
+
     private static bool Finite(float value) => float.IsFinite(value);
     private static bool FinitePositive(float value) => Finite(value) && value > 0;
     private static bool FiniteNonNegative(float value) => Finite(value) && value >= 0;
 
-    public sealed class CreatureFile { public List<NodeFile>? Nodes { get; set; } public List<ConnectionFile>? Connections { get; set; } public ChainFile? Chain { get; set; } public BodyFile? Body { get; set; } public EyeFile? Eyes { get; set; } }
+    public sealed class CreatureFile { public List<NodeFile>? Nodes { get; set; } public List<ConnectionFile>? Connections { get; set; } public ChainFile? Chain { get; set; } public BodyFile? Body { get; set; } public List<FeatureFile>? Features { get; set; } public EyeFile? Eyes { get; set; } }
     public sealed class NodeFile { public string? Id { get; set; } public float PositionX { get; set; } public float PositionY { get; set; } public float Rotation { get; set; } }
     public sealed class ConnectionFile { public string? ParentNodeId { get; set; } public string? ChildNodeId { get; set; } public float RestLength { get; set; } public float Stiffness { get; set; } public float Damping { get; set; } }
     public sealed class ChainFile { public float Spacing { get; set; } public float Stiffness { get; set; } public float Damping { get; set; } }
-    public sealed class BodyFile { public float BaseRadius { get; set; } public RampInterpolationMode Interpolation { get; set; } = RampInterpolationMode.Linear; public List<RampPointFile>? RampPoints { get; set; } }
-    public sealed class EyeFile { public bool Enabled { get; set; } = true; public float Size { get; set; } = 5; public float Spacing { get; set; } = 18; public float ForwardOffset { get; set; } = 18; }
+    public sealed class BodyFile { public float BaseRadius { get; set; } public RampInterpolationMode Interpolation { get; set; } public List<RampPointFile>? RampPoints { get; set; } }
     public sealed class RampPointFile { public float Position { get; set; } public float Value { get; set; } }
+    public sealed class FeatureFile { public string? Id { get; set; } public CreatureFeatureType Type { get; set; } public string? ParentNodeId { get; set; } public float LocalX { get; set; } public float LocalY { get; set; } public float Rotation { get; set; } public float Scale { get; set; } = 1; public bool Mirrored { get; set; } = true; public bool Visible { get; set; } = true; public float EyeSize { get; set; } = 5; }
+    public sealed class EyeFile { public bool Enabled { get; set; } = true; public float Size { get; set; } = 5; public float Spacing { get; set; } = 18; public float ForwardOffset { get; set; } = 18; }
 }

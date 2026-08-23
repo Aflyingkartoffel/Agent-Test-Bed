@@ -11,6 +11,7 @@ public sealed class EditorState
     public EditorMode Mode { get; private set; } = EditorMode.Create;
     public EditorTool Tool { get; set; } = EditorTool.Select;
     public CreatureNode? SelectedNode { get; private set; }
+    public CreatureFeature? SelectedFeature { get; private set; }
     public string? StatusMessage { get; private set; }
     public CreatureSimulator Simulator { get; } = new();
     public DisplaySettings Display { get; } = new();
@@ -23,6 +24,7 @@ public sealed class EditorState
         var node = new CreatureNode { Position = position };
         Creature.Nodes.Add(node);
         SelectedNode = node;
+        SelectedFeature = null;
         RecalculateBodySizes();
         Changed?.Invoke();
         return node;
@@ -39,6 +41,7 @@ public sealed class EditorState
         Creature.Nodes.Add(child);
         Creature.Connections.Add(new CreatureConnection { ParentNodeId = SelectedNode.Id, ChildNodeId = child.Id, RestLength = Creature.ChainSettings.Spacing, Stiffness = Creature.ChainSettings.Stiffness, Damping = Creature.ChainSettings.Damping });
         SelectedNode = child;
+        SelectedFeature = null;
         RecalculateBodySizes();
         StatusMessage = null;
         Changed?.Invoke();
@@ -131,10 +134,11 @@ public sealed class EditorState
             .OrderByDescending(node => Vector2.DistanceSquared(node.Position, position) <= node.Radius * node.Radius)
             .ThenBy(node => Vector2.DistanceSquared(node.Position, position))
             .FirstOrDefault(node => Vector2.DistanceSquared(node.Position, position) <= node.Radius * node.Radius);
+        SelectedFeature = null;
         Changed?.Invoke();
     }
 
-    public void Select(CreatureNode? node) { SelectedNode = node; Changed?.Invoke(); }
+    public void Select(CreatureNode? node) { SelectedNode = node; if (node is not null) SelectedFeature = null; Changed?.Invoke(); }
 
     public void DeleteSelected()
     {
@@ -163,7 +167,7 @@ public sealed class EditorState
     public void SetPlaySettings(float speed, float maxSpeed, float acceleration, float damping)
     {
         Simulator.State.SimulationSpeed = Math.Clamp(speed, 0.25f, 4);
-        Simulator.State.MaxSpeed = Math.Clamp(maxSpeed, 10, 500);
+        Simulator.State.MaxSpeed = Math.Clamp(maxSpeed, 10, 1000);
         Simulator.State.AccelerationStrength = Math.Clamp(acceleration, 10, 2000);
         Simulator.State.Damping = Math.Clamp(damping, 0, 20);
         Changed?.Invoke();
@@ -182,17 +186,55 @@ public sealed class EditorState
 
     public void SetDisplay(bool showNodes, bool showSkin, bool showEyes)
     {
-        if (Mode == EditorMode.Create) { Display.CreateShowNodes = showNodes; Display.CreateShowSkin = showSkin; Display.CreateShowEyes = showEyes; }
-        else { Display.PlayShowNodes = showNodes; Display.PlayShowSkin = showSkin; Display.PlayShowEyes = showEyes; }
+        if (Mode == EditorMode.Create) { Display.CreateShowNodes = showNodes; Display.CreateShowSkin = showSkin; Display.CreateShowFeatures = showEyes; }
+        else { Display.PlayShowNodes = showNodes; Display.PlayShowSkin = showSkin; Display.PlayShowFeatures = showEyes; }
         Changed?.Invoke();
     }
 
-    public void SetEyeSettings(bool enabled, float size, float spacing, float forwardOffset)
+    public CreatureFeature AddFeature(CreatureFeatureType type = CreatureFeatureType.Eye)
     {
-        Creature.Eyes.Enabled = enabled;
-        Creature.Eyes.Size = Math.Clamp(float.IsFinite(size) ? size : 5, 1, 20);
-        Creature.Eyes.Spacing = Math.Clamp(float.IsFinite(spacing) ? spacing : 18, 0, 60);
-        Creature.Eyes.ForwardOffset = Math.Clamp(float.IsFinite(forwardOffset) ? forwardOffset : 18, -20, 80);
+        var parent = Creature.Nodes.FirstOrDefault();
+        var feature = new CreatureFeature { Type = type, ParentNodeId = parent?.Id ?? Guid.Empty };
+        Creature.Features.Add(feature);
+        SelectedFeature = feature;
+        SelectedNode = null;
+        Changed?.Invoke();
+        return feature;
+    }
+
+    public void SelectFeature(CreatureFeature? feature)
+    {
+        SelectedFeature = feature;
+        if (feature is not null) SelectedNode = null;
+        Changed?.Invoke();
+    }
+
+    public void DeleteSelectedFeature()
+    {
+        if (SelectedFeature is null) return;
+        Creature.Features.Remove(SelectedFeature);
+        SelectedFeature = null;
+        Changed?.Invoke();
+    }
+
+    public void SetSelectedFeature(CreatureFeatureType type, Guid parentNodeId, Vector2 localPosition, float rotation, float scale, bool mirrored, bool visible, float eyeSize)
+    {
+        if (SelectedFeature is null) return;
+        SelectedFeature.Type = type;
+        SelectedFeature.ParentNodeId = Creature.Nodes.Any(n => n.Id == parentNodeId) ? parentNodeId : Creature.Nodes.FirstOrDefault()?.Id ?? Guid.Empty;
+        SelectedFeature.LocalPosition = localPosition;
+        SelectedFeature.LocalRotation = float.IsFinite(rotation) ? rotation : 0;
+        SelectedFeature.Scale = Math.Clamp(float.IsFinite(scale) ? scale : 1, 0.1f, 10);
+        SelectedFeature.Mirrored = mirrored;
+        SelectedFeature.Visible = visible;
+        SelectedFeature.EyeSize = Math.Clamp(float.IsFinite(eyeSize) ? eyeSize : 5, 1, 20);
+        Changed?.Invoke();
+    }
+
+    public void SetSelectedFeatureLocalPosition(Vector2 position)
+    {
+        if (SelectedFeature is null) return;
+        SelectedFeature.LocalPosition = position;
         Changed?.Invoke();
     }
 
@@ -206,14 +248,13 @@ public sealed class EditorState
         Creature.ChainSettings.Stiffness = loaded.ChainSettings.Stiffness;
         Creature.ChainSettings.Damping = loaded.ChainSettings.Damping;
         Creature.BaseRadius = loaded.BaseRadius;
-        Creature.Eyes.Enabled = loaded.Eyes.Enabled;
-        Creature.Eyes.Size = loaded.Eyes.Size;
-        Creature.Eyes.Spacing = loaded.Eyes.Spacing;
-        Creature.Eyes.ForwardOffset = loaded.Eyes.ForwardOffset;
+        Creature.Features.Clear();
+        Creature.Features.AddRange(loaded.Features);
         Creature.BodySizeRamp.Points.Clear();
         Creature.BodySizeRamp.Interpolation = loaded.BodySizeRamp.Interpolation;
         Creature.BodySizeRamp.Points.AddRange(loaded.BodySizeRamp.Points.Select(p => new RampPoint(p.Position, p.Value)));
         SelectedNode = null;
+        SelectedFeature = null;
         Mode = EditorMode.Create;
         Tool = EditorTool.Select;
         StatusMessage = null;
@@ -228,18 +269,16 @@ public sealed class EditorState
         Creature.Connections.Clear();
         Creature.BodySizeRamp.Reset();
         Creature.BaseRadius = 24;
-        Creature.Eyes.Enabled = true;
-        Creature.Eyes.Size = 5;
-        Creature.Eyes.Spacing = 18;
-        Creature.Eyes.ForwardOffset = 18;
+        Creature.Features.Clear();
         Display.CreateShowNodes = true;
         Display.CreateShowSkin = true;
-        Display.CreateShowEyes = true;
+        Display.CreateShowFeatures = true;
         Display.PlayShowNodes = false;
         Display.PlayShowSkin = true;
-        Display.PlayShowEyes = true;
+        Display.PlayShowFeatures = true;
         Simulator.ResetSettings();
         SelectedNode = null;
+        SelectedFeature = null;
         Mode = EditorMode.Create;
         Simulator.Reset(Creature);
         Tool = EditorTool.Select;

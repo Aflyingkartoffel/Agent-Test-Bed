@@ -27,6 +27,7 @@ public sealed class CreatureCanvas : FrameworkElement
     }
 
     private CreatureNode? dragging;
+    private CreatureFeature? draggingFeature;
     private System.Windows.Vector dragOffset;
     private bool rotating;
 
@@ -53,9 +54,9 @@ public sealed class CreatureCanvas : FrameworkElement
             var child = State.Creature.Nodes.FirstOrDefault(n => n.Id == connection.ChildNodeId);
             if (parent is not null && child is not null) draw.DrawLine(connectionPen, ToPoint(GetPosition(parent)), ToPoint(GetPosition(child)));
         }
-        if (State.Mode == EditorMode.Create && State.SelectedNode is not null) DrawGizmo(draw, State.SelectedNode, State.Creature.ChainSettings.Spacing);
+        if (State.Mode == EditorMode.Create && State.SelectedNode is not null && State.SelectedFeature is null) DrawGizmo(draw, State.SelectedNode, State.Creature.ChainSettings.Spacing);
         if (ShowNodes) foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode, GetPosition(node));
-        if (ShowEyes && State.Creature.Nodes.Count > 0) DrawEyes(draw, positions[0], State.Creature.Nodes[0], radii[0]);
+        if (ShowFeatures) DrawFeatures(draw, positions, radii);
         if (State.Mode == EditorMode.Play)
         {
             var text = new FormattedText(State.Simulator.State.Positions.Count == 0 ? "PLAY MODE  /  CREATE A CREATURE FIRST" : "PLAY MODE  /  MOUSE TARGET ACTIVE", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Consolas"), 14, Brushes.SeaGreen, 1);
@@ -72,7 +73,7 @@ public sealed class CreatureCanvas : FrameworkElement
 
     private bool ShowNodes => State.Mode == EditorMode.Create ? State.Display.CreateShowNodes : State.Display.PlayShowNodes;
     private bool ShowSkin => State.Mode == EditorMode.Create ? State.Display.CreateShowSkin : State.Display.PlayShowSkin;
-    private bool ShowEyes => State.Mode == EditorMode.Create ? State.Display.CreateShowEyes : State.Display.PlayShowEyes;
+    private bool ShowFeatures => State.Mode == EditorMode.Create ? State.Display.CreateShowFeatures : State.Display.PlayShowFeatures;
 
     private static void DrawSkin(DrawingContext draw, CreatureSkinGeometry skin)
     {
@@ -88,20 +89,29 @@ public sealed class CreatureCanvas : FrameworkElement
         {
             context.BeginFigure(ToPoint(skin.Left[0]), true, true);
             for (var i = 1; i < skin.Left.Length; i++) context.LineTo(ToPoint(skin.Left[i]), true, false);
-            for (var i = skin.Right.Length - 1; i >= 0; i--) context.LineTo(ToPoint(skin.Right[i]), true, false);
+            context.ArcTo(ToPoint(skin.Right[^1]), new Size(skin.Radii[^1], skin.Radii[^1]), 0, false, SweepDirection.Clockwise, true, false);
+            for (var i = skin.Right.Length - 2; i >= 0; i--) context.LineTo(ToPoint(skin.Right[i]), true, false);
+            context.ArcTo(ToPoint(skin.Left[0]), new Size(skin.Radii[0], skin.Radii[0]), 0, false, SweepDirection.Clockwise, true, false);
         }
         geometry.Freeze();
         draw.DrawGeometry(new SolidColorBrush(Color.FromArgb(45, 85, 220, 140)), new Pen(new SolidColorBrush(Color.FromRgb(72, 190, 125)), 2), geometry);
     }
 
-    private void DrawEyes(DrawingContext draw, System.Numerics.Vector2 headPosition, CreatureNode head, float headRadius)
+    private void DrawFeatures(DrawingContext draw, System.Numerics.Vector2[] positions, float[] radii)
     {
-        var heading = GetHeadDirection();
-        var right = new System.Numerics.Vector2(-heading.Y, heading.X);
-        var eyeCenter = headPosition + heading * Math.Clamp(State.Creature.Eyes.ForwardOffset, -headRadius, 80);
-        var separation = right * (State.Creature.Eyes.Spacing / 2);
-        DrawEye(draw, eyeCenter - separation, State.Creature.Eyes.Size);
-        DrawEye(draw, eyeCenter + separation, State.Creature.Eyes.Size);
+        foreach (var feature in State.Creature.Features)
+        {
+            if (!feature.Visible || feature.ParentNodeId == Guid.Empty) continue;
+            var parentIndex = State.Creature.Nodes.FindIndex(n => n.Id == feature.ParentNodeId);
+            if (parentIndex < 0 || parentIndex >= positions.Length) continue;
+            var transform = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), false);
+            if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, transform.Position, feature.EyeSize * transform.Scale);
+            if (feature.Mirrored)
+            {
+                var mirrored = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), true);
+                if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, mirrored.Position, feature.EyeSize * mirrored.Scale);
+            }
+        }
     }
 
     private void DrawEye(DrawingContext draw, System.Numerics.Vector2 position, float size)
@@ -118,6 +128,17 @@ public sealed class CreatureCanvas : FrameworkElement
         if (velocity.LengthSquared() > 0.0001f) return Vector2.Normalize(velocity);
         if (State.Creature.Nodes.Count > 1) { var direction = GetPosition(State.Creature.Nodes[1]) - GetPosition(State.Creature.Nodes[0]); if (direction.LengthSquared() > 0.0001f) return Vector2.Normalize(direction); }
         return ChainMath.GetDirectionFromRotation(State.Creature.Nodes[0].Rotation);
+    }
+
+    private System.Numerics.Vector2 GetNodeHeading(int index)
+    {
+        if (State.Mode == EditorMode.Play && index < State.Simulator.State.Velocities.Count && State.Simulator.State.Velocities[index].LengthSquared() > 0.0001f) return Vector2.Normalize(State.Simulator.State.Velocities[index]);
+        if (index + 1 < State.Creature.Nodes.Count)
+        {
+            var direction = GetPosition(State.Creature.Nodes[index + 1]) - GetPosition(State.Creature.Nodes[index]);
+            if (direction.LengthSquared() > 0.0001f) return Vector2.Normalize(direction);
+        }
+        return ChainMath.GetDirectionFromRotation(State.Creature.Nodes[index].Rotation);
     }
 
     private System.Numerics.Vector2 GetPosition(CreatureNode node)
@@ -181,6 +202,14 @@ public sealed class CreatureCanvas : FrameworkElement
         Focus();
         var world = State.Coordinates.ScreenToWorld(e.GetPosition(this));
         if (State.Mode != EditorMode.Create) { State.SetPlayTarget(world); InvalidateVisual(); return; }
+        var hitFeature = FindFeatureAt(world);
+        if (hitFeature is not null)
+        {
+            State.SelectFeature(hitFeature);
+            draggingFeature = hitFeature;
+            CaptureMouse();
+            return;
+        }
         if (State.SelectedNode is not null && IsNearDirectionHandle(world, State.SelectedNode)) { rotating = true; CaptureMouse(); UpdateRotation(world); return; }
         if (State.Tool == EditorTool.Node && State.Creature.Nodes.All(n => System.Numerics.Vector2.Distance(n.Position, world) > n.Radius))
         {
@@ -201,6 +230,19 @@ public sealed class CreatureCanvas : FrameworkElement
         if (e.LeftButton != MouseButtonState.Pressed || State.Mode != EditorMode.Create) return;
         var world = State.Coordinates.ScreenToWorld(e.GetPosition(this));
         if (rotating && State.SelectedNode is not null) { UpdateRotation(world); return; }
+        if (draggingFeature is not null)
+        {
+            var parentIndex = State.Creature.Nodes.FindIndex(n => n.Id == draggingFeature.ParentNodeId);
+            if (parentIndex >= 0)
+            {
+                var parentPosition = State.Creature.Nodes[parentIndex].Position;
+                var heading = GetNodeHeading(parentIndex);
+                var right = new System.Numerics.Vector2(-heading.Y, heading.X);
+                var delta = world - parentPosition;
+                State.SetSelectedFeatureLocalPosition(new System.Numerics.Vector2(System.Numerics.Vector2.Dot(delta, heading), System.Numerics.Vector2.Dot(delta, right)));
+            }
+            return;
+        }
         if (dragging is null) return;
         if (State.Creature.Nodes.IndexOf(dragging) > 0) return;
         var offset = new System.Numerics.Vector2((float)(world.X + dragOffset.X) - dragging.Position.X, (float)(world.Y + dragOffset.Y) - dragging.Position.Y);
@@ -208,7 +250,25 @@ public sealed class CreatureCanvas : FrameworkElement
         State.Select(dragging);
     }
 
-    private void OnMouseUp(object sender, MouseButtonEventArgs e) { dragging = null; rotating = false; ReleaseMouseCapture(); }
+    private void OnMouseUp(object sender, MouseButtonEventArgs e) { dragging = null; draggingFeature = null; rotating = false; ReleaseMouseCapture(); }
+
+    private CreatureFeature? FindFeatureAt(System.Numerics.Vector2 world)
+    {
+        foreach (var feature in State.Creature.Features.AsEnumerable().Reverse())
+        {
+            if (!feature.Visible) continue;
+            var parentIndex = State.Creature.Nodes.FindIndex(n => n.Id == feature.ParentNodeId);
+            if (parentIndex < 0) continue;
+            var position = CreatureFeatureTransform.ToWorld(feature, State.Creature.Nodes[parentIndex].Position, GetNodeHeading(parentIndex), false).Position;
+            if (System.Numerics.Vector2.DistanceSquared(position, world) <= MathF.Pow(feature.EyeSize * feature.Scale * 1.5f, 2)) return feature;
+            if (feature.Mirrored)
+            {
+                position = CreatureFeatureTransform.ToWorld(feature, State.Creature.Nodes[parentIndex].Position, GetNodeHeading(parentIndex), true).Position;
+                if (System.Numerics.Vector2.DistanceSquared(position, world) <= MathF.Pow(feature.EyeSize * feature.Scale * 1.5f, 2)) return feature;
+            }
+        }
+        return null;
+    }
 
     private bool IsNearDirectionHandle(System.Numerics.Vector2 world, CreatureNode node)
     {

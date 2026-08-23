@@ -33,7 +33,7 @@ public partial class MainWindow : Window
     {
         if (refreshing) return;
         refreshing = true;
-        SelectionText.Text = state.SelectedNode is null ? "NONE" : state.SelectedNode.Id.ToString()[..8].ToUpperInvariant();
+        SelectionText.Text = state.SelectedNode is not null ? state.SelectedNode.Id.ToString()[..8].ToUpperInvariant() : state.SelectedFeature is null ? "NONE" : $"FEATURE {state.SelectedFeature.Id.ToString()[..8].ToUpperInvariant()}";
         var node = state.SelectedNode;
         XBox.Text = node is null ? "" : node.Position.X.ToString("0.##", CultureInfo.InvariantCulture);
         YBox.Text = node is null ? "" : node.Position.Y.ToString("0.##", CultureInfo.InvariantCulture);
@@ -62,13 +62,34 @@ public partial class MainWindow : Window
         InterpolationBox.IsEnabled = editing;
         CreateShowNodesBox.IsChecked = state.Display.CreateShowNodes;
         CreateShowSkinBox.IsChecked = state.Display.CreateShowSkin;
-        CreateShowEyesBox.IsChecked = state.Display.CreateShowEyes && state.Creature.Eyes.Enabled;
         PlayShowNodesBox.IsChecked = state.Display.PlayShowNodes;
         PlayShowSkinBox.IsChecked = state.Display.PlayShowSkin;
-        PlayShowEyesBox.IsChecked = state.Display.PlayShowEyes;
-        EyeSizeBox.Text = state.Creature.Eyes.Size.ToString("0.##", CultureInfo.InvariantCulture);
-        EyeSpacingBox.Text = state.Creature.Eyes.Spacing.ToString("0.##", CultureInfo.InvariantCulture);
-        EyeForwardBox.Text = state.Creature.Eyes.ForwardOffset.ToString("0.##", CultureInfo.InvariantCulture);
+        PlayShowEyesBox.IsChecked = state.Display.PlayShowFeatures;
+        FeatureListBox.Items.Clear();
+        foreach (var feature in state.Creature.Features) FeatureListBox.Items.Add($"{feature.Type} {feature.Id.ToString()[..6].ToUpperInvariant()}");
+        FeatureListBox.SelectedIndex = state.SelectedFeature is null ? -1 : state.Creature.Features.IndexOf(state.SelectedFeature);
+        var selectedFeature = state.SelectedFeature;
+        FeatureTypeBox.SelectedIndex = selectedFeature is null ? -1 : (int)selectedFeature.Type;
+        FeatureParentBox.Items.Clear();
+        foreach (var featureNode in state.Creature.Nodes) FeatureParentBox.Items.Add($"Node {state.Creature.Nodes.IndexOf(featureNode)}");
+        FeatureParentBox.SelectedIndex = selectedFeature is null ? -1 : state.Creature.Nodes.FindIndex(n => n.Id == selectedFeature.ParentNodeId);
+        FeatureXBox.Text = selectedFeature is null ? "" : selectedFeature.LocalPosition.X.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureYBox.Text = selectedFeature is null ? "" : selectedFeature.LocalPosition.Y.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureRotationBox.Text = selectedFeature is null ? "" : selectedFeature.LocalRotation.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureScaleBox.Text = selectedFeature is null ? "" : selectedFeature.Scale.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureEyeSizeBox.Text = selectedFeature is null ? "" : selectedFeature.EyeSize.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureMirrorBox.IsChecked = selectedFeature?.Mirrored == true;
+        FeatureVisibleBox.IsChecked = selectedFeature?.Visible == true;
+        var featureEditing = editing && selectedFeature is not null;
+        FeatureTypeBox.IsEnabled = featureEditing;
+        FeatureParentBox.IsEnabled = featureEditing;
+        FeatureXBox.IsEnabled = featureEditing;
+        FeatureYBox.IsEnabled = featureEditing;
+        FeatureRotationBox.IsEnabled = featureEditing;
+        FeatureScaleBox.IsEnabled = featureEditing;
+        FeatureEyeSizeBox.IsEnabled = featureEditing;
+        FeatureMirrorBox.IsEnabled = featureEditing;
+        FeatureVisibleBox.IsEnabled = featureEditing;
         PlayPauseButton.Content = state.Simulator.State.Paused ? "RESUME" : "PAUSE";
         MaxSpeedBox.Text = state.Simulator.State.MaxSpeed.ToString("0.##", CultureInfo.InvariantCulture);
         AccelerationBox.Text = state.Simulator.State.AccelerationStrength.ToString("0.##", CultureInfo.InvariantCulture);
@@ -144,16 +165,35 @@ public partial class MainWindow : Window
     private void DisplayToggle_Changed(object sender, RoutedEventArgs e)
     {
         if (!IsLoaded || refreshing) return;
-        if (state.Mode == EditorMode.Create) state.SetDisplay(CreateShowNodesBox.IsChecked == true, CreateShowSkinBox.IsChecked == true, CreateShowEyesBox.IsChecked == true);
+        if (state.Mode == EditorMode.Create) state.SetDisplay(CreateShowNodesBox.IsChecked == true, CreateShowSkinBox.IsChecked == true, state.Display.CreateShowFeatures);
         else state.SetDisplay(PlayShowNodesBox.IsChecked == true, PlayShowSkinBox.IsChecked == true, PlayShowEyesBox.IsChecked == true);
     }
 
-    private void EyeSetting_Changed(object sender, RoutedEventArgs e) => ApplyEyeSettings();
-    private void EyeSetting_LostFocus(object sender, RoutedEventArgs e) => ApplyEyeSettings();
-    private void ApplyEyeSettings()
+    private void AddFeature_Click(object sender, RoutedEventArgs e)
     {
-        if (!IsLoaded || refreshing || !float.TryParse(EyeSizeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var size) || !float.TryParse(EyeSpacingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var spacing) || !float.TryParse(EyeForwardBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var forward)) return;
-        state.SetEyeSettings(CreateShowEyesBox.IsChecked == true, size, spacing, forward);
+        if (state.Mode == EditorMode.Create && state.Creature.Nodes.Count > 0) state.AddFeature();
+        else state.SetStatus("Create a head node before adding a feature.");
+    }
+
+    private void DeleteFeature_Click(object sender, RoutedEventArgs e)
+    {
+        if (state.Mode == EditorMode.Create) state.DeleteSelectedFeature();
+    }
+
+    private void FeatureSelection_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || refreshing || FeatureListBox.SelectedIndex < 0 || FeatureListBox.SelectedIndex >= state.Creature.Features.Count) return;
+        state.SelectFeature(state.Creature.Features[FeatureListBox.SelectedIndex]);
+    }
+
+    private void FeatureProperty_Changed(object sender, RoutedEventArgs e) => ApplyFeatureProperties();
+    private void FeatureProperty_LostFocus(object sender, RoutedEventArgs e) => ApplyFeatureProperties();
+    private void ApplyFeatureProperties()
+    {
+        if (!IsLoaded || refreshing || state.SelectedFeature is null || !float.TryParse(FeatureXBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) || !float.TryParse(FeatureYBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y) || !float.TryParse(FeatureRotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) || !float.TryParse(FeatureScaleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) || !float.TryParse(FeatureEyeSizeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeSize)) return;
+        var parentIndex = FeatureParentBox.SelectedIndex;
+        var parentId = parentIndex >= 0 && parentIndex < state.Creature.Nodes.Count ? state.Creature.Nodes[parentIndex].Id : Guid.Empty;
+        state.SetSelectedFeature(CreatureFeatureType.Eye, parentId, new Vector2(x, y), rotation, scale, FeatureMirrorBox.IsChecked == true, FeatureVisibleBox.IsChecked == true, eyeSize);
     }
 
     private void ChainProperty_LostFocus(object sender, RoutedEventArgs e)

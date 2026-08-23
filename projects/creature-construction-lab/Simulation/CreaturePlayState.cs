@@ -14,7 +14,7 @@ public sealed class CreaturePlayState
     public float MaxSpeed { get; set; } = 720;
     public float AccelerationStrength { get; set; } = 420;
     public float Damping { get; set; } = 3.5f;
-    public float SimulationSpeed { get; set; } = 1;
+    public float SimulationSpeed { get; set; } = 2;
     public WaveMotionSettings Wave { get; } = new();
     public bool Paused { get; private set; }
     public float SimulationTime { get; private set; }
@@ -25,7 +25,7 @@ public sealed class CreaturePlayState
         MaxSpeed = 720;
         AccelerationStrength = 420;
         Damping = 3.5f;
-        SimulationSpeed = 1;
+        SimulationSpeed = 2;
         Wave.Enabled = false;
         Wave.Amplitude = 4;
         Wave.Frequency = 1.2f;

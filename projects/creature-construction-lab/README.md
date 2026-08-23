@@ -20,6 +20,10 @@ The curve-and-turning upgrade limits new child construction to a 270-degree arc 
 
 The visual/editor milestone adds a procedural outer skin, mirrored head eyes, display toggles, and strict mode-specific panels. Skin side points are derived as `node center ± local perpendicular × node radius`, so the Body Size Ramp directly controls silhouette width in both Create and Play Mode. Nodes, skin, and eyes can be toggled independently without changing the definition. Eyes store one size/spacing/forward-offset rule and derive the mirrored pair from the head orientation; those settings persist in JSON, while older files use eye defaults. Create Mode exposes construction, chain, curve, appearance, and eye tools. Play Mode exposes only simulation, movement, body-motion, and display controls. New defaults are Max Speed `720` and Wave disabled.
 
+The features-and-skin milestone doubles the default Simulation Speed from `1.0x` to `2.0x` while keeping Max Speed at `720`. The skin now uses Catmull-Rom interpolation with eight rendering samples per structural segment; nodes and radii remain the only authored geometry, and rounded caps close the head and tail. Play Mode rebuilds this derived skin from simulated positions without changing the authored chain.
+
+Eyes are now the first member of a general `CreatureFeature` system. A feature stores an ID, type, parent node ID, local position, local rotation, scale, mirror state, visibility, and Eye size. Features are parent-local rules: `head position + local eye offset = eye world position`, so movement and rotation carry the feature automatically. Create Mode provides add/select/edit/delete controls and canvas dragging; Play Mode renders features from simulated parent transforms but hides editing controls. Feature collections save to `.creature.json`; older files without `Features` remain valid, and the previous `Eyes` section migrates to one mirrored Eye feature when possible.
+
 ## Run
 
 From this directory:
