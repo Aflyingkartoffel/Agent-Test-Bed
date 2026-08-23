@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Media;
+using System.Numerics;
 using CreatureConstructionLab.Editor;
 using CreatureConstructionLab.Model;
 using System.Windows.Input;
@@ -26,7 +27,7 @@ public sealed class CreatureCanvas : FrameworkElement
     }
 
     private CreatureNode? dragging;
-    private Vector dragOffset;
+    private System.Windows.Vector dragOffset;
     private bool rotating;
 
     protected override int VisualChildrenCount => 1;
@@ -41,6 +42,10 @@ public sealed class CreatureCanvas : FrameworkElement
         for (double x = 0; x < ActualWidth; x += 32) draw.DrawLine(gridPen, new Point(x, 0), new Point(x, ActualHeight));
         for (double y = 0; y < ActualHeight; y += 32) draw.DrawLine(gridPen, new Point(0, y), new Point(ActualWidth, y));
 
+        var positions = new System.Numerics.Vector2[State.Creature.Nodes.Count];
+        var radii = new float[State.Creature.Nodes.Count];
+        for (var i = 0; i < State.Creature.Nodes.Count; i++) { positions[i] = GetPosition(State.Creature.Nodes[i]); radii[i] = State.Creature.Nodes[i].Radius; }
+        if (ShowSkin && positions.Length > 0) DrawSkin(draw, CreatureSkinGeometry.Build(positions, radii));
         var connectionPen = new Pen(new SolidColorBrush(Color.FromRgb(35, 120, 79)), 1.5);
         foreach (var connection in State.Creature.Connections)
         {
@@ -49,7 +54,8 @@ public sealed class CreatureCanvas : FrameworkElement
             if (parent is not null && child is not null) draw.DrawLine(connectionPen, ToPoint(GetPosition(parent)), ToPoint(GetPosition(child)));
         }
         if (State.Mode == EditorMode.Create && State.SelectedNode is not null) DrawGizmo(draw, State.SelectedNode, State.Creature.ChainSettings.Spacing);
-        foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode, GetPosition(node));
+        if (ShowNodes) foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode, GetPosition(node));
+        if (ShowEyes && State.Creature.Nodes.Count > 0) DrawEyes(draw, positions[0], State.Creature.Nodes[0], radii[0]);
         if (State.Mode == EditorMode.Play)
         {
             var text = new FormattedText(State.Simulator.State.Positions.Count == 0 ? "PLAY MODE  /  CREATE A CREATURE FIRST" : "PLAY MODE  /  MOUSE TARGET ACTIVE", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Consolas"), 14, Brushes.SeaGreen, 1);
@@ -62,6 +68,56 @@ public sealed class CreatureCanvas : FrameworkElement
                 draw.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(80, 180, 120)), 1), new Point(target.X, target.Y - 12), new Point(target.X, target.Y + 12));
             }
         }
+    }
+
+    private bool ShowNodes => State.Mode == EditorMode.Create ? State.Display.CreateShowNodes : State.Display.PlayShowNodes;
+    private bool ShowSkin => State.Mode == EditorMode.Create ? State.Display.CreateShowSkin : State.Display.PlayShowSkin;
+    private bool ShowEyes => State.Mode == EditorMode.Create ? State.Display.CreateShowEyes : State.Display.PlayShowEyes;
+
+    private static void DrawSkin(DrawingContext draw, CreatureSkinGeometry skin)
+    {
+        if (skin.Left.Length == 1)
+        {
+            var center = new Point((skin.Left[0].X + skin.Right[0].X) / 2, (skin.Left[0].Y + skin.Right[0].Y) / 2);
+            var radius = Vector2.Distance(skin.Left[0], skin.Right[0]) / 2;
+            draw.DrawEllipse(new SolidColorBrush(Color.FromArgb(45, 85, 220, 140)), new Pen(new SolidColorBrush(Color.FromRgb(72, 190, 125)), 2), center, radius, radius);
+            return;
+        }
+        var geometry = new StreamGeometry();
+        using (var context = geometry.Open())
+        {
+            context.BeginFigure(ToPoint(skin.Left[0]), true, true);
+            for (var i = 1; i < skin.Left.Length; i++) context.LineTo(ToPoint(skin.Left[i]), true, false);
+            for (var i = skin.Right.Length - 1; i >= 0; i--) context.LineTo(ToPoint(skin.Right[i]), true, false);
+        }
+        geometry.Freeze();
+        draw.DrawGeometry(new SolidColorBrush(Color.FromArgb(45, 85, 220, 140)), new Pen(new SolidColorBrush(Color.FromRgb(72, 190, 125)), 2), geometry);
+    }
+
+    private void DrawEyes(DrawingContext draw, System.Numerics.Vector2 headPosition, CreatureNode head, float headRadius)
+    {
+        var heading = GetHeadDirection();
+        var right = new System.Numerics.Vector2(-heading.Y, heading.X);
+        var eyeCenter = headPosition + heading * Math.Clamp(State.Creature.Eyes.ForwardOffset, -headRadius, 80);
+        var separation = right * (State.Creature.Eyes.Spacing / 2);
+        DrawEye(draw, eyeCenter - separation, State.Creature.Eyes.Size);
+        DrawEye(draw, eyeCenter + separation, State.Creature.Eyes.Size);
+    }
+
+    private void DrawEye(DrawingContext draw, System.Numerics.Vector2 position, float size)
+    {
+        var center = ToPoint(position);
+        draw.DrawEllipse(Brushes.White, new Pen(Brushes.DarkGreen, 1), center, size, size);
+        draw.DrawEllipse(Brushes.Black, null, center, size * 0.42, size * 0.42);
+    }
+
+    private System.Numerics.Vector2 GetHeadDirection()
+    {
+        if (State.Mode == EditorMode.Create && State.Creature.Nodes.Count > 0) return ChainMath.GetDirectionFromRotation(State.Creature.Nodes[0].Rotation);
+        var velocity = State.Simulator.State.Velocities.Count > 0 ? State.Simulator.State.Velocities[0] : Vector2.Zero;
+        if (velocity.LengthSquared() > 0.0001f) return Vector2.Normalize(velocity);
+        if (State.Creature.Nodes.Count > 1) { var direction = GetPosition(State.Creature.Nodes[1]) - GetPosition(State.Creature.Nodes[0]); if (direction.LengthSquared() > 0.0001f) return Vector2.Normalize(direction); }
+        return ChainMath.GetDirectionFromRotation(State.Creature.Nodes[0].Rotation);
     }
 
     private System.Numerics.Vector2 GetPosition(CreatureNode node)
@@ -128,10 +184,10 @@ public sealed class CreatureCanvas : FrameworkElement
         if (State.SelectedNode is not null && IsNearDirectionHandle(world, State.SelectedNode)) { rotating = true; CaptureMouse(); UpdateRotation(world); return; }
         if (State.Tool == EditorTool.Node && State.Creature.Nodes.All(n => System.Numerics.Vector2.Distance(n.Position, world) > n.Radius))
         {
-            State.CreateNode(world); CaptureMouse(); dragging = State.SelectedNode; dragOffset = new Vector(0, 0); return;
+            State.CreateNode(world); CaptureMouse(); dragging = State.SelectedNode; dragOffset = new System.Windows.Vector(0, 0); return;
         }
         State.SelectAt(world);
-        if (State.SelectedNode is not null) { dragging = State.SelectedNode; dragOffset = new Vector(State.SelectedNode.Position.X - world.X, State.SelectedNode.Position.Y - world.Y); CaptureMouse(); }
+        if (State.SelectedNode is not null) { dragging = State.SelectedNode; dragOffset = new System.Windows.Vector(State.SelectedNode.Position.X - world.X, State.SelectedNode.Position.Y - world.Y); CaptureMouse(); }
     }
 
     private void OnMouseMove(object sender, System.Windows.Input.MouseEventArgs e)

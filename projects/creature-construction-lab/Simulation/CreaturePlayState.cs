@@ -11,7 +11,7 @@ public sealed class CreaturePlayState
     public List<Vector2> Velocities { get; } = [];
     public List<Vector2> Accelerations { get; } = [];
     public Vector2 TargetPosition { get; private set; }
-    public float MaxSpeed { get; set; } = 360;
+    public float MaxSpeed { get; set; } = 720;
     public float AccelerationStrength { get; set; } = 420;
     public float Damping { get; set; } = 3.5f;
     public float SimulationSpeed { get; set; } = 1;
@@ -22,11 +22,11 @@ public sealed class CreaturePlayState
 
     public void ResetSettings()
     {
-        MaxSpeed = 360;
+        MaxSpeed = 720;
         AccelerationStrength = 420;
         Damping = 3.5f;
         SimulationSpeed = 1;
-        Wave.Enabled = true;
+        Wave.Enabled = false;
         Wave.Amplitude = 4;
         Wave.Frequency = 1.2f;
         Wave.Phase = 2.8f;

@@ -13,6 +13,7 @@ public sealed class EditorState
     public CreatureNode? SelectedNode { get; private set; }
     public string? StatusMessage { get; private set; }
     public CreatureSimulator Simulator { get; } = new();
+    public DisplaySettings Display { get; } = new();
 
     public event Action? Changed;
     public event Action? SimulationUpdated;
@@ -179,6 +180,22 @@ public sealed class EditorState
         Changed?.Invoke();
     }
 
+    public void SetDisplay(bool showNodes, bool showSkin, bool showEyes)
+    {
+        if (Mode == EditorMode.Create) { Display.CreateShowNodes = showNodes; Display.CreateShowSkin = showSkin; Display.CreateShowEyes = showEyes; }
+        else { Display.PlayShowNodes = showNodes; Display.PlayShowSkin = showSkin; Display.PlayShowEyes = showEyes; }
+        Changed?.Invoke();
+    }
+
+    public void SetEyeSettings(bool enabled, float size, float spacing, float forwardOffset)
+    {
+        Creature.Eyes.Enabled = enabled;
+        Creature.Eyes.Size = Math.Clamp(float.IsFinite(size) ? size : 5, 1, 20);
+        Creature.Eyes.Spacing = Math.Clamp(float.IsFinite(spacing) ? spacing : 18, 0, 60);
+        Creature.Eyes.ForwardOffset = Math.Clamp(float.IsFinite(forwardOffset) ? forwardOffset : 18, -20, 80);
+        Changed?.Invoke();
+    }
+
     public void LoadDefinition(CreatureDefinition loaded)
     {
         Creature.Nodes.Clear();
@@ -189,6 +206,10 @@ public sealed class EditorState
         Creature.ChainSettings.Stiffness = loaded.ChainSettings.Stiffness;
         Creature.ChainSettings.Damping = loaded.ChainSettings.Damping;
         Creature.BaseRadius = loaded.BaseRadius;
+        Creature.Eyes.Enabled = loaded.Eyes.Enabled;
+        Creature.Eyes.Size = loaded.Eyes.Size;
+        Creature.Eyes.Spacing = loaded.Eyes.Spacing;
+        Creature.Eyes.ForwardOffset = loaded.Eyes.ForwardOffset;
         Creature.BodySizeRamp.Points.Clear();
         Creature.BodySizeRamp.Interpolation = loaded.BodySizeRamp.Interpolation;
         Creature.BodySizeRamp.Points.AddRange(loaded.BodySizeRamp.Points.Select(p => new RampPoint(p.Position, p.Value)));
@@ -207,6 +228,16 @@ public sealed class EditorState
         Creature.Connections.Clear();
         Creature.BodySizeRamp.Reset();
         Creature.BaseRadius = 24;
+        Creature.Eyes.Enabled = true;
+        Creature.Eyes.Size = 5;
+        Creature.Eyes.Spacing = 18;
+        Creature.Eyes.ForwardOffset = 18;
+        Display.CreateShowNodes = true;
+        Display.CreateShowSkin = true;
+        Display.CreateShowEyes = true;
+        Display.PlayShowNodes = false;
+        Display.PlayShowSkin = true;
+        Display.PlayShowEyes = true;
         Simulator.ResetSettings();
         SelectedNode = null;
         Mode = EditorMode.Create;

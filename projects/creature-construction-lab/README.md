@@ -18,6 +18,8 @@ The final prototype polish uses a gentler default wave amplitude of `4` (previou
 
 The curve-and-turning upgrade limits new child construction to a 270-degree arc centered on the incoming segment direction (`-135°..+135°`), leaving a blocked rear 90-degree sector. The root remains unrestricted, and older authored geometry is preserved while future extension directions are clamped. Body Size supports up to 64 points and Linear, Smooth, or automatic-handle Bezier interpolation. The curve editor renders the sampled curve, updates radii immediately, and saves interpolation mode with backward-compatible Linear fallback.
 
+The visual/editor milestone adds a procedural outer skin, mirrored head eyes, display toggles, and strict mode-specific panels. Skin side points are derived as `node center ± local perpendicular × node radius`, so the Body Size Ramp directly controls silhouette width in both Create and Play Mode. Nodes, skin, and eyes can be toggled independently without changing the definition. Eyes store one size/spacing/forward-offset rule and derive the mirrored pair from the head orientation; those settings persist in JSON, while older files use eye defaults. Create Mode exposes construction, chain, curve, appearance, and eye tools. Play Mode exposes only simulation, movement, body-motion, and display controls. New defaults are Max Speed `720` and Wave disabled.
+
 ## Run
 
 From this directory:

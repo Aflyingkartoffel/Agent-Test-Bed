@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     private readonly EditorState state = new();
     private readonly CreatureCanvas canvas;
     private readonly DispatcherTimer simulationTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private bool refreshing;
 
     public MainWindow()
     {
@@ -30,6 +31,8 @@ public partial class MainWindow : Window
 
     private void Refresh()
     {
+        if (refreshing) return;
+        refreshing = true;
         SelectionText.Text = state.SelectedNode is null ? "NONE" : state.SelectedNode.Id.ToString()[..8].ToUpperInvariant();
         var node = state.SelectedNode;
         XBox.Text = node is null ? "" : node.Position.X.ToString("0.##", CultureInfo.InvariantCulture);
@@ -43,7 +46,7 @@ public partial class MainWindow : Window
         SpacingBox.Text = state.Creature.ChainSettings.Spacing.ToString("0.##", CultureInfo.InvariantCulture);
         StiffnessBox.Text = state.Creature.ChainSettings.Stiffness.ToString("0.##", CultureInfo.InvariantCulture);
         DampingBox.Text = state.Creature.ChainSettings.Damping.ToString("0.##", CultureInfo.InvariantCulture);
-        HelpText.Text = state.StatusMessage ?? "Drag the root to move the whole chain. Drag the bright direction handle to rotate. Press DELETE to remove the selected node and its descendants.";
+        CreatePanel.Visibility = state.Mode == EditorMode.Create ? Visibility.Visible : Visibility.Collapsed;
         PlayPanel.Visibility = state.Mode == EditorMode.Play ? Visibility.Visible : Visibility.Collapsed;
         var editing = state.Mode == EditorMode.Create;
         AddNextButton.IsEnabled = editing;
@@ -57,6 +60,15 @@ public partial class MainWindow : Window
         DampingBox.IsEnabled = editing;
         BaseRadiusBox.IsEnabled = editing;
         InterpolationBox.IsEnabled = editing;
+        CreateShowNodesBox.IsChecked = state.Display.CreateShowNodes;
+        CreateShowSkinBox.IsChecked = state.Display.CreateShowSkin;
+        CreateShowEyesBox.IsChecked = state.Display.CreateShowEyes && state.Creature.Eyes.Enabled;
+        PlayShowNodesBox.IsChecked = state.Display.PlayShowNodes;
+        PlayShowSkinBox.IsChecked = state.Display.PlayShowSkin;
+        PlayShowEyesBox.IsChecked = state.Display.PlayShowEyes;
+        EyeSizeBox.Text = state.Creature.Eyes.Size.ToString("0.##", CultureInfo.InvariantCulture);
+        EyeSpacingBox.Text = state.Creature.Eyes.Spacing.ToString("0.##", CultureInfo.InvariantCulture);
+        EyeForwardBox.Text = state.Creature.Eyes.ForwardOffset.ToString("0.##", CultureInfo.InvariantCulture);
         PlayPauseButton.Content = state.Simulator.State.Paused ? "RESUME" : "PAUSE";
         MaxSpeedBox.Text = state.Simulator.State.MaxSpeed.ToString("0.##", CultureInfo.InvariantCulture);
         AccelerationBox.Text = state.Simulator.State.AccelerationStrength.ToString("0.##", CultureInfo.InvariantCulture);
@@ -67,15 +79,17 @@ public partial class MainWindow : Window
         WaveFrequencyBox.Text = state.Simulator.State.Wave.Frequency.ToString("0.##", CultureInfo.InvariantCulture);
         WavePhaseBox.Text = state.Simulator.State.Wave.Phase.ToString("0.##", CultureInfo.InvariantCulture);
         WaveInfluenceBox.Text = state.Simulator.State.Wave.Influence.ToString("0.##", CultureInfo.InvariantCulture);
-        StatusText.Text = $"{state.Mode.ToString().ToUpperInvariant()} MODE  /  {state.Creature.Nodes.Count} NODE{(state.Creature.Nodes.Count == 1 ? "" : "S")}";
+        StatusText.Text = state.StatusMessage ?? $"{state.Mode.ToString().ToUpperInvariant()} MODE  /  {state.Creature.Nodes.Count} NODE{(state.Creature.Nodes.Count == 1 ? "" : "S")}";
         CreateModeButton.Background = state.Mode == EditorMode.Create ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(18, 70, 43)) : null;
         PlayModeButton.Background = state.Mode == EditorMode.Play ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(18, 70, 43)) : null;
+        refreshing = false;
     }
 
     private void CreateMode_Click(object sender, RoutedEventArgs e) => state.SetMode(EditorMode.Create);
     private void PlayMode_Click(object sender, RoutedEventArgs e) => state.SetMode(EditorMode.Play);
     private void NodeTool_Click(object sender, RoutedEventArgs e) => state.Tool = EditorTool.Node;
     private void SelectTool_Click(object sender, RoutedEventArgs e) => state.Tool = EditorTool.Select;
+    private void Delete_Click(object sender, RoutedEventArgs e) => state.DeleteSelected();
     private void Reset_Click(object sender, RoutedEventArgs e) => state.Reset();
     private void Save_Click(object sender, RoutedEventArgs e)
     {
@@ -95,7 +109,7 @@ public partial class MainWindow : Window
     private void ResetSimulation_Click(object sender, RoutedEventArgs e) => state.ResetSimulation();
     private void SimulationSpeed_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (!IsLoaded || SimulationSpeedBox.SelectedIndex < 0) return;
+        if (!IsLoaded || refreshing || SimulationSpeedBox.SelectedIndex < 0) return;
         var speed = SimulationSpeedBox.SelectedIndex switch { 0 => 0.25f, 1 => 0.5f, 2 => 1f, _ => 2f };
         state.SetPlaySettings(speed, state.Simulator.State.MaxSpeed, state.Simulator.State.AccelerationStrength, state.Simulator.State.Damping);
     }
@@ -108,13 +122,13 @@ public partial class MainWindow : Window
     private void WaveSetting_LostFocus(object sender, RoutedEventArgs e) => ApplyWaveSettings();
     private void ApplyWaveSettings()
     {
-        if (!IsLoaded || !float.TryParse(WaveAmplitudeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amplitude) || !float.TryParse(WaveFrequencyBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var frequency) || !float.TryParse(WavePhaseBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var phase) || !float.TryParse(WaveInfluenceBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var influence)) return;
+        if (!IsLoaded || refreshing || !float.TryParse(WaveAmplitudeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var amplitude) || !float.TryParse(WaveFrequencyBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var frequency) || !float.TryParse(WavePhaseBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var phase) || !float.TryParse(WaveInfluenceBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var influence)) return;
         state.SetWaveSettings(WaveEnabledBox.IsChecked == true, amplitude, frequency, phase, influence);
     }
     private void ResetCurve_Click(object sender, RoutedEventArgs e) { if (state.Mode == EditorMode.Create) state.ResetBodySizeRamp(); }
     private void Interpolation_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (IsLoaded && state.Mode == EditorMode.Create && InterpolationBox.SelectedIndex >= 0) state.SetRampInterpolation((RampInterpolationMode)InterpolationBox.SelectedIndex);
+        if (IsLoaded && !refreshing && state.Mode == EditorMode.Create && InterpolationBox.SelectedIndex >= 0) state.SetRampInterpolation((RampInterpolationMode)InterpolationBox.SelectedIndex);
     }
     private void BaseRadius_LostFocus(object sender, RoutedEventArgs e)
     {
@@ -125,6 +139,21 @@ public partial class MainWindow : Window
         if (state.Mode != EditorMode.Create) return;
         if (state.SelectedNode is null) { state.ClearStatus(); return; }
         if (state.AddNextNode() is null) { state.SetStatus("Only the current chain end can be extended."); }
+    }
+
+    private void DisplayToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded || refreshing) return;
+        if (state.Mode == EditorMode.Create) state.SetDisplay(CreateShowNodesBox.IsChecked == true, CreateShowSkinBox.IsChecked == true, CreateShowEyesBox.IsChecked == true);
+        else state.SetDisplay(PlayShowNodesBox.IsChecked == true, PlayShowSkinBox.IsChecked == true, PlayShowEyesBox.IsChecked == true);
+    }
+
+    private void EyeSetting_Changed(object sender, RoutedEventArgs e) => ApplyEyeSettings();
+    private void EyeSetting_LostFocus(object sender, RoutedEventArgs e) => ApplyEyeSettings();
+    private void ApplyEyeSettings()
+    {
+        if (!IsLoaded || refreshing || !float.TryParse(EyeSizeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var size) || !float.TryParse(EyeSpacingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var spacing) || !float.TryParse(EyeForwardBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var forward)) return;
+        state.SetEyeSettings(CreateShowEyesBox.IsChecked == true, size, spacing, forward);
     }
 
     private void ChainProperty_LostFocus(object sender, RoutedEventArgs e)
