@@ -79,7 +79,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
         Focus();
         var mouse = e.GetPosition(this);
         selectedPoint = state.Creature.BodySizeRamp.Points.OrderBy(p => (ToCanvas(p) - mouse).Length).FirstOrDefault();
-        if (selectedPoint is not null && (ToCanvas(selectedPoint) - mouse).Length <= 12) { dragging = true; CaptureMouse(); }
+        if (selectedPoint is not null && (ToCanvas(selectedPoint) - mouse).Length <= 12) { state.BeginHistoryGroup(); dragging = true; CaptureMouse(); }
         else selectedPoint = null;
         InvalidateVisual();
     }
@@ -99,7 +99,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
         state.SetRampPoint(selectedPoint, value.Position, value.Value);
     }
 
-    private void OnMouseUp(object sender, MouseButtonEventArgs e) { dragging = false; ReleaseMouseCapture(); }
+    private void OnMouseUp(object sender, MouseButtonEventArgs e) { if (dragging) state.EndHistoryGroup(); dragging = false; ReleaseMouseCapture(); }
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {

@@ -81,15 +81,23 @@ public partial class MainWindow : Window
         FeatureYBox.Text = selectedFeature is null ? "" : selectedFeature.LocalPosition.Y.ToString("0.##", CultureInfo.InvariantCulture);
         FeatureRotationBox.Text = selectedFeature is null ? "" : selectedFeature.LocalRotation.ToString("0.##", CultureInfo.InvariantCulture);
         FeatureScaleBox.Text = selectedFeature is null ? "" : selectedFeature.Scale.ToString("0.##", CultureInfo.InvariantCulture);
-        FeatureEyeWidthBox.Text = selectedFeature is null ? "" : selectedFeature.EyeWidth.ToString("0.##", CultureInfo.InvariantCulture);
-        FeatureEyeHeightBox.Text = selectedFeature is null ? "" : selectedFeature.EyeHeight.ToString("0.##", CultureInfo.InvariantCulture);
+        FeatureEyeSizeBox.Text = selectedFeature is null ? "" : selectedFeature.EyeSize.ToString("0.##", CultureInfo.InvariantCulture);
         FeatureTrackingBox.Text = selectedFeature is null ? "" : selectedFeature.EyeTrackingStrength.ToString("0.##", CultureInfo.InvariantCulture);
         TongueLengthBox.Text = selectedFeature is null ? "" : selectedFeature.TongueLength.ToString("0.##", CultureInfo.InvariantCulture);
         TongueForkLengthBox.Text = selectedFeature is null ? "" : selectedFeature.TongueForkLength.ToString("0.##", CultureInfo.InvariantCulture);
         TongueForkAngleBox.Text = selectedFeature is null ? "" : selectedFeature.TongueForkAngle.ToString("0.##", CultureInfo.InvariantCulture);
+        FinSideBox.SelectedIndex = selectedFeature is null ? -1 : (int)selectedFeature.FinSide;
+        FinLengthBox.Text = selectedFeature is null ? "" : selectedFeature.FinLength.ToString("0.##", CultureInfo.InvariantCulture);
+        FinWidthBox.Text = selectedFeature is null ? "" : selectedFeature.FinWidth.ToString("0.##", CultureInfo.InvariantCulture);
+        FinBaseAngleBox.Text = selectedFeature is null ? "" : selectedFeature.FinBaseAngle.ToString("0.##", CultureInfo.InvariantCulture);
+        FinStiffnessBox.Text = selectedFeature is null ? "" : selectedFeature.FinAngularStiffness.ToString("0.##", CultureInfo.InvariantCulture);
+        FinDampingBox.Text = selectedFeature is null ? "" : selectedFeature.FinAngularDamping.ToString("0.##", CultureInfo.InvariantCulture);
         var isEye = selectedFeature?.Type == CreatureFeatureType.Eye;
+        var isTongue = selectedFeature?.Type == CreatureFeatureType.ForkedTongue;
+        var isFin = selectedFeature?.Type == CreatureFeatureType.Fin;
         EyeSettingsPanel.Visibility = isEye ? Visibility.Visible : Visibility.Collapsed;
-        TongueSettingsPanel.Visibility = selectedFeature?.Type == CreatureFeatureType.ForkedTongue ? Visibility.Visible : Visibility.Collapsed;
+        TongueSettingsPanel.Visibility = isTongue ? Visibility.Visible : Visibility.Collapsed;
+        FinSettingsPanel.Visibility = isFin ? Visibility.Visible : Visibility.Collapsed;
         FeatureMirrorBox.IsChecked = isEye && selectedFeature?.Mirrored == true;
         FeatureVisibleBox.IsChecked = selectedFeature?.Visible == true;
         var featureEditing = editing && selectedFeature is not null;
@@ -99,12 +107,17 @@ public partial class MainWindow : Window
         FeatureYBox.IsEnabled = featureEditing;
         FeatureRotationBox.IsEnabled = featureEditing;
         FeatureScaleBox.IsEnabled = featureEditing;
-        FeatureEyeWidthBox.IsEnabled = featureEditing;
-        FeatureEyeHeightBox.IsEnabled = featureEditing;
+        FeatureEyeSizeBox.IsEnabled = featureEditing && isEye;
         FeatureTrackingBox.IsEnabled = featureEditing;
         TongueLengthBox.IsEnabled = featureEditing;
         TongueForkLengthBox.IsEnabled = featureEditing;
         TongueForkAngleBox.IsEnabled = featureEditing;
+        FinSideBox.IsEnabled = featureEditing && isFin;
+        FinLengthBox.IsEnabled = featureEditing && isFin;
+        FinWidthBox.IsEnabled = featureEditing && isFin;
+        FinBaseAngleBox.IsEnabled = featureEditing && isFin;
+        FinStiffnessBox.IsEnabled = featureEditing && isFin;
+        FinDampingBox.IsEnabled = featureEditing && isFin;
         FeatureMirrorBox.IsEnabled = featureEditing && isEye;
         FeatureVisibleBox.IsEnabled = featureEditing;
         PlayPauseButton.Content = state.Simulator.State.Paused ? "RESUME" : "PAUSE";
@@ -224,11 +237,11 @@ public partial class MainWindow : Window
     private void FeatureProperty_LostFocus(object sender, RoutedEventArgs e) => ApplyFeatureProperties();
     private void ApplyFeatureProperties()
     {
-        if (!IsLoaded || refreshing || state.SelectedFeature is null || !float.TryParse(FeatureXBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) || !float.TryParse(FeatureYBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y) || !float.TryParse(FeatureRotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) || !float.TryParse(FeatureScaleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) || !float.TryParse(FeatureEyeWidthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeWidth) || !float.TryParse(FeatureEyeHeightBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeHeight) || !float.TryParse(FeatureTrackingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tracking) || !float.TryParse(TongueLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueLength) || !float.TryParse(TongueForkLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkLength) || !float.TryParse(TongueForkAngleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkAngle)) return;
+        if (!IsLoaded || refreshing || state.SelectedFeature is null || !float.TryParse(FeatureXBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) || !float.TryParse(FeatureYBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y) || !float.TryParse(FeatureRotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation) || !float.TryParse(FeatureScaleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var scale) || !float.TryParse(FeatureEyeSizeBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var eyeSize) || !float.TryParse(FeatureTrackingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tracking) || !float.TryParse(TongueLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueLength) || !float.TryParse(TongueForkLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkLength) || !float.TryParse(TongueForkAngleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var tongueForkAngle) || !float.TryParse(FinLengthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var finLength) || !float.TryParse(FinWidthBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var finWidth) || !float.TryParse(FinBaseAngleBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var finBaseAngle) || !float.TryParse(FinStiffnessBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var finStiffness) || !float.TryParse(FinDampingBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var finDamping)) return;
         var parentIndex = FeatureParentBox.SelectedIndex;
         var parentId = parentIndex >= 0 && parentIndex < state.Creature.Nodes.Count ? state.Creature.Nodes[parentIndex].Id : Guid.Empty;
-        var type = FeatureTypeBox.SelectedIndex == (int)CreatureFeatureType.ForkedTongue ? CreatureFeatureType.ForkedTongue : CreatureFeatureType.Eye;
-        state.SetSelectedFeature(type, parentId, new Vector2(x, y), rotation, scale, FeatureMirrorBox.IsChecked == true, FeatureVisibleBox.IsChecked == true, Math.Clamp(eyeHeight / 2, 1, 20), eyeWidth, eyeHeight, tracking, tongueLength, tongueForkLength, tongueForkAngle);
+        var type = (CreatureFeatureType)Math.Clamp(FeatureTypeBox.SelectedIndex, 0, (int)CreatureFeatureType.Fin);
+        state.SetSelectedFeature(type, parentId, new Vector2(x, y), rotation, scale, FeatureMirrorBox.IsChecked == true, FeatureVisibleBox.IsChecked == true, eyeSize, 16, 9, tracking, tongueLength, tongueForkLength, tongueForkAngle, (FinSide)Math.Clamp(FinSideBox.SelectedIndex, 0, 1), finLength, finWidth, finBaseAngle, finStiffness, finDamping);
     }
 
     private void ChainProperty_LostFocus(object sender, RoutedEventArgs e)
@@ -243,13 +256,18 @@ public partial class MainWindow : Window
         if (state.Mode != EditorMode.Create) return;
         var node = state.SelectedNode;
         if (node is null) return;
-        if (float.TryParse(XBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) && float.TryParse(YBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) node.Position = new Vector2(x, y);
-        if (float.TryParse(RotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation)) node.Rotation = rotation;
-        state.Select(node);
+        var position = node.Position;
+        if (float.TryParse(XBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var x) && float.TryParse(YBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) position = new Vector2(x, y);
+        var rotation = node.Rotation;
+        if (float.TryParse(RotationBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedRotation)) rotation = parsedRotation;
+        state.SetSelectedNodeProperties(position, rotation);
     }
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        if (state.Mode == EditorMode.Create && Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Z) { state.Undo(); e.Handled = true; return; }
+        if (state.Mode == EditorMode.Create && Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.C) { state.CopySelectedFeature(); e.Handled = true; return; }
+        if (state.Mode == EditorMode.Create && Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.V) { state.PasteFeature(); e.Handled = true; return; }
         if (e.Key is Key.Delete or Key.Back) { state.DeleteSelected(); e.Handled = true; }
     }
 }

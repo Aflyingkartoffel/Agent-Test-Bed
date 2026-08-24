@@ -54,6 +54,7 @@ public sealed class CreatureCanvas : FrameworkElement
         if (State.Mode == EditorMode.Create && State.SelectedNode is not null && State.SelectedFeature is null) DrawGizmo(draw, State.SelectedNode, State.Creature.ChainSettings.Spacing);
         if (ShowNodes) foreach (var node in State.Creature.Nodes) DrawNode(draw, node, node == State.SelectedNode, GetPosition(node));
         if (ShowFeatures) DrawFeatures(draw, positions, radii);
+        if (State.Mode == EditorMode.Play && State.Display.PlayShowSkeleton) DrawFeatureSkeletons(draw, positions, radii);
         if (State.Mode == EditorMode.Play)
         {
             var text = new FormattedText(State.Simulator.State.Positions.Count == 0 ? "PLAY MODE  /  CREATE A CREATURE FIRST" : "PLAY MODE  /  MOUSE TARGET ACTIVE", System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Consolas"), 14, Brushes.SeaGreen, 1);
@@ -117,6 +118,7 @@ public sealed class CreatureCanvas : FrameworkElement
             var transform = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), false);
             if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, feature, transform, false);
             else if (feature.Type == CreatureFeatureType.ForkedTongue) DrawForkedTongue(draw, feature, transform, radii[parentIndex]);
+            else if (feature.Type == CreatureFeatureType.Fin) DrawFin(draw, feature, positions[parentIndex], GetNodeHeading(parentIndex), radii[parentIndex], GetFinAngle(feature));
             if (feature.Type == CreatureFeatureType.Eye && feature.Mirrored)
             {
                 var mirrored = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), true);
@@ -134,31 +136,60 @@ public sealed class CreatureCanvas : FrameworkElement
         draw.DrawLine(pen, ToPoint(tongue.Junction), ToPoint(tongue.LowerTip));
     }
 
+    private void DrawFin(DrawingContext draw, CreatureFeature feature, Vector2 parentPosition, Vector2 heading, float radius, float angle)
+    {
+        var fin = FinGeometry.Build(feature, parentPosition, heading, radius, angle);
+        var shape = new StreamGeometry();
+        using (var context = shape.Open())
+        {
+            context.BeginFigure(ToPoint(fin.Outline[0]), true, true);
+            for (var i = 1; i < fin.Outline.Length; i++) context.LineTo(ToPoint(fin.Outline[i]), true, false);
+        }
+        shape.Freeze();
+        draw.DrawGeometry(new SolidColorBrush(Color.FromArgb(45, 220, 255, 220)), new Pen(Brushes.White, 2), shape);
+    }
+
+    private void DrawFeatureSkeletons(DrawingContext draw, Vector2[] positions, float[] radii)
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(220, 130, 255, 186)), 1.5);
+        foreach (var feature in State.Creature.Features)
+        {
+            if (!feature.Visible) continue;
+            var parentIndex = State.Creature.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
+            if (parentIndex < 0 || parentIndex >= positions.Length) continue;
+            if (feature.Type == CreatureFeatureType.ForkedTongue)
+            {
+                var transform = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), false);
+                var tongue = ForkedTongueGeometry.Build(feature, transform, radii[parentIndex]);
+                draw.DrawLine(pen, ToPoint(tongue.Start), ToPoint(tongue.Junction));
+                draw.DrawLine(pen, ToPoint(tongue.Junction), ToPoint(tongue.UpperTip));
+                draw.DrawLine(pen, ToPoint(tongue.Junction), ToPoint(tongue.LowerTip));
+                draw.DrawEllipse(pen.Brush, null, ToPoint(tongue.Junction), 2.5, 2.5);
+            }
+            else if (feature.Type == CreatureFeatureType.Fin)
+            {
+                var fin = FinGeometry.Build(feature, positions[parentIndex], GetNodeHeading(parentIndex), radii[parentIndex], GetFinAngle(feature));
+                draw.DrawLine(pen, ToPoint(fin.Attachment), ToPoint(fin.Tip));
+                draw.DrawEllipse(pen.Brush, null, ToPoint(fin.Attachment), 2.5, 2.5);
+            }
+        }
+    }
+
     private void DrawEye(DrawingContext draw, CreatureFeature feature, FeatureWorldTransform transform, bool mirrored)
     {
         var angle = transform.Rotation * MathF.PI / 180;
         var forward = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
         var side = new Vector2(-forward.Y, forward.X);
-        var width = feature.EyeWidth * transform.Scale;
-        var height = feature.EyeHeight * transform.Scale;
-        var center = transform.Position;
-        var left = ToPoint(center - side * width * 0.5f);
-        var right = ToPoint(center + side * width * 0.5f);
-        var geometry = new StreamGeometry();
-        using (var context = geometry.Open())
-        {
-            context.BeginFigure(left, false, true);
-            context.BezierTo(ToPoint(center + forward * height * 0.5f), ToPoint(center + forward * height * 0.5f), right, true, false);
-            context.BezierTo(ToPoint(center - forward * height * 0.5f), ToPoint(center - forward * height * 0.5f), left, true, false);
-        }
-        geometry.Freeze();
-        draw.DrawGeometry(null, new Pen(Brushes.White, 2), geometry);
+        var orb = EyeGeometry.Build(feature, transform);
+        var center = orb.Center;
+        var radius = orb.Radius;
+        draw.DrawEllipse(Brushes.White, null, ToPoint(center), radius, radius);
         var key = $"{feature.Id}:{mirrored}";
         var target = State.Mode == EditorMode.Play ? State.Simulator.State.TargetPosition : center;
         var delta = target - center;
         var localTarget = delta.LengthSquared() < 0.0001f ? Vector2.Zero : new Vector2(Vector2.Dot(delta, side), Vector2.Dot(delta, forward));
-        var maxX = width * 0.24f;
-        var maxY = height * 0.24f;
+        var maxX = radius * 0.42f;
+        var maxY = radius * 0.42f;
         var desired = localTarget.LengthSquared() < 0.0001f ? Vector2.Zero : Vector2.Normalize(localTarget) * Math.Min(localTarget.Length(), Math.Min(maxX, maxY)) * feature.EyeTrackingStrength;
         desired.X = Math.Clamp(desired.X, -maxX, maxX);
         desired.Y = Math.Clamp(desired.Y, -maxY, maxY);
@@ -166,8 +197,10 @@ public sealed class CreatureCanvas : FrameworkElement
         current = Vector2.Lerp(current, desired, 1 - MathF.Exp(-8 * (1f / 60f)));
         pupilOffsets[key] = new Vector2(Math.Clamp(current.X, -maxX, maxX), Math.Clamp(current.Y, -maxY, maxY));
         var pupil = center + side * pupilOffsets[key].X + forward * pupilOffsets[key].Y;
-        draw.DrawEllipse(Brushes.White, null, ToPoint(pupil), Math.Max(1.5, height * 0.13), Math.Max(1.5, height * 0.13));
-        draw.DrawEllipse(Brushes.Black, null, ToPoint(pupil), Math.Max(0.6, height * 0.06), Math.Max(0.6, height * 0.06));
+        var pupilRadius = Math.Max(1.25f, radius * 0.28f);
+        var pupilOffset = pupil - center;
+        if (pupilOffset.LengthSquared() > MathF.Pow(Math.Max(0, radius - pupilRadius), 2)) pupil = center + Vector2.Normalize(pupilOffset) * Math.Max(0, radius - pupilRadius);
+        draw.DrawEllipse(Brushes.Black, null, ToPoint(pupil), pupilRadius, pupilRadius);
     }
 
     private System.Numerics.Vector2 GetHeadDirection()
@@ -188,6 +221,13 @@ public sealed class CreatureCanvas : FrameworkElement
             if (direction.LengthSquared() > 0.0001f) return Vector2.Normalize(direction);
         }
         return ChainMath.GetDirectionFromRotation(State.Creature.Nodes[index].Rotation);
+    }
+
+    private float GetFinAngle(CreatureFeature feature)
+    {
+        if (State.Mode == EditorMode.Play) return State.Simulator.State.GetFinAngle(feature, State.Creature);
+        var parentIndex = State.Creature.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
+        return parentIndex >= 0 ? FinGeometry.RestAngle(feature, GetNodeHeading(parentIndex)) : 0;
     }
 
     private System.Numerics.Vector2 GetPosition(CreatureNode node)
@@ -255,17 +295,18 @@ public sealed class CreatureCanvas : FrameworkElement
         if (hitFeature is not null)
         {
             State.SelectFeature(hitFeature);
+            State.BeginHistoryGroup();
             draggingFeature = hitFeature;
             CaptureMouse();
             return;
         }
-        if (State.SelectedNode is not null && IsNearDirectionHandle(world, State.SelectedNode)) { rotating = true; CaptureMouse(); UpdateRotation(world); return; }
+        if (State.SelectedNode is not null && IsNearDirectionHandle(world, State.SelectedNode)) { State.BeginHistoryGroup(); rotating = true; CaptureMouse(); UpdateRotation(world); return; }
         if (State.Tool == EditorTool.Node && State.Creature.Nodes.All(n => System.Numerics.Vector2.Distance(n.Position, world) > n.Radius))
         {
             State.CreateNode(world); CaptureMouse(); dragging = State.SelectedNode; dragOffset = new System.Windows.Vector(0, 0); return;
         }
         State.SelectAt(world);
-        if (State.SelectedNode is not null) { dragging = State.SelectedNode; dragOffset = new System.Windows.Vector(State.SelectedNode.Position.X - world.X, State.SelectedNode.Position.Y - world.Y); CaptureMouse(); }
+        if (State.SelectedNode is not null) { State.BeginHistoryGroup(); dragging = State.SelectedNode; dragOffset = new System.Windows.Vector(State.SelectedNode.Position.X - world.X, State.SelectedNode.Position.Y - world.Y); CaptureMouse(); }
     }
 
     private void OnMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
@@ -299,7 +340,7 @@ public sealed class CreatureCanvas : FrameworkElement
         State.Select(dragging);
     }
 
-    private void OnMouseUp(object sender, MouseButtonEventArgs e) { dragging = null; draggingFeature = null; rotating = false; ReleaseMouseCapture(); }
+    private void OnMouseUp(object sender, MouseButtonEventArgs e) { State.EndHistoryGroup(); dragging = null; draggingFeature = null; rotating = false; ReleaseMouseCapture(); }
 
     private CreatureFeature? FindFeatureAt(System.Numerics.Vector2 world)
     {
@@ -309,6 +350,12 @@ public sealed class CreatureCanvas : FrameworkElement
             var parentIndex = State.Creature.Nodes.FindIndex(n => n.Id == feature.ParentNodeId);
             if (parentIndex < 0) continue;
             var position = CreatureFeatureTransform.ToWorld(feature, State.Creature.Nodes[parentIndex].Position, GetNodeHeading(parentIndex), false).Position;
+            if (feature.Type == CreatureFeatureType.Fin)
+            {
+                var fin = FinGeometry.Build(feature, GetPosition(State.Creature.Nodes[parentIndex]), GetNodeHeading(parentIndex), State.Creature.Nodes[parentIndex].Radius, GetFinAngle(feature));
+                if (Vector2.DistanceSquared(fin.Attachment, world) <= MathF.Pow(Math.Max(8, feature.FinWidth * feature.Scale), 2) || Vector2.DistanceSquared(fin.Tip, world) <= MathF.Pow(Math.Max(8, feature.FinWidth * feature.Scale), 2)) return feature;
+                continue;
+            }
             if (System.Numerics.Vector2.DistanceSquared(position, world) <= MathF.Pow(feature.EyeSize * feature.Scale * 1.5f, 2)) return feature;
             if (feature.Mirrored)
             {

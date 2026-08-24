@@ -43,3 +43,9 @@ Play deformation now applies a 75-degree local bend limit after distance followi
 The previous bend solver hard-snapped each violating downstream child to the exact angular boundary, so sequential joints could overwrite one another and form alternating zig-zag bends. The replacement uses signed angles, six small distance/angular iterations, 25% angular stiffness, and lightweight correction sharing between the joint and child. It preserves dynamic Play curvature without targeting authored rotations.
 
 MUSCLES now renders the actual construction circles used by the procedural skin: one transparent radius outline per node. SKELETON remains centerline plus connections, and SKIN remains the smoothed outer envelope. Create and Play have independent display toggles. Full non-adjacent self-collision remains out of scope.
+
+## Editing history, feature clipboard, orb eyes, and fins
+
+Create-mode authoring now has bounded snapshot Undo history with selection restoration and one history entry per grouped drag. Ctrl+C/Ctrl+V duplicates selected features with new IDs and a local offset; Ctrl+Z removes the pasted feature. Eyes are pure-white procedural circles with dark, constrained, smoothly tracked pupils. Skeleton overlays now expose tongue stem/fork bones and fin attachment-to-tip bones.
+
+The new Fin feature attaches to a selected body node and left/right body side. Its tapered shape uses the node radius at the attachment, while Play mode maintains temporary spring-damped angular state with stiffness, damping, a ±120° safety range, pause/reset behavior, and no body-solver participation. Fin authored data is saved; temporary angular state is not. The test runner now has 121 passing tests.

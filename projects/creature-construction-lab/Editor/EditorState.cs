@@ -6,6 +6,13 @@ namespace CreatureConstructionLab.Editor;
 
 public sealed class EditorState
 {
+    private const int MaxHistory = 150;
+    private readonly List<AuthoringSnapshot> undoHistory = [];
+    private readonly List<AuthoringSnapshot> redoHistory = [];
+    private AuthoringSnapshot? historyGroupStart;
+    private bool historyGroupDirty;
+    private bool restoringHistory;
+    private CreatureFeature? clipboardFeature;
     public CreatureDefinition Creature { get; } = new();
     public CoordinateSystem Coordinates { get; } = new();
     public EditorMode Mode { get; private set; } = EditorMode.Create;
@@ -18,9 +25,11 @@ public sealed class EditorState
 
     public event Action? Changed;
     public event Action? SimulationUpdated;
+    public int UndoCount => undoHistory.Count;
 
     public CreatureNode CreateNode(Vector2 position)
     {
+        CaptureEdit();
         var node = new CreatureNode { Position = position };
         Creature.Nodes.Add(node);
         SelectedNode = node;
@@ -35,6 +44,7 @@ public sealed class EditorState
         if (SelectedNode is null) return null;
         var index = Creature.Nodes.IndexOf(SelectedNode);
         if (index != Creature.Nodes.Count - 1) return null;
+        CaptureEdit();
         var constructionRotation = ChainMath.ClampConstructionRotation(Creature, index, SelectedNode.Rotation);
         var position = ChainMath.GetPositionAtSpacing(SelectedNode.Position, ChainMath.GetDirectionFromRotation(constructionRotation), Creature.ChainSettings.Spacing);
         var child = new CreatureNode { Position = position, Rotation = constructionRotation };
@@ -50,6 +60,7 @@ public sealed class EditorState
 
     public void SetSpacing(float spacing)
     {
+        CaptureEdit();
         Creature.ChainSettings.Spacing = Math.Max(4, spacing);
         ChainMath.RebuildChainSpacing(Creature);
         Changed?.Invoke();
@@ -69,18 +80,21 @@ public sealed class EditorState
 
     public void SetBaseRadius(float radius)
     {
+        CaptureEdit();
         Creature.BaseRadius = Math.Clamp(float.IsFinite(radius) ? radius : 24, 4, 100);
         RecalculateBodySizes();
     }
 
     public void ResetBodySizeRamp()
     {
+        CaptureEdit();
         Creature.BodySizeRamp.Reset();
         RecalculateBodySizes();
     }
 
     public void SetRampPoint(RampPoint point, float position, float value)
     {
+        CaptureEdit();
         if (Creature.BodySizeRamp.Points[0] == point) position = 0;
         if (Creature.BodySizeRamp.Points[^1] == point) position = 1;
         point.Position = position;
@@ -91,6 +105,7 @@ public sealed class EditorState
 
     public RampPoint? AddRampPoint(float position, float value)
     {
+        CaptureEdit();
         var point = Creature.BodySizeRamp.AddPoint(position, value);
         if (point is not null) RecalculateBodySizes();
         return point;
@@ -98,12 +113,14 @@ public sealed class EditorState
 
     public void SetRampInterpolation(RampInterpolationMode mode)
     {
+        CaptureEdit();
         Creature.BodySizeRamp.Interpolation = mode;
         RecalculateBodySizes();
     }
 
     public bool RemoveRampPoint(RampPoint point)
     {
+        CaptureEdit();
         var removed = Creature.BodySizeRamp.RemovePoint(point);
         if (removed) RecalculateBodySizes();
         return removed;
@@ -111,6 +128,7 @@ public sealed class EditorState
 
     public void SetChainSettings(float stiffness, float damping)
     {
+        CaptureEdit();
         Creature.ChainSettings.Stiffness = Math.Max(0, stiffness);
         Creature.ChainSettings.Damping = Math.Max(0, damping);
         foreach (var connection in Creature.Connections) { connection.Stiffness = Creature.ChainSettings.Stiffness; connection.Damping = Creature.ChainSettings.Damping; }
@@ -120,6 +138,7 @@ public sealed class EditorState
     public void SetSelectedRotation(float rotation)
     {
         if (SelectedNode is null) return;
+        CaptureEdit();
         var index = Creature.Nodes.IndexOf(SelectedNode);
         SelectedNode.Rotation = ChainMath.ClampConstructionRotation(Creature, index, rotation);
         Changed?.Invoke();
@@ -142,7 +161,9 @@ public sealed class EditorState
 
     public void DeleteSelected()
     {
+        if (SelectedFeature is not null) { DeleteSelectedFeature(); return; }
         if (SelectedNode is null) return;
+        CaptureEdit();
         var index = Creature.Nodes.IndexOf(SelectedNode);
         var removed = Creature.Nodes.Skip(index).ToHashSet();
         Creature.Nodes.RemoveRange(index, Creature.Nodes.Count - index);
@@ -204,14 +225,16 @@ public sealed class EditorState
 
     public void SetSkinColor(uint argb)
     {
+        CaptureEdit();
         Creature.SkinColorArgb = argb | 0xFF000000;
         Changed?.Invoke();
     }
 
     public CreatureFeature AddFeature(CreatureFeatureType type = CreatureFeatureType.Eye)
     {
-        var parent = Creature.Nodes.FirstOrDefault();
-        var feature = new CreatureFeature { Type = type, ParentNodeId = parent?.Id ?? Guid.Empty, Mirrored = type == CreatureFeatureType.Eye };
+        CaptureEdit();
+        var parent = SelectedNode ?? Creature.Nodes.FirstOrDefault();
+        var feature = new CreatureFeature { Type = type, ParentNodeId = parent?.Id ?? Guid.Empty, Mirrored = type == CreatureFeatureType.Eye, FinSide = FinSide.Right };
         Creature.Features.Add(feature);
         SelectedFeature = feature;
         SelectedNode = null;
@@ -229,14 +252,16 @@ public sealed class EditorState
     public void DeleteSelectedFeature()
     {
         if (SelectedFeature is null) return;
+        CaptureEdit();
         Creature.Features.Remove(SelectedFeature);
         SelectedFeature = null;
         Changed?.Invoke();
     }
 
-    public void SetSelectedFeature(CreatureFeatureType type, Guid parentNodeId, Vector2 localPosition, float rotation, float scale, bool mirrored, bool visible, float eyeSize, float eyeWidth, float eyeHeight, float trackingStrength, float tongueLength, float tongueForkLength, float tongueForkAngle)
+    public void SetSelectedFeature(CreatureFeatureType type, Guid parentNodeId, Vector2 localPosition, float rotation, float scale, bool mirrored, bool visible, float eyeSize, float eyeWidth, float eyeHeight, float trackingStrength, float tongueLength, float tongueForkLength, float tongueForkAngle, FinSide finSide, float finLength, float finWidth, float finBaseAngle, float finStiffness, float finDamping)
     {
         if (SelectedFeature is null) return;
+        CaptureEdit();
         SelectedFeature.Type = type;
         SelectedFeature.ParentNodeId = Creature.Nodes.Any(n => n.Id == parentNodeId) ? parentNodeId : Creature.Nodes.FirstOrDefault()?.Id ?? Guid.Empty;
         SelectedFeature.LocalPosition = localPosition;
@@ -251,14 +276,76 @@ public sealed class EditorState
         SelectedFeature.TongueLength = Math.Clamp(float.IsFinite(tongueLength) ? tongueLength : 28, 2, 200);
         SelectedFeature.TongueForkLength = Math.Clamp(float.IsFinite(tongueForkLength) ? tongueForkLength : 12, 2, 100);
         SelectedFeature.TongueForkAngle = Math.Clamp(float.IsFinite(tongueForkAngle) ? tongueForkAngle : 28, 5, 75);
+        SelectedFeature.FinSide = finSide;
+        SelectedFeature.FinLength = Math.Clamp(float.IsFinite(finLength) ? finLength : 34, 2, 200);
+        SelectedFeature.FinWidth = Math.Clamp(float.IsFinite(finWidth) ? finWidth : 16, 2, 100);
+        SelectedFeature.FinBaseAngle = Math.Clamp(float.IsFinite(finBaseAngle) ? finBaseAngle : 0, -120, 120);
+        SelectedFeature.FinAngularStiffness = Math.Clamp(float.IsFinite(finStiffness) ? finStiffness : 12, 0, 40);
+        SelectedFeature.FinAngularDamping = Math.Clamp(float.IsFinite(finDamping) ? finDamping : 4, 0, 20);
         Changed?.Invoke();
     }
 
     public void SetSelectedFeatureLocalPosition(Vector2 position)
     {
         if (SelectedFeature is null) return;
+        CaptureEdit();
         SelectedFeature.LocalPosition = position;
         Changed?.Invoke();
+    }
+
+    public void SetSelectedNodeProperties(Vector2 position, float rotation)
+    {
+        if (SelectedNode is null) return;
+        CaptureEdit();
+        SelectedNode.Position = position;
+        SelectedNode.Rotation = float.IsFinite(rotation) ? rotation : SelectedNode.Rotation;
+        Changed?.Invoke();
+    }
+
+    public void BeginHistoryGroup()
+    {
+        if (Mode != EditorMode.Create || historyGroupStart is not null) return;
+        historyGroupStart = CaptureSnapshot();
+        historyGroupDirty = true;
+    }
+
+    public void EndHistoryGroup()
+    {
+        if (historyGroupStart is null) return;
+        if (historyGroupDirty) AddUndo(historyGroupStart);
+        historyGroupStart = null;
+        historyGroupDirty = false;
+    }
+
+    public void Undo()
+    {
+        if (Mode != EditorMode.Create || undoHistory.Count == 0) return;
+        var current = CaptureSnapshot();
+        var previous = undoHistory[^1];
+        undoHistory.RemoveAt(undoHistory.Count - 1);
+        redoHistory.Add(current);
+        restoringHistory = true;
+        LoadDefinition(previous.Definition.Clone());
+        SelectedNode = Creature.Nodes.FirstOrDefault(node => node.Id == previous.SelectedNodeId);
+        SelectedFeature = Creature.Features.FirstOrDefault(feature => feature.Id == previous.SelectedFeatureId);
+        restoringHistory = false;
+        Changed?.Invoke();
+    }
+
+    public void CopySelectedFeature() => clipboardFeature = SelectedFeature?.Clone();
+
+    public bool PasteFeature()
+    {
+        if (clipboardFeature is null || Creature.Nodes.Count == 0) return false;
+        CaptureEdit();
+        var pasted = clipboardFeature.Clone(true);
+        if (!Creature.Nodes.Any(node => node.Id == pasted.ParentNodeId)) pasted.ParentNodeId = Creature.Nodes[0].Id;
+        pasted.LocalPosition += new Vector2(8, 8);
+        Creature.Features.Add(pasted);
+        SelectedFeature = pasted;
+        SelectedNode = null;
+        Changed?.Invoke();
+        return true;
     }
 
     public void LoadDefinition(CreatureDefinition loaded)
@@ -287,8 +374,27 @@ public sealed class EditorState
         Changed?.Invoke();
     }
 
+    private void CaptureEdit()
+    {
+        if (restoringHistory) return;
+        if (historyGroupStart is not null) { historyGroupDirty = true; return; }
+        AddUndo(CaptureSnapshot());
+    }
+
+    private void AddUndo(AuthoringSnapshot snapshot)
+    {
+        undoHistory.Add(snapshot);
+        if (undoHistory.Count > MaxHistory) undoHistory.RemoveAt(0);
+        redoHistory.Clear();
+    }
+
+    private AuthoringSnapshot CaptureSnapshot() => new(Creature.Clone(), SelectedNode?.Id, SelectedFeature?.Id);
+
+    private sealed record AuthoringSnapshot(CreatureDefinition Definition, Guid? SelectedNodeId, Guid? SelectedFeatureId);
+
     public void Reset()
     {
+        CaptureEdit();
         Creature.Nodes.Clear();
         Creature.Connections.Clear();
         Creature.BodySizeRamp.Reset();

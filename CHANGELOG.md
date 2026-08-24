@@ -71,3 +71,11 @@
 - Distributed angular correction between the incoming joint and outgoing child while retaining rest-length solving and gentle velocity damping.
 - Replaced arbitrary Muscle offset lines with one thin transparent construction circle per structural node.
 - Added independent Create/Play display toggles and regression coverage for circles, signed bend continuity, S-curves, and wave interaction.
+
+## Editing history, feature clipboard, orb eyes, and fins
+
+- Added bounded Create-mode snapshot Undo with selection restoration and grouped drag edits.
+- Added internal Ctrl+C/Ctrl+V feature duplication for Eye, Forked Tongue, and Fin features with new IDs and undo support.
+- Replaced almond eyes with pure-white circular orbs and small dark constrained pupils retaining smooth tracking.
+- Added tongue stem/fork and fin attachment/tip skeleton overlays.
+- Added parent-local left/right Fin geometry with authored dimensions and Play-only spring-damped angular inertia.

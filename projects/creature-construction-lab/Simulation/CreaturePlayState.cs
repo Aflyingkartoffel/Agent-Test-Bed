@@ -1,6 +1,7 @@
 using System.Numerics;
 using CreatureConstructionLab.Editor;
 using CreatureConstructionLab.Model;
+using CreatureConstructionLab.Rendering;
 
 namespace CreatureConstructionLab.Simulation;
 
@@ -21,6 +22,9 @@ public sealed class CreaturePlayState
     public bool Paused { get; private set; }
     public float SimulationTime { get; private set; }
     private float accumulator;
+    private readonly Dictionary<Guid, FinAngularState> finStates = [];
+
+    public readonly record struct FinAngularState(float CurrentAngle, float AngularVelocity);
 
     public void ResetSettings()
     {
@@ -48,6 +52,14 @@ public sealed class CreaturePlayState
         TargetPosition = Positions.Count > 0 ? Positions[0] : Vector2.Zero;
         SimulationTime = 0;
         accumulator = 0;
+        finStates.Clear();
+        for (var i = 0; i < definition.Features.Count; i++)
+        {
+            var feature = definition.Features[i];
+            if (feature.Type != CreatureFeatureType.Fin) continue;
+            var parentIndex = definition.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
+            if (parentIndex >= 0) finStates[feature.Id] = new FinAngularState(FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex)), 0);
+        }
     }
 
     public void SetTarget(Vector2 target) { if (float.IsFinite(target.X) && float.IsFinite(target.Y)) TargetPosition = target; }
@@ -88,6 +100,7 @@ public sealed class CreaturePlayState
         }
         ReapplyRestLengths(definition);
         UpdateConstraintVelocities(definition, dt);
+        UpdateFins(definition, dt);
         SimulationTime += dt;
     }
 
@@ -188,5 +201,51 @@ public sealed class CreaturePlayState
             Positions[i] = parent + Vector2.Normalize(direction) * restLength;
             Velocities[i] = (Positions[i] - parent) / FixedStep;
         }
+    }
+
+    public float GetFinAngle(CreatureFeature feature, CreatureDefinition definition)
+    {
+        if (finStates.TryGetValue(feature.Id, out var state)) return state.CurrentAngle;
+        var parentIndex = definition.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
+        return parentIndex >= 0 ? FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex)) : 0;
+    }
+
+    public float GetFinAngularVelocity(CreatureFeature feature) => finStates.TryGetValue(feature.Id, out var state) ? state.AngularVelocity : 0;
+
+    private void UpdateFins(CreatureDefinition definition, float dt)
+    {
+        foreach (var feature in definition.Features)
+        {
+            if (feature.Type != CreatureFeatureType.Fin) continue;
+            var parentIndex = definition.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
+            if (parentIndex < 0 || !finStates.TryGetValue(feature.Id, out var state)) continue;
+            var target = FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex));
+            var error = NormalizeRadians(target - state.CurrentAngle);
+            var stiffness = Math.Clamp(feature.FinAngularStiffness, 0, 40);
+            var damping = Math.Clamp(feature.FinAngularDamping, 0, 20);
+            var acceleration = error * stiffness - state.AngularVelocity * damping;
+            var velocity = Math.Clamp(state.AngularVelocity + acceleration * dt, -24, 24);
+            var angle = state.CurrentAngle + velocity * dt;
+            var relative = NormalizeRadians(angle - target);
+            relative = Math.Clamp(relative, -120 * MathF.PI / 180, 120 * MathF.PI / 180);
+            finStates[feature.Id] = new FinAngularState(target + relative, velocity);
+        }
+    }
+
+    private Vector2 GetBodyHeading(int index)
+    {
+        if (Positions.Count > 1)
+        {
+            var direction = index + 1 < Positions.Count ? Positions[index + 1] - Positions[index] : Positions[index] - Positions[Math.Max(0, index - 1)];
+            if (direction.LengthSquared() > 0.0001f) return Vector2.Normalize(direction);
+        }
+        return Vector2.UnitX;
+    }
+
+    private static float NormalizeRadians(float angle)
+    {
+        while (angle > MathF.PI) angle -= MathF.Tau;
+        while (angle < -MathF.PI) angle += MathF.Tau;
+        return angle;
     }
 }

@@ -100,3 +100,7 @@ A bend limit is a local constraint: measure the signed angle between adjacent se
 An angular limit should be solved as an error over time, not as an immediate positional snap. Small signed corrections in repeated distance/angular passes let a flexible chain bend dynamically while avoiding the neighboring-joint sign flips that a sequential hard clamp can create.
 
 Debug visualizations should expose the same intermediate data that produces the final result. For this creature, Muscles is most useful when it draws the exact node centers and derived radii used to build Skin, while Skeleton separately exposes only the centerline constraints.
+
+For a small editor, immutable snapshots are a practical Undo architecture: copy authored data before each mutation, keep a bounded history, and restore selection IDs alongside the definition. Drag operations need an explicit begin/end group so continuous pointer motion becomes one logical edit.
+
+Secondary appendages should keep authored rest parameters separate from temporary Play state. A Fin stores side, dimensions, and spring settings in the definition; its current angle and angular velocity live only in `CreaturePlayState`, allowing inertia without polluting Save/Load or the body constraint solver.
