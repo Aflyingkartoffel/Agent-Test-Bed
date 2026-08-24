@@ -79,3 +79,8 @@
 - Replaced almond eyes with pure-white circular orbs and small dark constrained pupils retaining smooth tracking.
 - Added tongue stem/fork and fin attachment/tip skeleton overlays.
 - Added parent-local left/right Fin geometry with authored dimensions and Play-only spring-damped angular inertia.
+## Fin mirroring, rounded geometry, and Bezier handles
+
+- Added mirrored Fin rendering, skeletons, hit testing, and separate spring state.
+- Replaced triangular Fins with rounded sampled organic outlines attached at one quarter of the parent node radius.
+- Added persisted Fin Color, explicit Bezier handles with legacy auto-generation, grouped handle Undo, and black-on-white dropdown styling.

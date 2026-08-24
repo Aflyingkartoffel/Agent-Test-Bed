@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Numerics;
 using CreatureConstructionLab.Editor;
 using CreatureConstructionLab.Model;
 
@@ -12,6 +13,8 @@ public sealed class BodySizeRampCanvas : FrameworkElement
     private readonly EditorState state;
     private RampPoint? selectedPoint;
     private bool dragging;
+    private bool draggingHandle;
+    private bool draggingOutgoing;
 
     public BodySizeRampCanvas(EditorState state)
     {
@@ -59,11 +62,26 @@ public sealed class BodySizeRampCanvas : FrameworkElement
         foreach (var point in points)
         {
             var p = ToCanvas(point);
+            if (state.Creature.BodySizeRamp.Interpolation == RampInterpolationMode.Bezier)
+            {
+                DrawHandle(draw, point, point.InHandle, false);
+                DrawHandle(draw, point, point.OutHandle, true);
+            }
             draw.DrawEllipse(new SolidColorBrush(point == selectedPoint ? Color.FromRgb(220, 255, 225) : Color.FromRgb(100, 230, 156)), new Pen(new SolidColorBrush(Color.FromRgb(4, 16, 11)), 1), p, point == selectedPoint ? 5 : 4, point == selectedPoint ? 5 : 4);
         }
     }
 
+    private void DrawHandle(DrawingContext draw, RampPoint point, Vector2? offset, bool outgoing)
+    {
+        if (!offset.HasValue) return;
+        var anchor = ToCanvas(point);
+        var handle = ToCanvasHandle(point, offset.Value);
+        draw.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(91, 165, 122)), 1), anchor, handle);
+        draw.DrawEllipse(new SolidColorBrush(outgoing ? Color.FromRgb(255, 215, 120) : Color.FromRgb(150, 205, 255)), null, handle, 4, 4);
+    }
+
     private Point ToCanvas(RampPoint point) => new(point.Position * Math.Max(1, ActualWidth), ActualHeight - ValueToY(point.Value));
+    private Point ToCanvasHandle(RampPoint point, Vector2 offset) => new((point.Position + offset.X) * Math.Max(1, ActualWidth), ActualHeight - ValueToY(point.Value + offset.Y));
     private Point ToCanvasValue(float position) => new(position * Math.Max(1, ActualWidth), ActualHeight - ValueToY(state.Creature.BodySizeRamp.Sample(position)));
     private double ValueToY(float value) => (value - BodySizeRamp.MinValue) / (BodySizeRamp.MaxValue - BodySizeRamp.MinValue) * Math.Max(1, ActualHeight);
     private (float Position, float Value) FromCanvas(Point point)
@@ -78,6 +96,16 @@ public sealed class BodySizeRampCanvas : FrameworkElement
         if (state.Mode != EditorMode.Create) return;
         Focus();
         var mouse = e.GetPosition(this);
+        if (state.Creature.BodySizeRamp.Interpolation == RampInterpolationMode.Bezier)
+        {
+            foreach (var point in state.Creature.BodySizeRamp.Points)
+            {
+                if (point.OutHandle is Vector2 outgoing && (ToCanvasHandle(point, outgoing) - mouse).Length <= 10)
+                { selectedPoint = point; draggingHandle = true; draggingOutgoing = true; state.BeginHistoryGroup(); CaptureMouse(); InvalidateVisual(); return; }
+                if (point.InHandle is Vector2 incoming && (ToCanvasHandle(point, incoming) - mouse).Length <= 10)
+                { selectedPoint = point; draggingHandle = true; draggingOutgoing = false; state.BeginHistoryGroup(); CaptureMouse(); InvalidateVisual(); return; }
+            }
+        }
         selectedPoint = state.Creature.BodySizeRamp.Points.OrderBy(p => (ToCanvas(p) - mouse).Length).FirstOrDefault();
         if (selectedPoint is not null && (ToCanvas(selectedPoint) - mouse).Length <= 12) { state.BeginHistoryGroup(); dragging = true; CaptureMouse(); }
         else selectedPoint = null;
@@ -87,6 +115,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
     private void OnDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (state.Mode != EditorMode.Create || e.ClickCount != 2) return;
+        if (state.Creature.BodySizeRamp.Interpolation == RampInterpolationMode.Bezier && state.Creature.BodySizeRamp.Points.Any(p => (ToCanvas(p) - e.GetPosition(this)).Length <= 12 || (p.OutHandle is Vector2 o && (ToCanvasHandle(p, o) - e.GetPosition(this)).Length <= 10) || (p.InHandle is Vector2 i && (ToCanvasHandle(p, i) - e.GetPosition(this)).Length <= 10))) return;
         var value = FromCanvas(e.GetPosition(this));
         selectedPoint = state.AddRampPoint(value.Position, value.Value);
         InvalidateVisual();
@@ -95,11 +124,19 @@ public sealed class BodySizeRampCanvas : FrameworkElement
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         if (state.Mode != EditorMode.Create || !dragging || selectedPoint is null || e.LeftButton != MouseButtonState.Pressed) return;
-        var value = FromCanvas(e.GetPosition(this));
-        state.SetRampPoint(selectedPoint, value.Position, value.Value);
+        if (draggingHandle)
+        {
+            var value = FromCanvas(e.GetPosition(this));
+            state.SetRampHandle(selectedPoint, draggingOutgoing, new Vector2(value.Position - selectedPoint.Position, value.Value - selectedPoint.Value));
+        }
+        else
+        {
+            var value = FromCanvas(e.GetPosition(this));
+            state.SetRampPoint(selectedPoint, value.Position, value.Value);
+        }
     }
 
-    private void OnMouseUp(object sender, MouseButtonEventArgs e) { if (dragging) state.EndHistoryGroup(); dragging = false; ReleaseMouseCapture(); }
+    private void OnMouseUp(object sender, MouseButtonEventArgs e) { if (dragging || draggingHandle) state.EndHistoryGroup(); dragging = false; draggingHandle = false; ReleaseMouseCapture(); }
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {

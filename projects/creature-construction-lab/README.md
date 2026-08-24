@@ -30,6 +30,8 @@ The tongue-and-cap milestone replaces the endpoint line/arc transition with expl
 
 The endpoint-orientation fix defines caps from explicit outward vectors: the head uses `-normalize(Node1 - Node0)`, while the tail uses `normalize(Tail - Previous)`. Each cap uses `center + outward * cos(theta) * radius + normal * sin(theta) * radius` for `theta` from `-π/2` to `+π/2`, so its midpoint always bulges away from the body. Body-side samples retain exact structural cap endpoints.
 
+The Fin/Bezier editor milestone adds mirrored Fin pairs with quarter-radius attachment, rounded sampled organic outlines, persisted editable Fin Color with white edging, explicit authored Bezier handles with legacy auto-generation, grouped handle Undo, and readable black-on-white dropdowns. The test harness reports 126 passing tests.
+
 ## Run
 
 From this directory:
@@ -51,3 +53,5 @@ The soft-bend and construction-visualization milestone replaces the former one-s
 The MUSCLES overlay now means construction circles: one transparent outline per structural node, centered at the current authored or simulated node position and using the exact derived node radius. SKELETON remains the centerline and connections; SKIN remains the smoothed envelope. Create and Play expose independent Skin, Skeleton, and Muscles display choices.
 
 The editing-and-fins milestone adds bounded snapshot Undo history for authored Create-mode edits, grouped drag history, internal Ctrl+C/Ctrl+V feature duplication, pure-white circular orb eyes with dark tracked pupils, and feature skeletons for tongue stems/forks and fins. `Fin` is a parent-local feature with left/right side attachment, procedural tapered geometry, authored length/width/base angle, and Play-only spring-damped angular inertia. Fin current angle and angular velocity are temporary and are not saved.
+The Fin/Bezier editor milestone adds mirrored Fin pairs with quarter-radius attachment, rounded sampled organic outlines, persisted editable Fin Color with white edging, explicit authored Bezier handles with legacy auto-generation, grouped handle Undo, and readable black-on-white dropdowns. The test harness reports 126 passing tests.
+

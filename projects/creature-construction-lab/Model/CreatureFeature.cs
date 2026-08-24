@@ -25,7 +25,7 @@ public sealed class CreatureFeature
     public float FinBaseAngle { get; set; }
     public float FinAngularStiffness { get; set; } = 12;
     public float FinAngularDamping { get; set; } = 4;
-    public bool SupportsMirroring => Type == CreatureFeatureType.Eye;
+    public bool SupportsMirroring => Type is CreatureFeatureType.Eye or CreatureFeatureType.Fin;
 
     public CreatureFeature Clone(bool newId = false) => new()
     {

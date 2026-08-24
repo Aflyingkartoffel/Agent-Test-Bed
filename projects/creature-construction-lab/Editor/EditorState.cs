@@ -115,6 +115,15 @@ public sealed class EditorState
     {
         CaptureEdit();
         Creature.BodySizeRamp.Interpolation = mode;
+        if (mode == RampInterpolationMode.Bezier) Creature.BodySizeRamp.EnsureHandles();
+        RecalculateBodySizes();
+    }
+
+    public void SetRampHandle(RampPoint point, bool outgoing, Vector2 offset)
+    {
+        CaptureEdit();
+        var clamped = new Vector2(Math.Clamp(offset.X, -0.5f, 0.5f), Math.Clamp(offset.Y, -1f, 1f));
+        if (outgoing) point.OutHandle = clamped; else point.InHandle = clamped;
         RecalculateBodySizes();
     }
 
@@ -227,6 +236,13 @@ public sealed class EditorState
     {
         CaptureEdit();
         Creature.SkinColorArgb = argb | 0xFF000000;
+        Changed?.Invoke();
+    }
+
+    public void SetFinColor(uint argb)
+    {
+        CaptureEdit();
+        Creature.FinColorArgb = argb | 0xFF000000;
         Changed?.Invoke();
     }
 
@@ -359,11 +375,13 @@ public sealed class EditorState
         Creature.ChainSettings.Damping = loaded.ChainSettings.Damping;
         Creature.BaseRadius = loaded.BaseRadius;
         Creature.SkinColorArgb = loaded.SkinColorArgb;
+        Creature.FinColorArgb = loaded.FinColorArgb;
         Creature.Features.Clear();
         Creature.Features.AddRange(loaded.Features);
         Creature.BodySizeRamp.Points.Clear();
         Creature.BodySizeRamp.Interpolation = loaded.BodySizeRamp.Interpolation;
-        Creature.BodySizeRamp.Points.AddRange(loaded.BodySizeRamp.Points.Select(p => new RampPoint(p.Position, p.Value)));
+        Creature.BodySizeRamp.Points.AddRange(loaded.BodySizeRamp.Points.Select(p => new RampPoint(p.Position, p.Value) { InHandle = p.InHandle, OutHandle = p.OutHandle }));
+        Creature.BodySizeRamp.EnsureHandles();
         SelectedNode = null;
         SelectedFeature = null;
         Mode = EditorMode.Create;
@@ -400,6 +418,7 @@ public sealed class EditorState
         Creature.BodySizeRamp.Reset();
         Creature.BaseRadius = 24;
         Creature.SkinColorArgb = 0xFF2E8B57;
+        Creature.FinColorArgb = 0xFF9BE7B0;
         Creature.Features.Clear();
         Display.CreateShowNodes = true;
         Display.CreateShowSkin = true;

@@ -104,3 +104,6 @@ Debug visualizations should expose the same intermediate data that produces the 
 For a small editor, immutable snapshots are a practical Undo architecture: copy authored data before each mutation, keep a bounded history, and restore selection IDs alongside the definition. Drag operations need an explicit begin/end group so continuous pointer motion becomes one logical edit.
 
 Secondary appendages should keep authored rest parameters separate from temporary Play state. A Fin stores side, dimensions, and spring settings in the definition; its current angle and angular velocity live only in `CreaturePlayState`, allowing inertia without polluting Save/Load or the body constraint solver.
+## Mirrored procedural geometry and authored Bezier handles
+
+Mirroring can remain a render/simulation variant of one authored feature: the pair shares dimensions and spring parameters, while temporary angular state is keyed by feature ID plus mirror side. Rounded appendages can stay dependency-free by sampling cubic curves and a tip arc into a closed outline. Explicit handle offsets make Bezier editing predictable, while missing handles can still be generated automatically for old files.

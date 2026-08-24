@@ -17,8 +17,9 @@ public static class CreatureFileService
             Nodes = creature.Nodes.Select(n => new NodeFile { Id = n.Id.ToString(), PositionX = n.Position.X, PositionY = n.Position.Y, Rotation = n.Rotation }).ToList(),
             Connections = creature.Connections.Select(c => new ConnectionFile { ParentNodeId = c.ParentNodeId.ToString(), ChildNodeId = c.ChildNodeId.ToString(), RestLength = c.RestLength, Stiffness = c.Stiffness, Damping = c.Damping }).ToList(),
             Chain = new ChainFile { Spacing = creature.ChainSettings.Spacing, Stiffness = creature.ChainSettings.Stiffness, Damping = creature.ChainSettings.Damping },
-            Body = new BodyFile { BaseRadius = creature.BaseRadius, Interpolation = creature.BodySizeRamp.Interpolation, RampPoints = creature.BodySizeRamp.Points.Select(p => new RampPointFile { Position = p.Position, Value = p.Value }).ToList() },
+            Body = new BodyFile { BaseRadius = creature.BaseRadius, Interpolation = creature.BodySizeRamp.Interpolation, RampPoints = creature.BodySizeRamp.Points.Select(p => new RampPointFile { Position = p.Position, Value = p.Value, InHandleX = p.InHandle?.X, InHandleY = p.InHandle?.Y, OutHandleX = p.OutHandle?.X, OutHandleY = p.OutHandle?.Y }).ToList() },
             SkinColorArgb = creature.SkinColorArgb,
+            FinColorArgb = creature.FinColorArgb,
             Features = creature.Features.Select(ToFile).ToList()
         };
         File.WriteAllText(path, JsonSerializer.Serialize(file, JsonOptions));
@@ -56,6 +57,7 @@ public static class CreatureFileService
             }
             creature = new CreatureDefinition { BaseRadius = file.Body.BaseRadius };
             creature.SkinColorArgb = file.SkinColorArgb == 0 ? creature.SkinColorArgb : file.SkinColorArgb;
+            creature.FinColorArgb = file.FinColorArgb == 0 ? creature.FinColorArgb : file.FinColorArgb;
             creature.Nodes.AddRange(nodes);
             creature.Connections.AddRange(connections);
             creature.ChainSettings.Spacing = file.Chain.Spacing;
@@ -63,7 +65,15 @@ public static class CreatureFileService
             creature.ChainSettings.Damping = file.Chain.Damping;
             creature.BodySizeRamp.Points.Clear();
             creature.BodySizeRamp.Interpolation = file.Body.Interpolation;
-            foreach (var point in file.Body.RampPoints) creature.BodySizeRamp.Points.Add(new RampPoint(point.Position, point.Value));
+            foreach (var point in file.Body.RampPoints)
+            {
+                creature.BodySizeRamp.Points.Add(new RampPoint(point.Position, point.Value)
+                {
+                    InHandle = point.InHandleX.HasValue && point.InHandleY.HasValue ? new Vector2(point.InHandleX.Value, point.InHandleY.Value) : null,
+                    OutHandle = point.OutHandleX.HasValue && point.OutHandleY.HasValue ? new Vector2(point.OutHandleX.Value, point.OutHandleY.Value) : null
+                });
+            }
+            creature.BodySizeRamp.EnsureHandles();
 
             if (file.Features is not null)
             {
@@ -94,7 +104,7 @@ public static class CreatureFileService
         var validType = file.Type is CreatureFeatureType.Eye or CreatureFeatureType.ForkedTongue or CreatureFeatureType.Fin;
         var validFin = file.Type != CreatureFeatureType.Fin || (FinitePositive(file.FinLength) && FinitePositive(file.FinWidth) && Finite(file.FinBaseAngle) && FiniteNonNegative(file.FinAngularStiffness) && FiniteNonNegative(file.FinAngularDamping));
         if (!validType || !Guid.TryParse(file.Id, out var id) || !Guid.TryParse(file.ParentNodeId, out var parent) || !nodeIds.Contains(parent) || !Finite(file.LocalX) || !Finite(file.LocalY) || !Finite(file.Rotation) || !FinitePositive(file.Scale) || !FinitePositive(file.EyeSize) || !FinitePositive(file.TongueLength) || !FinitePositive(file.TongueForkLength) || !FinitePositive(file.TongueForkAngle) || !validFin) return false;
-        feature = new CreatureFeature { Id = id, Type = file.Type, ParentNodeId = parent, LocalPosition = new Vector2(file.LocalX, file.LocalY), LocalRotation = file.Rotation, Scale = Math.Clamp(file.Scale, 0.1f, 10), Mirrored = file.Type == CreatureFeatureType.Eye && file.Mirrored, Visible = file.Visible, EyeSize = Math.Clamp(file.EyeSize, 1, 20), EyeWidth = Math.Clamp(file.EyeWidth, 6, 40), EyeHeight = Math.Clamp(file.EyeHeight, 3, 24), EyeTrackingStrength = Math.Clamp(file.EyeTrackingStrength, 0, 1), TongueLength = Math.Clamp(file.TongueLength, 2, 200), TongueForkLength = Math.Clamp(file.TongueForkLength, 2, 100), TongueForkAngle = Math.Clamp(file.TongueForkAngle, 5, 75), FinSide = file.FinSide, FinLength = Math.Clamp(file.FinLength, 2, 200), FinWidth = Math.Clamp(file.FinWidth, 2, 100), FinBaseAngle = Math.Clamp(file.FinBaseAngle, -120, 120), FinAngularStiffness = Math.Clamp(file.FinAngularStiffness, 0, 40), FinAngularDamping = Math.Clamp(file.FinAngularDamping, 0, 20) };
+        feature = new CreatureFeature { Id = id, Type = file.Type, ParentNodeId = parent, LocalPosition = new Vector2(file.LocalX, file.LocalY), LocalRotation = file.Rotation, Scale = Math.Clamp(file.Scale, 0.1f, 10), Mirrored = file.Type is CreatureFeatureType.Eye or CreatureFeatureType.Fin && file.Mirrored, Visible = file.Visible, EyeSize = Math.Clamp(file.EyeSize, 1, 20), EyeWidth = Math.Clamp(file.EyeWidth, 6, 40), EyeHeight = Math.Clamp(file.EyeHeight, 3, 24), EyeTrackingStrength = Math.Clamp(file.EyeTrackingStrength, 0, 1), TongueLength = Math.Clamp(file.TongueLength, 2, 200), TongueForkLength = Math.Clamp(file.TongueForkLength, 2, 100), TongueForkAngle = Math.Clamp(file.TongueForkAngle, 5, 75), FinSide = file.FinSide, FinLength = Math.Clamp(file.FinLength, 2, 200), FinWidth = Math.Clamp(file.FinWidth, 2, 100), FinBaseAngle = Math.Clamp(file.FinBaseAngle, -120, 120), FinAngularStiffness = Math.Clamp(file.FinAngularStiffness, 0, 40), FinAngularDamping = Math.Clamp(file.FinAngularDamping, 0, 20) };
         return true;
     }
 
@@ -102,12 +112,12 @@ public static class CreatureFileService
     private static bool FinitePositive(float value) => Finite(value) && value > 0;
     private static bool FiniteNonNegative(float value) => Finite(value) && value >= 0;
 
-    public sealed class CreatureFile { public List<NodeFile>? Nodes { get; set; } public List<ConnectionFile>? Connections { get; set; } public ChainFile? Chain { get; set; } public BodyFile? Body { get; set; } public uint SkinColorArgb { get; set; } public List<FeatureFile>? Features { get; set; } public EyeFile? Eyes { get; set; } }
+    public sealed class CreatureFile { public List<NodeFile>? Nodes { get; set; } public List<ConnectionFile>? Connections { get; set; } public ChainFile? Chain { get; set; } public BodyFile? Body { get; set; } public uint SkinColorArgb { get; set; } public uint FinColorArgb { get; set; } public List<FeatureFile>? Features { get; set; } public EyeFile? Eyes { get; set; } }
     public sealed class NodeFile { public string? Id { get; set; } public float PositionX { get; set; } public float PositionY { get; set; } public float Rotation { get; set; } }
     public sealed class ConnectionFile { public string? ParentNodeId { get; set; } public string? ChildNodeId { get; set; } public float RestLength { get; set; } public float Stiffness { get; set; } public float Damping { get; set; } }
     public sealed class ChainFile { public float Spacing { get; set; } public float Stiffness { get; set; } public float Damping { get; set; } }
     public sealed class BodyFile { public float BaseRadius { get; set; } public RampInterpolationMode Interpolation { get; set; } public List<RampPointFile>? RampPoints { get; set; } }
-    public sealed class RampPointFile { public float Position { get; set; } public float Value { get; set; } }
+    public sealed class RampPointFile { public float Position { get; set; } public float Value { get; set; } public float? InHandleX { get; set; } public float? InHandleY { get; set; } public float? OutHandleX { get; set; } public float? OutHandleY { get; set; } }
     public sealed class FeatureFile { public string? Id { get; set; } public CreatureFeatureType Type { get; set; } public string? ParentNodeId { get; set; } public float LocalX { get; set; } public float LocalY { get; set; } public float Rotation { get; set; } public float Scale { get; set; } = 1; public bool Mirrored { get; set; } = true; public bool Visible { get; set; } = true; public float EyeSize { get; set; } = 5; public float EyeWidth { get; set; } = 16; public float EyeHeight { get; set; } = 9; public float EyeTrackingStrength { get; set; } = 0.5f; public float TongueLength { get; set; } = 28; public float TongueForkLength { get; set; } = 12; public float TongueForkAngle { get; set; } = 28; public FinSide FinSide { get; set; } = FinSide.Right; public float FinLength { get; set; } = 34; public float FinWidth { get; set; } = 16; public float FinBaseAngle { get; set; } public float FinAngularStiffness { get; set; } = 12; public float FinAngularDamping { get; set; } = 4; }
     public sealed class EyeFile { public bool Enabled { get; set; } = true; public float Size { get; set; } = 5; public float Spacing { get; set; } = 18; public float ForwardOffset { get; set; } = 18; }
 }

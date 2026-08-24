@@ -22,7 +22,7 @@ public sealed class CreaturePlayState
     public bool Paused { get; private set; }
     public float SimulationTime { get; private set; }
     private float accumulator;
-    private readonly Dictionary<Guid, FinAngularState> finStates = [];
+    private readonly Dictionary<(Guid Id, bool Mirrored), FinAngularState> finStates = [];
 
     public readonly record struct FinAngularState(float CurrentAngle, float AngularVelocity);
 
@@ -58,7 +58,11 @@ public sealed class CreaturePlayState
             var feature = definition.Features[i];
             if (feature.Type != CreatureFeatureType.Fin) continue;
             var parentIndex = definition.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
-            if (parentIndex >= 0) finStates[feature.Id] = new FinAngularState(FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex)), 0);
+            if (parentIndex >= 0)
+            {
+                finStates[(feature.Id, false)] = new FinAngularState(FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex)), 0);
+                if (feature.Mirrored) finStates[(feature.Id, true)] = new FinAngularState(FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex), true), 0);
+            }
         }
     }
 
@@ -203,14 +207,14 @@ public sealed class CreaturePlayState
         }
     }
 
-    public float GetFinAngle(CreatureFeature feature, CreatureDefinition definition)
+    public float GetFinAngle(CreatureFeature feature, CreatureDefinition definition, bool mirrored = false)
     {
-        if (finStates.TryGetValue(feature.Id, out var state)) return state.CurrentAngle;
+        if (finStates.TryGetValue((feature.Id, mirrored), out var state)) return state.CurrentAngle;
         var parentIndex = definition.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
-        return parentIndex >= 0 ? FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex)) : 0;
+        return parentIndex >= 0 ? FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex), mirrored) : 0;
     }
 
-    public float GetFinAngularVelocity(CreatureFeature feature) => finStates.TryGetValue(feature.Id, out var state) ? state.AngularVelocity : 0;
+    public float GetFinAngularVelocity(CreatureFeature feature, bool mirrored = false) => finStates.TryGetValue((feature.Id, mirrored), out var state) ? state.AngularVelocity : 0;
 
     private void UpdateFins(CreatureDefinition definition, float dt)
     {
@@ -218,18 +222,25 @@ public sealed class CreaturePlayState
         {
             if (feature.Type != CreatureFeatureType.Fin) continue;
             var parentIndex = definition.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
-            if (parentIndex < 0 || !finStates.TryGetValue(feature.Id, out var state)) continue;
-            var target = FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex));
-            var error = NormalizeRadians(target - state.CurrentAngle);
-            var stiffness = Math.Clamp(feature.FinAngularStiffness, 0, 40);
-            var damping = Math.Clamp(feature.FinAngularDamping, 0, 20);
-            var acceleration = error * stiffness - state.AngularVelocity * damping;
-            var velocity = Math.Clamp(state.AngularVelocity + acceleration * dt, -24, 24);
-            var angle = state.CurrentAngle + velocity * dt;
-            var relative = NormalizeRadians(angle - target);
-            relative = Math.Clamp(relative, -120 * MathF.PI / 180, 120 * MathF.PI / 180);
-            finStates[feature.Id] = new FinAngularState(target + relative, velocity);
+            if (parentIndex < 0) continue;
+            UpdateFin(feature, parentIndex, false, dt);
+            if (feature.Mirrored) UpdateFin(feature, parentIndex, true, dt);
         }
+    }
+
+    private void UpdateFin(CreatureFeature feature, int parentIndex, bool mirrored, float dt)
+    {
+        if (!finStates.TryGetValue((feature.Id, mirrored), out var state)) return;
+        var target = FinGeometry.RestAngle(feature, GetBodyHeading(parentIndex), mirrored);
+        var error = NormalizeRadians(target - state.CurrentAngle);
+        var stiffness = Math.Clamp(feature.FinAngularStiffness, 0, 40);
+        var damping = Math.Clamp(feature.FinAngularDamping, 0, 20);
+        var acceleration = error * stiffness - state.AngularVelocity * damping;
+        var velocity = Math.Clamp(state.AngularVelocity + acceleration * dt, -24, 24);
+        var angle = state.CurrentAngle + velocity * dt;
+        var relative = NormalizeRadians(angle - target);
+        relative = Math.Clamp(relative, -120 * MathF.PI / 180, 120 * MathF.PI / 180);
+        finStates[(feature.Id, mirrored)] = new FinAngularState(target + relative, velocity);
     }
 
     private Vector2 GetBodyHeading(int index)

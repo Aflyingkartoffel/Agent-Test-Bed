@@ -64,6 +64,7 @@ public partial class MainWindow : Window
         CreateShowSkinBox.IsChecked = state.Display.CreateShowSkin;
         CreateShowMusclesBox.IsChecked = state.Display.CreateShowMuscles;
         SkinColorBox.Text = $"#{state.Creature.SkinColorArgb:X8}";
+        FinColorBox.Text = $"#{state.Creature.FinColorArgb:X8}";
         PlaySolidBodyBox.IsChecked = state.Display.PlaySolidBody;
         PlayShowSkinBox.IsChecked = state.Display.PlayShowSkin;
         PlayShowSkeletonBox.IsChecked = state.Display.PlayShowSkeleton;
@@ -98,7 +99,8 @@ public partial class MainWindow : Window
         EyeSettingsPanel.Visibility = isEye ? Visibility.Visible : Visibility.Collapsed;
         TongueSettingsPanel.Visibility = isTongue ? Visibility.Visible : Visibility.Collapsed;
         FinSettingsPanel.Visibility = isFin ? Visibility.Visible : Visibility.Collapsed;
-        FeatureMirrorBox.IsChecked = isEye && selectedFeature?.Mirrored == true;
+        FeatureMirrorBox.Content = isFin ? "MIRROR PAIR" : "MIRROR";
+        FeatureMirrorBox.IsChecked = (isEye || isFin) && selectedFeature?.Mirrored == true;
         FeatureVisibleBox.IsChecked = selectedFeature?.Visible == true;
         var featureEditing = editing && selectedFeature is not null;
         FeatureTypeBox.IsEnabled = featureEditing;
@@ -118,7 +120,7 @@ public partial class MainWindow : Window
         FinBaseAngleBox.IsEnabled = featureEditing && isFin;
         FinStiffnessBox.IsEnabled = featureEditing && isFin;
         FinDampingBox.IsEnabled = featureEditing && isFin;
-        FeatureMirrorBox.IsEnabled = featureEditing && isEye;
+        FeatureMirrorBox.IsEnabled = featureEditing && (isEye || isFin);
         FeatureVisibleBox.IsEnabled = featureEditing;
         PlayPauseButton.Content = state.Simulator.State.Paused ? "RESUME" : "PAUSE";
         MaxSpeedBox.Text = state.Simulator.State.MaxSpeed.ToString("0.##", CultureInfo.InvariantCulture);
@@ -212,6 +214,20 @@ public partial class MainWindow : Window
         var text = SkinColorBox.Text.Trim().TrimStart('#');
         if (text.Length == 6) text = "FF" + text;
         if (text.Length == 8 && uint.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var color)) state.SetSkinColor(color);
+    }
+
+    private void FinColor_LostFocus(object sender, RoutedEventArgs e) => ApplyFinColor();
+    private void PickFinColor_Click(object sender, RoutedEventArgs e)
+    {
+        using var dialog = new System.Windows.Forms.ColorDialog { FullOpen = true, Color = ToFormsColor(state.Creature.FinColorArgb) };
+        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK) state.SetFinColor((uint)dialog.Color.ToArgb());
+    }
+
+    private void ApplyFinColor()
+    {
+        var text = FinColorBox.Text.Trim().TrimStart('#');
+        if (text.Length == 6) text = "FF" + text;
+        if (text.Length == 8 && uint.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var color)) state.SetFinColor(color);
     }
 
     private static System.Drawing.Color ToFormsColor(uint argb) => System.Drawing.Color.FromArgb((int)argb);

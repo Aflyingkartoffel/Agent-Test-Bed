@@ -118,11 +118,15 @@ public sealed class CreatureCanvas : FrameworkElement
             var transform = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), false);
             if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, feature, transform, false);
             else if (feature.Type == CreatureFeatureType.ForkedTongue) DrawForkedTongue(draw, feature, transform, radii[parentIndex]);
-            else if (feature.Type == CreatureFeatureType.Fin) DrawFin(draw, feature, positions[parentIndex], GetNodeHeading(parentIndex), radii[parentIndex], GetFinAngle(feature));
+            else if (feature.Type == CreatureFeatureType.Fin) DrawFin(draw, feature, positions[parentIndex], GetNodeHeading(parentIndex), radii[parentIndex], GetFinAngle(feature, false), false);
             if (feature.Type == CreatureFeatureType.Eye && feature.Mirrored)
             {
                 var mirrored = CreatureFeatureTransform.ToWorld(feature, positions[parentIndex], GetNodeHeading(parentIndex), true);
                 if (feature.Type == CreatureFeatureType.Eye) DrawEye(draw, feature, mirrored, true);
+            }
+            else if (feature.Type == CreatureFeatureType.Fin && feature.Mirrored)
+            {
+                DrawFin(draw, feature, positions[parentIndex], GetNodeHeading(parentIndex), radii[parentIndex], GetFinAngle(feature, true), true);
             }
         }
     }
@@ -136,9 +140,9 @@ public sealed class CreatureCanvas : FrameworkElement
         draw.DrawLine(pen, ToPoint(tongue.Junction), ToPoint(tongue.LowerTip));
     }
 
-    private void DrawFin(DrawingContext draw, CreatureFeature feature, Vector2 parentPosition, Vector2 heading, float radius, float angle)
+    private void DrawFin(DrawingContext draw, CreatureFeature feature, Vector2 parentPosition, Vector2 heading, float radius, float angle, bool mirrored)
     {
-        var fin = FinGeometry.Build(feature, parentPosition, heading, radius, angle);
+        var fin = FinGeometry.Build(feature, parentPosition, heading, radius, angle, mirrored);
         var shape = new StreamGeometry();
         using (var context = shape.Open())
         {
@@ -146,7 +150,8 @@ public sealed class CreatureCanvas : FrameworkElement
             for (var i = 1; i < fin.Outline.Length; i++) context.LineTo(ToPoint(fin.Outline[i]), true, false);
         }
         shape.Freeze();
-        draw.DrawGeometry(new SolidColorBrush(Color.FromArgb(45, 220, 255, 220)), new Pen(Brushes.White, 2), shape);
+        var argb = State.Creature.FinColorArgb;
+        draw.DrawGeometry(new SolidColorBrush(Color.FromArgb((byte)(argb >> 24), (byte)(argb >> 16), (byte)(argb >> 8), (byte)argb)), new Pen(Brushes.White, 2), shape);
     }
 
     private void DrawFeatureSkeletons(DrawingContext draw, Vector2[] positions, float[] radii)
@@ -168,9 +173,15 @@ public sealed class CreatureCanvas : FrameworkElement
             }
             else if (feature.Type == CreatureFeatureType.Fin)
             {
-                var fin = FinGeometry.Build(feature, positions[parentIndex], GetNodeHeading(parentIndex), radii[parentIndex], GetFinAngle(feature));
+                var fin = FinGeometry.Build(feature, positions[parentIndex], GetNodeHeading(parentIndex), radii[parentIndex], GetFinAngle(feature, false), false);
                 draw.DrawLine(pen, ToPoint(fin.Attachment), ToPoint(fin.Tip));
                 draw.DrawEllipse(pen.Brush, null, ToPoint(fin.Attachment), 2.5, 2.5);
+                if (feature.Mirrored)
+                {
+                    var mirroredFin = FinGeometry.Build(feature, positions[parentIndex], GetNodeHeading(parentIndex), radii[parentIndex], GetFinAngle(feature, true), true);
+                    draw.DrawLine(pen, ToPoint(mirroredFin.Attachment), ToPoint(mirroredFin.Tip));
+                    draw.DrawEllipse(pen.Brush, null, ToPoint(mirroredFin.Attachment), 2.5, 2.5);
+                }
             }
         }
     }
@@ -223,11 +234,11 @@ public sealed class CreatureCanvas : FrameworkElement
         return ChainMath.GetDirectionFromRotation(State.Creature.Nodes[index].Rotation);
     }
 
-    private float GetFinAngle(CreatureFeature feature)
+    private float GetFinAngle(CreatureFeature feature, bool mirrored)
     {
-        if (State.Mode == EditorMode.Play) return State.Simulator.State.GetFinAngle(feature, State.Creature);
+        if (State.Mode == EditorMode.Play) return State.Simulator.State.GetFinAngle(feature, State.Creature, mirrored);
         var parentIndex = State.Creature.Nodes.FindIndex(node => node.Id == feature.ParentNodeId);
-        return parentIndex >= 0 ? FinGeometry.RestAngle(feature, GetNodeHeading(parentIndex)) : 0;
+        return parentIndex >= 0 ? FinGeometry.RestAngle(feature, GetNodeHeading(parentIndex), mirrored) : 0;
     }
 
     private System.Numerics.Vector2 GetPosition(CreatureNode node)
@@ -352,8 +363,13 @@ public sealed class CreatureCanvas : FrameworkElement
             var position = CreatureFeatureTransform.ToWorld(feature, State.Creature.Nodes[parentIndex].Position, GetNodeHeading(parentIndex), false).Position;
             if (feature.Type == CreatureFeatureType.Fin)
             {
-                var fin = FinGeometry.Build(feature, GetPosition(State.Creature.Nodes[parentIndex]), GetNodeHeading(parentIndex), State.Creature.Nodes[parentIndex].Radius, GetFinAngle(feature));
+                var fin = FinGeometry.Build(feature, GetPosition(State.Creature.Nodes[parentIndex]), GetNodeHeading(parentIndex), State.Creature.Nodes[parentIndex].Radius, GetFinAngle(feature, false), false);
                 if (Vector2.DistanceSquared(fin.Attachment, world) <= MathF.Pow(Math.Max(8, feature.FinWidth * feature.Scale), 2) || Vector2.DistanceSquared(fin.Tip, world) <= MathF.Pow(Math.Max(8, feature.FinWidth * feature.Scale), 2)) return feature;
+                if (feature.Mirrored)
+                {
+                    var mirroredFin = FinGeometry.Build(feature, GetPosition(State.Creature.Nodes[parentIndex]), GetNodeHeading(parentIndex), State.Creature.Nodes[parentIndex].Radius, GetFinAngle(feature, true), true);
+                    if (Vector2.DistanceSquared(mirroredFin.Attachment, world) <= MathF.Pow(Math.Max(8, feature.FinWidth * feature.Scale), 2) || Vector2.DistanceSquared(mirroredFin.Tip, world) <= MathF.Pow(Math.Max(8, feature.FinWidth * feature.Scale), 2)) return feature;
+                }
                 continue;
             }
             if (System.Numerics.Vector2.DistanceSquared(position, world) <= MathF.Pow(feature.EyeSize * feature.Scale * 1.5f, 2)) return feature;
