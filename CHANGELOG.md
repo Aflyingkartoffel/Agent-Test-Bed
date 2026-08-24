@@ -84,3 +84,8 @@
 - Added mirrored Fin rendering, skeletons, hit testing, and separate spring state.
 - Replaced triangular Fins with rounded sampled organic outlines attached at one quarter of the parent node radius.
 - Added persisted Fin Color, explicit Bezier handles with legacy auto-generation, grouped handle Undo, and black-on-white dropdown styling.
+## Fin placement lock and Bezier handle interaction
+
+- Disabled generic canvas translation for Fins while preserving click selection and parent-driven movement.
+- Normalized legacy Fin local placement and removed generic Fin paste offsets.
+- Added dedicated Bezier handle drag priority, live updates, directional constraints, hover feedback, and grouped Undo.

@@ -107,3 +107,4 @@ Secondary appendages should keep authored rest parameters separate from temporar
 ## Mirrored procedural geometry and authored Bezier handles
 
 Mirroring can remain a render/simulation variant of one authored feature: the pair shares dimensions and spring parameters, while temporary angular state is keyed by feature ID plus mirror side. Rounded appendages can stay dependency-free by sampling cubic curves and a tip arc into a closed outline. Explicit handle offsets make Bezier editing predictable, while missing handles can still be generated automatically for old files.
+Interaction rules should match the data model: when a Fin is structurally attached to a parent, the canvas must select it without exposing generic translation. For curve editors, handle hit testing needs its own priority and state so a handle drag cannot accidentally move the control point; grouping the pointer sequence keeps Undo aligned with the user’s intent.

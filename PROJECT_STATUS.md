@@ -52,3 +52,6 @@ The new Fin feature attaches to a selected body node and left/right body side. I
 ## Fin mirroring, rounded shape, and Bezier handles
 
 The current milestone supports mirrored Fin pairs with quarter-radius attachment, rounded sampled organic outlines, persisted editable Fin Color, and Fin skeleton/hit-test coverage. Body Size Ramp Bezier mode now stores explicit incoming/outgoing authored handles with endpoint rules and automatic migration for older files. Verification: project build succeeded and 126 editor tests passed.
+## Fin placement lock and Bezier handle interaction
+
+Fin canvas selection no longer starts generic feature dragging. Fin roots are derived only from their parent node, side, radius, quarter-radius attachment, mirror state, and authored Fin parameters; legacy local translation/rotation and paste offsets are ignored. Bezier handles now have dedicated priority hit testing, live mouse dragging, sensible directional bounds, hover/drag feedback, and grouped Undo. Verification: build succeeded, 130 editor tests passed, and the built WPF process reached its running startup state.

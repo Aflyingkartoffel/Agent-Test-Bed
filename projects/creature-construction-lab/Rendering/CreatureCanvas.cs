@@ -306,9 +306,12 @@ public sealed class CreatureCanvas : FrameworkElement
         if (hitFeature is not null)
         {
             State.SelectFeature(hitFeature);
-            State.BeginHistoryGroup();
-            draggingFeature = hitFeature;
-            CaptureMouse();
+            if (hitFeature.Type != CreatureFeatureType.Fin)
+            {
+                State.BeginHistoryGroup();
+                draggingFeature = hitFeature;
+                CaptureMouse();
+            }
             return;
         }
         if (State.SelectedNode is not null && IsNearDirectionHandle(world, State.SelectedNode)) { State.BeginHistoryGroup(); rotating = true; CaptureMouse(); UpdateRotation(world); return; }
@@ -331,7 +334,7 @@ public sealed class CreatureCanvas : FrameworkElement
         if (e.LeftButton != MouseButtonState.Pressed || State.Mode != EditorMode.Create) return;
         var world = State.Coordinates.ScreenToWorld(e.GetPosition(this));
         if (rotating && State.SelectedNode is not null) { UpdateRotation(world); return; }
-        if (draggingFeature is not null)
+        if (draggingFeature is not null && draggingFeature.Type != CreatureFeatureType.Fin)
         {
             var parentIndex = State.Creature.Nodes.FindIndex(n => n.Id == draggingFeature.ParentNodeId);
             if (parentIndex >= 0)

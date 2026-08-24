@@ -10,8 +10,7 @@ public readonly record struct FinGeometry(Vector2 Attachment, Vector2 Tip, Vecto
         var heading = parentHeading.LengthSquared() > 0.0001f ? Vector2.Normalize(parentHeading) : Vector2.UnitX;
         var side = mirrored ? (feature.FinSide == FinSide.Left ? FinSide.Right : FinSide.Left) : feature.FinSide;
         var sideNormal = side == FinSide.Left ? new Vector2(heading.Y, -heading.X) : new Vector2(-heading.Y, heading.X);
-        var localY = mirrored ? -feature.LocalPosition.Y : feature.LocalPosition.Y;
-        var attachment = parentPosition + sideNormal * (Math.Max(0, parentRadius) * 0.25f) + heading * feature.LocalPosition.X + sideNormal * localY;
+        var attachment = parentPosition + sideNormal * (Math.Max(0, parentRadius) * 0.25f);
         var direction = new Vector2(MathF.Cos(absoluteAngle), MathF.Sin(absoluteAngle));
         var perpendicular = new Vector2(-direction.Y, direction.X);
         var length = Math.Clamp(feature.FinLength, 2, 200) * Math.Max(0.05f, feature.Scale);
@@ -38,7 +37,7 @@ public readonly record struct FinGeometry(Vector2 Attachment, Vector2 Tip, Vecto
         var tangentAngle = MathF.Atan2(heading.Y, heading.X);
         var side = mirrored ? (feature.FinSide == FinSide.Left ? FinSide.Right : FinSide.Left) : feature.FinSide;
         var sideAngle = side == FinSide.Left ? -MathF.PI / 2 : MathF.PI / 2;
-        var authoredAngle = feature.FinBaseAngle + feature.LocalRotation;
+        var authoredAngle = feature.FinBaseAngle;
         return tangentAngle + sideAngle + Math.Clamp(mirrored ? -authoredAngle : authoredAngle, -120, 120) * MathF.PI / 180;
     }
 

@@ -105,9 +105,11 @@ public partial class MainWindow : Window
         var featureEditing = editing && selectedFeature is not null;
         FeatureTypeBox.IsEnabled = featureEditing;
         FeatureParentBox.IsEnabled = featureEditing;
-        FeatureXBox.IsEnabled = featureEditing;
-        FeatureYBox.IsEnabled = featureEditing;
-        FeatureRotationBox.IsEnabled = featureEditing;
+        FeatureXBox.IsEnabled = featureEditing && !isFin;
+        FeatureYBox.IsEnabled = featureEditing && !isFin;
+        FeatureXBox.IsReadOnly = isFin;
+        FeatureYBox.IsReadOnly = isFin;
+        FeatureRotationBox.IsEnabled = featureEditing && !isFin;
         FeatureScaleBox.IsEnabled = featureEditing;
         FeatureEyeSizeBox.IsEnabled = featureEditing && isEye;
         FeatureTrackingBox.IsEnabled = featureEditing;

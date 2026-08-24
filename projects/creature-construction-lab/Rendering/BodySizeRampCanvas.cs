@@ -15,6 +15,8 @@ public sealed class BodySizeRampCanvas : FrameworkElement
     private bool dragging;
     private bool draggingHandle;
     private bool draggingOutgoing;
+    private RampPoint? hoveredHandlePoint;
+    private bool hoveredHandleOutgoing;
 
     public BodySizeRampCanvas(EditorState state)
     {
@@ -77,7 +79,10 @@ public sealed class BodySizeRampCanvas : FrameworkElement
         var anchor = ToCanvas(point);
         var handle = ToCanvasHandle(point, offset.Value);
         draw.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(91, 165, 122)), 1), anchor, handle);
-        draw.DrawEllipse(new SolidColorBrush(outgoing ? Color.FromRgb(255, 215, 120) : Color.FromRgb(150, 205, 255)), null, handle, 4, 4);
+        var highlighted = point == hoveredHandlePoint && outgoing == hoveredHandleOutgoing;
+        var selected = point == selectedPoint && draggingHandle && outgoing == draggingOutgoing;
+        var color = selected ? Color.FromRgb(255, 245, 170) : highlighted ? Color.FromRgb(225, 255, 230) : outgoing ? Color.FromRgb(255, 215, 120) : Color.FromRgb(150, 205, 255);
+        draw.DrawEllipse(new SolidColorBrush(color), null, handle, highlighted || selected ? 5 : 4, highlighted || selected ? 5 : 4);
     }
 
     private Point ToCanvas(RampPoint point) => new(point.Position * Math.Max(1, ActualWidth), ActualHeight - ValueToY(point.Value));
@@ -112,6 +117,21 @@ public sealed class BodySizeRampCanvas : FrameworkElement
         InvalidateVisual();
     }
 
+    private bool TryGetHandleAt(Point mouse, out RampPoint? point, out bool outgoing)
+    {
+        point = null;
+        outgoing = false;
+        if (state.Creature.BodySizeRamp.Interpolation != RampInterpolationMode.Bezier) return false;
+        foreach (var candidate in state.Creature.BodySizeRamp.Points)
+        {
+            if (candidate.OutHandle is Vector2 outOffset && (ToCanvasHandle(candidate, outOffset) - mouse).Length <= 10)
+            { point = candidate; outgoing = true; return true; }
+            if (candidate.InHandle is Vector2 inOffset && (ToCanvasHandle(candidate, inOffset) - mouse).Length <= 10)
+            { point = candidate; return true; }
+        }
+        return false;
+    }
+
     private void OnDoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (state.Mode != EditorMode.Create || e.ClickCount != 2) return;
@@ -123,7 +143,16 @@ public sealed class BodySizeRampCanvas : FrameworkElement
 
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
-        if (state.Mode != EditorMode.Create || !dragging || selectedPoint is null || e.LeftButton != MouseButtonState.Pressed) return;
+        if (state.Mode != EditorMode.Create) return;
+        if (!dragging && !draggingHandle && e.LeftButton != MouseButtonState.Pressed)
+        {
+            hoveredHandlePoint = TryGetHandleAt(e.GetPosition(this), out var point, out var outgoing) ? point : null;
+            hoveredHandleOutgoing = outgoing;
+            Cursor = hoveredHandlePoint is null ? Cursors.Arrow : Cursors.Hand;
+            InvalidateVisual();
+            return;
+        }
+        if ((!dragging && !draggingHandle) || selectedPoint is null || e.LeftButton != MouseButtonState.Pressed) return;
         if (draggingHandle)
         {
             var value = FromCanvas(e.GetPosition(this));
@@ -136,7 +165,7 @@ public sealed class BodySizeRampCanvas : FrameworkElement
         }
     }
 
-    private void OnMouseUp(object sender, MouseButtonEventArgs e) { if (dragging || draggingHandle) state.EndHistoryGroup(); dragging = false; draggingHandle = false; ReleaseMouseCapture(); }
+    private void OnMouseUp(object sender, MouseButtonEventArgs e) { if (dragging || draggingHandle) state.EndHistoryGroup(); dragging = false; draggingHandle = false; ReleaseMouseCapture(); Cursor = Cursors.Arrow; }
 
     private void OnKeyDown(object sender, KeyEventArgs e)
     {

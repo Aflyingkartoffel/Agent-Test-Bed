@@ -122,7 +122,9 @@ public sealed class EditorState
     public void SetRampHandle(RampPoint point, bool outgoing, Vector2 offset)
     {
         CaptureEdit();
-        var clamped = new Vector2(Math.Clamp(offset.X, -0.5f, 0.5f), Math.Clamp(offset.Y, -1f, 1f));
+        var horizontalLimit = outgoing ? Math.Max(0.01f, 1f - point.Position) : Math.Max(0.01f, point.Position);
+        var horizontal = outgoing ? Math.Clamp(offset.X, 0.01f, horizontalLimit) : Math.Clamp(offset.X, -horizontalLimit, -0.01f);
+        var clamped = new Vector2(horizontal, Math.Clamp(offset.Y, -1f, 1f));
         if (outgoing) point.OutHandle = clamped; else point.InHandle = clamped;
         RecalculateBodySizes();
     }
@@ -280,8 +282,8 @@ public sealed class EditorState
         CaptureEdit();
         SelectedFeature.Type = type;
         SelectedFeature.ParentNodeId = Creature.Nodes.Any(n => n.Id == parentNodeId) ? parentNodeId : Creature.Nodes.FirstOrDefault()?.Id ?? Guid.Empty;
-        SelectedFeature.LocalPosition = localPosition;
-        SelectedFeature.LocalRotation = float.IsFinite(rotation) ? rotation : 0;
+        SelectedFeature.LocalPosition = type == CreatureFeatureType.Fin ? Vector2.Zero : localPosition;
+        SelectedFeature.LocalRotation = type == CreatureFeatureType.Fin ? 0 : (float.IsFinite(rotation) ? rotation : 0);
         SelectedFeature.Scale = Math.Clamp(float.IsFinite(scale) ? scale : 1, 0.1f, 10);
         SelectedFeature.Mirrored = SelectedFeature.SupportsMirroring && mirrored;
         SelectedFeature.Visible = visible;
@@ -356,7 +358,8 @@ public sealed class EditorState
         CaptureEdit();
         var pasted = clipboardFeature.Clone(true);
         if (!Creature.Nodes.Any(node => node.Id == pasted.ParentNodeId)) pasted.ParentNodeId = Creature.Nodes[0].Id;
-        pasted.LocalPosition += new Vector2(8, 8);
+        if (pasted.Type != CreatureFeatureType.Fin) pasted.LocalPosition += new Vector2(8, 8);
+        else { pasted.LocalPosition = Vector2.Zero; pasted.LocalRotation = 0; }
         Creature.Features.Add(pasted);
         SelectedFeature = pasted;
         SelectedNode = null;
