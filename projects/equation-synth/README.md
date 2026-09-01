@@ -10,6 +10,8 @@ Supported operators are `+`, `-`, `*`, `/`, `^`, unary `-`, and parentheses. Bui
 
 The graph samples x from -10 to 10 and breaks lines at invalid/non-finite values. Pan with left-drag and zoom around the cursor with the mouse wheel. The audio view samples one cycle with x from 0 to 2π using 2048 samples. Invalid values become zero; the table is normalized, softly limited, and played through a conservative volume setting. `sin(x)` is an oscillator whose pitch is controlled independently by Frequency.
 
+Milestone 2 supports multiple `EquationEntry` records. Each has an ID, parsed runtime expression, color, visibility, and selection state. Shared identifiers across entries reconcile into one project parameter while preserving existing values. The selected entry alone feeds the audio waveform and SoundPlayer; this is intentionally not a multi-oscillator mixer. The graph uses a centralized `GraphCamera`, cursor-anchored zoom, pan, editable validated ranges, adaptive 1/2/5 grid spacing, numeric labels, viewport-aware sampling, and screen-space discontinuity breaks. Save files store authored entries and rebuild their ASTs on load; old Milestone 1 files with only `Equation` remain supported.
+
 Time Play/Pause/Reset controls `t`; it is separate from Play Sound/Stop Sound. Presets are available in the selector. Save and Load use human-readable `.equation.json` files containing equation, parameter metadata/values, audio settings, time speed, and graph domain.
 
 ## Run and test
