@@ -36,3 +36,12 @@ Use NEW, SAVE, SAVE AS, and LOAD from the project toolbar. The status area shows
 The project model validates equation IDs, selected entries, parameter metadata, time ranges, audio settings, and parsed expressions before accepting files. Save files use readable `.equation.json` JSON and missing optional fields retain safe defaults. Release output is `projects/equation-synth/bin/Release/net8.0-windows/Equation Synth.exe`. A framework-dependent publish can be produced with `dotnet publish projects/equation-synth/equation-synth.csproj -c Release`.
 
 Known limitations: routine slider/history integration is intentionally lightweight, speaker/device behavior requires manual verification, and the current streaming audio engine remains a single selected-equation source without mixing, effects, or recording.
+## Milestone 5B — V1 integration completion
+
+The editor now routes authored changes through a bounded 150-operation undo/redo history. Slider drags commit once on release, no-op edits are ignored, and undo/redo compares authored snapshots so returning to the saved snapshot clears the dirty marker. Runtime time progression, effective automation values, audio buffers, and playback state never enter history.
+
+New, Open, and window close share a Save / Don't Save / Cancel workflow. Save uses the existing path when available; Save As is used when needed, and failed or cancelled saves preserve the active project. Loads deserialize and validate a temporary state before replacing the current document.
+
+Expanded parameter rows expose manual value, minimum, maximum, step, reset, and OFF/SINE/COSINE/EXPRESSION automation controls. Manual and Effective values remain separate, and invalid metadata or automation is reported without crashing. Equation ordering, visibility, colors, duplication, graph view, timeline, loop, audio controls, and parameter edits participate in authored history.
+
+Validation: Debug and Release builds plus the console regression suite pass. WPF startup was build-validated but not launched headlessly because this environment has no safe desktop GUI automation; audible playback remains not manually verified.
