@@ -51,3 +51,9 @@ New, Open, and window close share a Save / Don't Save / Cancel workflow. Save us
 Expanded parameter rows expose manual value, minimum, maximum, step, reset, and OFF/SINE/COSINE/EXPRESSION automation controls. Manual and Effective values remain separate, and invalid metadata or automation is reported without crashing. Equation ordering, visibility, colors, duplication, graph view, timeline, loop, audio controls, and parameter edits participate in authored history.
 
 Validation: Debug and Release builds plus the console regression suite pass. WPF startup was build-validated but not launched headlessly because this environment has no safe desktop GUI automation; audible playback remains not manually verified.
+
+## Milestone 7 — procedural expression outputs
+
+The procedural workspace adds UI-independent `ExpressionOutputBinding`, `ProceduralObject`, `ProceduralScene`, and `ProceduralOutputEvaluator` types. Bindings target Position X/Y, Rotation, Scale, Opacity, or RGB channels and apply sequentially with Replace, Add, or Multiply semantics. Position values use centered scene units (pixels), rotation uses degrees, scale is a multiplier, and opacity/color channels use 0–1.
+
+Base/authored transforms remain separate from evaluated runtime values. Output expressions share the existing parameters, EffectiveValue automation, and global `TimeEngine`; invalid or non-finite output falls back to the previous value and is safely clamped. The preview supports multiple objects, ordered bindings, object duplication/deletion, live output inspection, and bounded motion trails. Procedural authored state is persisted and participates in existing snapshot history; parsed ASTs, evaluated transforms, and trail samples are runtime-only.
