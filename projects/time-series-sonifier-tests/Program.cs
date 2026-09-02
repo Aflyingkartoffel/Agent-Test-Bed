@@ -1,0 +1,21 @@
+using TimeSeriesSonifier;
+
+static class Tests
+{
+    static int count;
+    static void Ok(bool value, string name) { if (!value) throw new Exception(name); count++; }
+    static RawImportedData Raw(string text) => CsvImporter.Parse(text, "test.csv");
+    static void Main()
+    {
+        var raw = Raw("year,value,note\n2000,4.2,first\n\n2001,4.5,second\n2002,bad,third\n2003,NaN,fourth\n2004,Infinity,fifth\n2005,5.1,\"quoted, value\"\n");
+        Ok(raw.Headers.SequenceEqual(new[] { "year", "value", "note" }), "headers"); Ok(raw.Rows.Count == 6, "blank lines safe"); Ok(raw.Rows[0].Values[0] == "2000", "basic row"); Ok(raw.Rows[^1].Values[2] == "quoted, value", "quoted field");
+        var result = DataSeriesBuilder.Build(raw, 0, 1); Ok(result.Success, "series builds"); Ok(result.ValidRows == 3 && result.SkippedRows == 3, "invalid values skipped"); Ok(raw.Rows.Count == 6, "raw remains available"); Ok(result.Series!.Points[0].Time == 2000 && result.Series.Points[^1].Time == 2005, "sorted series"); Ok(result.Series.MinimumTime == 2000 && result.Series.MaximumTime == 2005, "time bounds"); Ok(result.Series.MinimumValue == 4.2 && result.Series.MaximumValue == 5.1, "value bounds");
+        var unsorted = Raw("time,value\n3,30\n1,10\n2,20\n2,25\n"); var sorted = DataSeriesBuilder.Build(unsorted, 0, 1); Ok(sorted.Series!.Points.Select(p => p.Time).SequenceEqual(new[] { 1d, 2d, 3d }), "sort and duplicate policy"); Ok(sorted.SkippedRows == 1, "duplicate skipped");
+        Ok(TimeValueParser.TryParse("12.5", out var numeric) && numeric == 12.5, "numeric time"); Ok(TimeValueParser.TryParse("2001", out var year) && year == 2001, "year time"); Ok(TimeValueParser.TryParse("2024-01-02", out _), "date time"); Ok(!TimeValueParser.TryParse("not-a-time", out _), "invalid time");
+        var tooSmall = DataSeriesBuilder.Build(Raw("t,v\n1,2\n"), 0, 1); Ok(!tooSmall.Success && tooSmall.Error!.Contains("two"), "minimum points"); var badColumn = DataSeriesBuilder.Build(raw, 9, 1); Ok(!badColumn.Success, "bad columns");
+        var series = sorted.Series!; var interp = new SeriesInterpolator(series); var first = interp.Evaluate(1); var mid = interp.Evaluate(1.5); var last = interp.Evaluate(3); Ok(first.CurrentValue == 10 && first.LeftPointIndex == 0, "exact first"); Ok(mid.CurrentValue == 15 && mid.InterpolationFactor == .5, "midpoint"); Ok(last.CurrentValue == 30 && last.RightPointIndex == 2, "exact last"); Ok(interp.Evaluate(0).CurrentValue == 10 && interp.Evaluate(4).CurrentValue == 30, "clamps"); var uneven = new SeriesInterpolator(DataSeriesBuilder.Build(Raw("t,v\n0,0\n2,20\n10,30\n"), 0, 1).Series!); Ok(uneven.Evaluate(6).CurrentValue == 25, "uneven spacing");
+        var timeline = new TimelineEngine(); timeline.SetRange(0, 10); Ok(timeline.State == TimelineState.Stopped && timeline.CurrentTime == 0, "starts stopped"); timeline.Play(); Ok(timeline.State == TimelineState.Playing, "play state"); timeline.Advance(1); Ok(timeline.CurrentTime == 1, "advance"); timeline.Pause(); var paused = timeline.CurrentTime; timeline.Advance(1); Ok(timeline.CurrentTime == paused, "pause freezes"); timeline.SeekNormalized(.5); Ok(timeline.CurrentTime == 5 && timeline.NormalizedPosition == .5, "seek"); timeline.PlaybackSpeed = 2; timeline.Play(); timeline.Advance(.5); Ok(timeline.CurrentTime == 6, "speed"); timeline.Reset(); Ok(timeline.CurrentTime == 0 && timeline.State == TimelineState.Stopped, "reset"); timeline.Play(); timeline.Advance(100); Ok(timeline.CurrentTime == 2 && timeline.State == TimelineState.Playing, "huge delta bounded"); timeline.SeekNormalized(.95); timeline.Advance(1); Ok(timeline.CurrentTime == 10 && timeline.State == TimelineState.Stopped, "end stops"); timeline.Reset(); timeline.PlaybackSpeed = 1; timeline.LoopEnabled = true; timeline.Play(); timeline.Advance(11); Ok(timeline.CurrentTime == 1 && timeline.State == TimelineState.Playing, "loop wraps"); timeline.Advance(1); Ok(timeline.CurrentTime == 2, "loop continues");
+        var state = new SeriesInterpolator(series).Evaluate(2); Ok(state.LeftPointIndex == 1 && state.RightPointIndex == 2 && state.InterpolationFactor == 0, "current indexes"); Ok(state.CurrentValue == 20 && state.NormalizedPosition == .5, "current state");
+        Console.WriteLine($"Time-Series Sonifier tests passed: {count}");
+    }
+}
