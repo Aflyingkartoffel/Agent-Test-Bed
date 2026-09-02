@@ -9,6 +9,13 @@ public sealed class EquationEntry {
     public string DisplayName { get; set; } = "sin(x)";
     public string ColorHex { get; set; } = "#69DAFF";
     public bool IsVisible { get; set; } = true;
+    public bool IsAudioEnabled { get; set; }
+    public bool IsMuted { get; set; }
+    public bool IsSolo { get; set; }
+    public double AudioFrequency { get; set; } = 440;
+    public double AudioVolume { get; set; } = .25;
+    public double AudioPan { get; set; }
+    public EnvelopeSettings Envelope { get; set; } = new();
     public bool IsSelected { get; set; }
     [JsonIgnore] public Expression? ParsedExpression { get; set; }
     public bool TryParse(out string error) { try { ParsedExpression = Expression.Parse(ExpressionText); DisplayName = ExpressionText; error = ""; return true; } catch (ParseException ex) { error = ex.Message; return false; } }
@@ -20,7 +27,7 @@ public sealed class EquationDocument {
     public Guid? SelectedEquationId { get; set; }
     public EquationEntry? Selected => Equations.FirstOrDefault(x => x.Id == SelectedEquationId);
     public static EquationDocument CreateDefault() { var d = new EquationDocument(); d.Add("sin(x)"); return d; }
-    public EquationEntry Add(string text = "sin(x)") { var e = new EquationEntry { ExpressionText = text, ColorHex = Palette[Equations.Count % Palette.Length] }; e.TryParse(out _); Equations.Add(e); Select(e); ReconcileParameters(); return e; }
+    public EquationEntry Add(string text = "sin(x)") { var e = new EquationEntry { ExpressionText = text, ColorHex = Palette[Equations.Count % Palette.Length], IsAudioEnabled = Equations.Count == 0 }; e.TryParse(out _); Equations.Add(e); Select(e); ReconcileParameters(); return e; }
     public void RemoveSelected() { if (Selected is { } e) Equations.Remove(e); if (Equations.Count == 0) Add(); else Select(Equations[Math.Min(Equations.Count - 1, 0)]); ReconcileParameters(); }
     public void Select(EquationEntry e) { foreach (var item in Equations) item.IsSelected = item.Id == e.Id; SelectedEquationId = e.Id; }
     public void ReconcileParameters() { var old = Parameters.Items.ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase); var names = Equations.Where(x => x.ParsedExpression is not null).SelectMany(x => x.ParsedExpression!.Parameters).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(x => x); Parameters.Items.Clear(); foreach (var name in names) { if (old.TryGetValue(name, out var p)) Parameters.Items.Add(p); else Parameters.Items.Add(new Parameter(name)); } }

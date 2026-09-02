@@ -22,3 +22,36 @@ public sealed class AudioEngine : IDisposable {
     [StructLayout(LayoutKind.Sequential)] struct WaveHeader {public IntPtr Data;public uint BufferLength,BytesRecorded,User,Flags,Loops;public IntPtr Next;public IntPtr Reserved;public IntPtr Header=>Data;}
     [DllImport("winmm.dll")] static extern uint waveOutOpen(out IntPtr hwo,int device,ref WaveFormat format,WaveOutProc callback,IntPtr instance,uint flags);[DllImport("winmm.dll")]static extern uint waveOutPrepareHeader(IntPtr hwo,ref WaveHeader header,int size);[DllImport("winmm.dll")]static extern uint waveOutUnprepareHeader(IntPtr hwo,ref WaveHeader header,int size);[DllImport("winmm.dll")]static extern uint waveOutWrite(IntPtr hwo,ref WaveHeader header,int size);[DllImport("winmm.dll")]static extern uint waveOutReset(IntPtr hwo);[DllImport("winmm.dll")]static extern uint waveOutClose(IntPtr hwo);
 }
+
+// Multi-layer audio backend. The UI publishes immutable layer tables; this class owns phase and ADSR runtime state.
+public sealed class MixerEngine {
+    public const int MaxVoices=32; readonly Dictionary<Guid,MixerVoice> voices=new(); MixerVoice[] published=[]; public double MasterGain {get;set;}=.25; public bool IsPlaying {get;private set;}
+    public IReadOnlyCollection<MixerVoice> Voices=>voices.Values;
+    public void Reconcile(IEnumerable<EquationEntry> layers,IReadOnlyDictionary<Guid,double[]> tables){var ids=new HashSet<Guid>();foreach(var layer in layers.Take(MaxVoices)){ids.Add(layer.Id);if(!voices.TryGetValue(layer.Id,out var voice)){voice=new MixerVoice(layer.Id);voices.Add(layer.Id,voice);}voice.Layer=layer;if(tables.TryGetValue(layer.Id,out var table))voice.SetTable(table);}foreach(var id in voices.Keys.Where(id=>!ids.Contains(id)).ToArray())voices.Remove(id);Volatile.Write(ref published,voices.Values.ToArray());}
+    public void GateOn(){foreach(var voice in voices.Values)if(voice.Layer.IsAudioEnabled)voice.Envelope.GateOn();IsPlaying=true;}
+    public void GateOff(){foreach(var voice in voices.Values)voice.Envelope.GateOff();}
+    public StereoSample NextSample(){var activeVoices=Volatile.Read(ref published);var anySolo=false;foreach(var voice in activeVoices)if(voice.Layer.IsSolo){anySolo=true;break;}var left=0d;var right=0d;var active=0;var idle=true;foreach(var voice in activeVoices){var envelope=voice.Envelope.Next(1.0/48000);if(voice.Envelope.Stage!=EnvelopeStage.Idle)idle=false;if(!MixerMath.IsAudible(voice.Layer,anySolo))continue;var pan=MixerMath.EqualPowerPan(voice.Layer.AudioPan);var sample=voice.NextSample()*voice.Layer.AudioVolume*envelope;left+=sample*pan.Left;right+=sample*pan.Right;active++;}var attenuation=active>1?1/Math.Sqrt(active):1;left=Math.Tanh(left*attenuation*MasterGain*1.4);right=Math.Tanh(right*attenuation*MasterGain*1.4);if(idle)IsPlaying=false;return new StereoSample(left,right);}
+    public double[] Render(int frames){var result=new double[frames*2];for(var i=0;i<frames;i++){var s=NextSample();result[i*2]=s.Left;result[i*2+1]=s.Right;}return result;}
+}
+public sealed class MixerVoice {
+    EquationEntry layer=new(); public Guid Id {get;} public EquationEntry Layer {get=>layer;set{if(!ReferenceEquals(layer,value)){layer=value;Envelope=new AdsrEnvelope(layer.Envelope);}}} public AdsrEnvelope Envelope {get;private set;} public double Phase {get;private set;} public float[] Table {get;private set;}=[]; public MixerVoice(Guid id){Id=id;Envelope=new AdsrEnvelope(layer.Envelope);}
+    public void SetTable(double[] table){Table=table.Select(v=>(float)(double.IsFinite(v)?Math.Clamp(v,-1,1):0)).ToArray();}
+    public double NextSample(){if(Table.Length==0)return 0;var x=Phase*Table.Length;var i=(int)x;var f=x-i;var sample=Table[i%Table.Length]*(1-f)+Table[(i+1)%Table.Length]*f;Phase+=Math.Clamp(Layer.AudioFrequency,20,21600)/48000;Phase-=Math.Floor(Phase);return sample;}
+}
+
+public sealed class StereoMixerAudioEngine : IDisposable {
+    const int Rate=48000, Samples=512, Buffers=3, FloatFormat=3, Callback=0x00030000, Done=0x3BD;
+    readonly object gate=new(); readonly WaveProc callback; readonly byte[][] data=new byte[Buffers][]; readonly GCHandle[] pins=new GCHandle[Buffers]; readonly Header[] headers=new Header[Buffers]; MixerEngine? mixer; IntPtr device; int callbackIndex=-1;
+    public bool IsPlaying {get;private set;} public string Status {get;private set;}="STOPPED";
+    public StereoMixerAudioEngine()=>callback=OnMessage;
+    public void Play(MixerEngine source){lock(gate){if(IsPlaying)return;mixer=source;try{var format=new Format{Tag=FloatFormat,Channels=2,Rate=Rate,BytesPerSecond=Rate*8,BlockAlign=8,Bits=32};if(waveOutOpen(out device,-1,ref format,callback,IntPtr.Zero,Callback)!=0)throw new InvalidOperationException("Stereo audio device could not start.");for(var i=0;i<Buffers;i++){data[i]=new byte[Samples*8];pins[i]=GCHandle.Alloc(data[i],GCHandleType.Pinned);headers[i]=new Header{Data=pins[i].AddrOfPinnedObject(),Length=(uint)data[i].Length};waveOutPrepareHeader(device,ref headers[i],Marshal.SizeOf<Header>());Fill(i);waveOutWrite(device,ref headers[i],Marshal.SizeOf<Header>());}IsPlaying=true;Status="PLAYING";}catch{Cleanup();Status="AUDIO DEVICE UNAVAILABLE";throw;}}}
+    void Fill(int index){var output=data[index];var source=mixer;if(source is null)return;for(var i=0;i<Samples;i++){var sample=source.NextSample();BitConverter.TryWriteBytes(output.AsSpan(i*8,4),(float)Math.Clamp(double.IsFinite(sample.Left)?sample.Left:0,-1,1));BitConverter.TryWriteBytes(output.AsSpan(i*8+4,4),(float)Math.Clamp(double.IsFinite(sample.Right)?sample.Right:0,-1,1));}}
+    void OnMessage(IntPtr h,uint message,IntPtr a,IntPtr b,IntPtr c){if(message==Done&&IsPlaying){var index=(Interlocked.Increment(ref callbackIndex)&int.MaxValue)%Buffers;Fill(index);waveOutWrite(device,ref headers[index],Marshal.SizeOf<Header>());}}
+    public void Stop(){lock(gate){Cleanup();Status="STOPPED";}}
+    void Cleanup(){if(device==IntPtr.Zero){IsPlaying=false;return;}try{waveOutReset(device);for(var i=0;i<Buffers;i++){waveOutUnprepareHeader(device,ref headers[i],Marshal.SizeOf<Header>());if(pins[i].IsAllocated)pins[i].Free();}waveOutClose(device);}finally{device=IntPtr.Zero;IsPlaying=false;}}
+    public void Dispose()=>Stop();
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] delegate void WaveProc(IntPtr h,uint msg,IntPtr a,IntPtr b,IntPtr c);
+    [StructLayout(LayoutKind.Sequential)] struct Format{public ushort Tag,Channels;public uint Rate,BytesPerSecond;public ushort BlockAlign,Bits;}
+    [StructLayout(LayoutKind.Sequential)] struct Header{public IntPtr Data;public uint Length,Recorded,User,Flags,Loops;public IntPtr Next,Reserved;}
+    [DllImport("winmm.dll")] static extern uint waveOutOpen(out IntPtr h,int device,ref Format format,WaveProc callback,IntPtr instance,uint flags);[DllImport("winmm.dll")]static extern uint waveOutPrepareHeader(IntPtr h,ref Header header,int size);[DllImport("winmm.dll")]static extern uint waveOutUnprepareHeader(IntPtr h,ref Header header,int size);[DllImport("winmm.dll")]static extern uint waveOutWrite(IntPtr h,ref Header header,int size);[DllImport("winmm.dll")]static extern uint waveOutReset(IntPtr h);[DllImport("winmm.dll")]static extern uint waveOutClose(IntPtr h);
+}

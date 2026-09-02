@@ -35,7 +35,13 @@ Use NEW, SAVE, SAVE AS, and LOAD from the project toolbar. The status area shows
 
 The project model validates equation IDs, selected entries, parameter metadata, time ranges, audio settings, and parsed expressions before accepting files. Save files use readable `.equation.json` JSON and missing optional fields retain safe defaults. Release output is `projects/equation-synth/bin/Release/net8.0-windows/Equation Synth.exe`. A framework-dependent publish can be produced with `dotnet publish projects/equation-synth/equation-synth.csproj -c Release`.
 
-Known limitations: routine slider/history integration is intentionally lightweight, speaker/device behavior requires manual verification, and the current streaming audio engine remains a single selected-equation source without mixing, effects, or recording.
+Known limitations: speaker/device behavior requires manual verification; the mixer remains intentionally basic without effects, recording, or export.
+
+## Milestone 6 — multi-oscillator mixer
+
+Equation entries now separate graph visibility from audio participation. Each layer stores Audio Enabled, Mute, Solo, frequency, volume, pan, and editable Attack/Decay/Sustain/Release settings. The mixer uses one ID-keyed runtime voice per layer, independent oscillator phase, equal-power stereo pan, solo/mute resolution, voice-count attenuation, master gain, and a bounded soft limiter. PLAY SOUND gates enabled voices; STOP SOUND gates them off through the ADSR release stage. Mute changes gain without retriggering a voice.
+
+Layer settings are part of project Save/Load and the existing authored Undo/Redo snapshots. Older V1 projects migrate conservatively by enabling only the selected/first layer. Runtime phase, envelope stage, audio buffers, and meter state are not persisted. MIDI, sequencing, effects, recording/export, and VST integration remain outside Milestone 6.
 ## Milestone 5B — V1 integration completion
 
 The editor now routes authored changes through a bounded 150-operation undo/redo history. Slider drags commit once on release, no-op edits are ignored, and undo/redo compares authored snapshots so returning to the saved snapshot clears the dirty marker. Runtime time progression, effective automation values, audio buffers, and playback state never enter history.
