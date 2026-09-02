@@ -28,3 +28,11 @@ dotnet run --project projects/equation-synth-tests/equation-synth-tests.csproj
 ```
 
 The normal build output is `projects/equation-synth/bin/Debug/net8.0-windows/Equation Synth.exe`. It can be launched directly from Explorer after building. No audio starts automatically. Audible output requires pressing PLAY SOUND and was not verified by automated tests.
+
+## V1 workflow
+
+Use NEW, SAVE, SAVE AS, and LOAD from the project toolbar. The status area shows equation/parameter counts, time, audio state, and unsaved state. Keyboard shortcuts include Ctrl+N, Ctrl+S, Ctrl+Shift+S, Ctrl+O, Ctrl+D, Delete, Space, Escape, F, and R when focus is not in a text field. The function reference is the supported syntax section above; presets include basic, motion, nested, and automation-oriented examples.
+
+The project model validates equation IDs, selected entries, parameter metadata, time ranges, audio settings, and parsed expressions before accepting files. Save files use readable `.equation.json` JSON and missing optional fields retain safe defaults. Release output is `projects/equation-synth/bin/Release/net8.0-windows/Equation Synth.exe`. A framework-dependent publish can be produced with `dotnet publish projects/equation-synth/equation-synth.csproj -c Release`.
+
+Known limitations: routine slider/history integration is intentionally lightweight, speaker/device behavior requires manual verification, and the current streaming audio engine remains a single selected-equation source without mixing, effects, or recording.
