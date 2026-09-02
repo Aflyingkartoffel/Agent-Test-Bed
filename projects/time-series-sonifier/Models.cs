@@ -13,6 +13,8 @@ public sealed class RawImportedData
 
 public readonly record struct DataPoint(double Time, double Value, int OriginalRowIndex, string OriginalTimeText);
 
+public readonly record struct MappedDataPoint(double Time, double OriginalValue, double MappedValue, int OriginalRowIndex, string OriginalTimeText);
+
 public sealed class DataSeries
 {
     public required string Name { get; init; }
@@ -21,6 +23,17 @@ public sealed class DataSeries
     public double MaximumTime => Points[^1].Time;
     public double MinimumValue => Points.Min(p => p.Value);
     public double MaximumValue => Points.Max(p => p.Value);
+}
+
+public sealed class MappedDataSeries
+{
+    public required string Name { get; init; }
+    public required MappingMode Mode { get; init; }
+    public required IReadOnlyList<MappedDataPoint> Points { get; init; }
+    public double MinimumTime => Points[0].Time;
+    public double MaximumTime => Points[^1].Time;
+    public double MinimumValue => Points.Min(p => p.MappedValue);
+    public double MaximumValue => Points.Max(p => p.MappedValue);
 }
 
 public sealed record SeriesBuildResult(DataSeries? Series, int ValidRows, int SkippedRows, string? Error)
@@ -36,6 +49,10 @@ public sealed record CurrentDataState(
     int RightPointIndex,
     double InterpolationFactor)
 {
+    public double CurrentOriginalValue { get; init; } = CurrentValue;
+    public double CurrentMappedValue { get; init; } = CurrentValue;
+    public double CurrentNormalizedValue { get; init; } = 0.5;
+    public double TimelinePosition01 => NormalizedPosition;
     public static CurrentDataState Empty => new(0, 0, 0, -1, -1, 0);
 }
 

@@ -7,12 +7,18 @@ namespace TimeSeriesSonifier;
 public sealed class GraphSurface : FrameworkElement
 {
     public DataSeries? Series { get; set; }
+    public MappedDataSeries? MappedSeries { get; set; }
     public CurrentDataState State { get; set; } = CurrentDataState.Empty;
-    protected override void OnRender(DrawingContext dc) { base.OnRender(dc); GraphRenderer.Draw(dc, Series, State, new Rect(0, 0, ActualWidth, ActualHeight)); }
+    protected override void OnRender(DrawingContext dc) { base.OnRender(dc); GraphRenderer.Draw(dc, MappedSeries, State, new Rect(0, 0, ActualWidth, ActualHeight)); }
 }
 
 public static class GraphRenderer
 {
+    public static void Draw(DrawingContext dc, MappedDataSeries? mapped, CurrentDataState state, Rect bounds)
+    {
+        if (mapped is null) { Draw(dc, (DataSeries?)null, state, bounds); return; }
+        Draw(dc, new DataSeries { Name = mapped.Name, Points = mapped.Points.Select(p => new DataPoint(p.Time, p.MappedValue, p.OriginalRowIndex, p.OriginalTimeText)).ToArray() }, state, bounds);
+    }
     public static void Draw(DrawingContext dc, DataSeries? series, CurrentDataState state, Rect bounds)
     {
         dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(11, 16, 21)), null, bounds); if (series is null || series.Points.Count < 2) { DrawText(dc, "OPEN A CSV DATASET TO BEGIN", bounds.Left + 24, bounds.Top + 24, Brushes.LightSlateGray); return; }
