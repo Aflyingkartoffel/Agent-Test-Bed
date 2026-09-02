@@ -14,6 +14,8 @@ Milestone 2 supports multiple `EquationEntry` records. Each has an ID, parsed ru
 
 Time Play/Pause/Reset controls `t`; it is separate from Play Sound/Stop Sound. Presets are available in the selector. Save and Load use human-readable `.equation.json` files containing equation, parameter metadata/values, audio settings, time speed, and graph domain.
 
+Milestone 3 adds a reusable `TimeEngine` with a 0–10 timeline, scrubbing, play/pause, reverse playback, looping, and 1/60-second step buttons. `AutomationEngine` supports OFF, SINE, COSINE, and AST-backed EXPRESSION modes. Sine/cosine frequency is in cycles per second (`sin(2πft + phase)`). Automation resolves parameter dependencies safely and reports cycles. Parameters retain `ManualValue` separately from clamped `EffectiveValue`. Optional selected-equation trails use bounded, interval-spaced history. Animation settings are part of the JSON schema; older files default to automation off, looping off, and the standard timeline. SoundPlayer remains the simple Milestone 1 backend and is not rebuilt into a streaming synth here.
+
 ## Run and test
 
 From the repository root:
