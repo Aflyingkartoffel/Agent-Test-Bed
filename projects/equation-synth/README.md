@@ -16,6 +16,8 @@ Time Play/Pause/Reset controls `t`; it is separate from Play Sound/Stop Sound. P
 
 Milestone 3 adds a reusable `TimeEngine` with a 0–10 timeline, scrubbing, play/pause, reverse playback, looping, and 1/60-second step buttons. `AutomationEngine` supports OFF, SINE, COSINE, and AST-backed EXPRESSION modes. Sine/cosine frequency is in cycles per second (`sin(2πft + phase)`). Automation resolves parameter dependencies safely and reports cycles. Parameters retain `ManualValue` separately from clamped `EffectiveValue`. Optional selected-equation trails use bounded, interval-spaced history. Animation settings are part of the JSON schema; older files default to automation off, looping off, and the standard timeline. SoundPlayer remains the simple Milestone 1 backend and is not rebuilt into a streaming synth here.
 
+Milestone 4 replaces SoundPlayer as the active synth path with `AudioEngine` using Windows `waveOut`, mono 32-bit float PCM at 48 kHz, three 512-sample buffers, and a persistent oscillator phase. The callback only performs interpolated wavetable reads, phase advancement, smoothing, limiting, and buffer writes. Completed 2048-sample tables are published from the UI side and crossfaded over approximately 20 ms, so time, automation, frequency, selection, and parameter changes do not reset phase. Frequency and gain are smoothed; non-finite samples become zero, DC is removed/normalized by the waveform stage, and output is softly limited. The selected equation remains the sole audio source; multiple-oscillator mixing and a larger streaming DSP architecture are intentionally deferred. SoundPlayer is retained only as the legacy compatibility class.
+
 ## Run and test
 
 From the repository root:
