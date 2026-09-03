@@ -58,16 +58,26 @@ public sealed class SpectrumAnalyzer : IDisposable
 public sealed class SpectrumSurface : FrameworkElement
 {
     public SpectrumFrame? Frame { get; set; }
-    protected override void OnRender(DrawingContext dc) { dc.DrawRectangle(new SolidColorBrush(Color.FromRgb(11, 16, 21)), null, new Rect(0, 0, ActualWidth, ActualHeight)); SpectrumRenderer.Draw(dc, Frame, new Rect(0, 0, ActualWidth, ActualHeight)); }
+    protected override void OnRender(DrawingContext dc) { dc.DrawRectangle(SpectrumPalette.Background, null, new Rect(0, 0, ActualWidth, ActualHeight)); SpectrumRenderer.Draw(dc, Frame, new Rect(0, 0, ActualWidth, ActualHeight)); }
+}
+
+public static class SpectrumPalette
+{
+    public static readonly Brush Background = Brushes.White;
+    public static readonly Brush Grid = Frozen(Color.FromRgb(225, 231, 236));
+    public static readonly Brush Labels = Frozen(Color.FromRgb(101, 114, 126));
+    public static readonly Brush Accent = Frozen(Color.FromRgb(32, 164, 100));
+    public static readonly Brush AccentFill = Frozen(Color.FromArgb(65, 32, 164, 100));
+    static SolidColorBrush Frozen(Color color) { var brush = new SolidColorBrush(color); brush.Freeze(); return brush; }
 }
 
 public static class SpectrumRenderer
 {
     public static void Draw(DrawingContext dc, SpectrumFrame? frame, Rect bounds)
     {
-        var plot = new Rect(bounds.Left + 42, bounds.Top + 10, Math.Max(1, bounds.Width - 54), Math.Max(1, bounds.Height - 32)); var grid = new Pen(new SolidColorBrush(Color.FromArgb(45, 130, 170, 190)), 1); for (var i = 0; i <= 5; i++) { var y = plot.Top + plot.Height * i / 5; dc.DrawLine(grid, new Point(plot.Left, y), new Point(plot.Right, y)); DrawText(dc, (-i * 20).ToString(), 4, y - 8, Brushes.LightSlateGray); }
-        if (frame is null || frame.Decibels.Length == 0) { DrawText(dc, "ENABLE FFT WHILE SOUND IS RUNNING", plot.Left, plot.Top + 20, Brushes.LightSlateGray); return; }
-        var geometry = new StreamGeometry(); using (var c = geometry.Open()) { c.BeginFigure(new Point(plot.Left, plot.Bottom), true, false); for (var i = 1; i < frame.Decibels.Length; i++) { var f = Math.Max(20, frame.Frequencies[i]); var x = plot.Left + Math.Clamp(Math.Log10(f / 20) / Math.Log10(Math.Max(20, frame.Nyquist) / 20), 0, 1) * plot.Width; var y = plot.Bottom - (Math.Clamp(frame.Decibels[i], SpectrumAnalyzer.FloorDb, 0) - SpectrumAnalyzer.FloorDb) / -SpectrumAnalyzer.FloorDb * plot.Height; c.LineTo(new Point(x, y), true, false); } c.LineTo(new Point(plot.Right, plot.Bottom), true, false); } dc.DrawGeometry(new SolidColorBrush(Color.FromArgb(80, 67, 194, 255)), new Pen(new SolidColorBrush(Color.FromRgb(105, 218, 255)), 1.5), geometry); DrawText(dc, "20 Hz", plot.Left, plot.Bottom + 5, Brushes.LightSlateGray); DrawText(dc, $"{frame.Nyquist:0} Hz", plot.Right - 52, plot.Bottom + 5, Brushes.LightSlateGray);
+        var plot = new Rect(bounds.Left + 42, bounds.Top + 10, Math.Max(1, bounds.Width - 54), Math.Max(1, bounds.Height - 32)); var grid = new Pen(SpectrumPalette.Grid, 1); for (var i = 0; i <= 5; i++) { var y = plot.Top + plot.Height * i / 5; dc.DrawLine(grid, new Point(plot.Left, y), new Point(plot.Right, y)); DrawText(dc, (-i * 20).ToString(), 4, y - 8, SpectrumPalette.Labels); }
+        if (frame is null || frame.Decibels.Length == 0) { DrawText(dc, "ENABLE FFT WHILE SOUND IS RUNNING", plot.Left, plot.Top + 20, SpectrumPalette.Labels); return; }
+        var geometry = new StreamGeometry(); using (var c = geometry.Open()) { c.BeginFigure(new Point(plot.Left, plot.Bottom), true, false); for (var i = 1; i < frame.Decibels.Length; i++) { var f = Math.Max(20, frame.Frequencies[i]); var x = plot.Left + Math.Clamp(Math.Log10(f / 20) / Math.Log10(Math.Max(20, frame.Nyquist) / 20), 0, 1) * plot.Width; var y = plot.Bottom - (Math.Clamp(frame.Decibels[i], SpectrumAnalyzer.FloorDb, 0) - SpectrumAnalyzer.FloorDb) / -SpectrumAnalyzer.FloorDb * plot.Height; c.LineTo(new Point(x, y), true, false); } c.LineTo(new Point(plot.Right, plot.Bottom), true, false); } dc.DrawGeometry(SpectrumPalette.AccentFill, new Pen(SpectrumPalette.Accent, 1.5), geometry); DrawText(dc, "20 Hz", plot.Left, plot.Bottom + 5, SpectrumPalette.Labels); DrawText(dc, $"{frame.Nyquist:0} Hz", plot.Right - 52, plot.Bottom + 5, SpectrumPalette.Labels);
     }
     static void DrawText(DrawingContext dc, string text, double x, double y, Brush brush) => dc.DrawText(new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 10, brush, 1), new Point(x, y));
 }

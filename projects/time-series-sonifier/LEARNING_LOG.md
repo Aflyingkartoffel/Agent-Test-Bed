@@ -22,3 +22,8 @@
 
 - A reusable scene renderer keeps the on-screen preview and exported frames driven by the same layout and state, while output profiles change composition rather than stretching pixels.
 - Offline frame timing and offline oscillator samples share presentation time, which avoids realtime playback speed and device timing affecting exported synchronization.
+
+## 2026-09-03 — Continuous audio transport
+
+- A native streaming callback must requeue the exact completed buffer; selecting one by wall-clock time can leave another buffer unfilled and cause audible starvation.
+- Pause can preserve phase and device continuity by keeping the stream alive and rendering zero-gain samples, while Reset remains the explicit teardown operation.

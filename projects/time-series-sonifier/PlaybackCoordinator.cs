@@ -31,7 +31,7 @@ public sealed class PlaybackCoordinator
         if (AudioEnabled && audio.State != AudioEngineState.Running) audio.Start();
         timeline.Play();
     }
-    public void Pause() { timeline.Pause(); }
+    public void Pause() { timeline.Pause(); audio.Pause(); }
     public void Reset() { timeline.Reset(); PublishState(); audio.Stop(); }
     public void SeekNormalized(double position) { timeline.SeekNormalized(position); PublishState(); }
     public CurrentDataState EvaluateAtNormalized(double position) => interpolator is null ? CurrentDataState.Empty : interpolator.Evaluate(timeline.StartTime + Math.Clamp(position, 0, 1) * (timeline.EndTime - timeline.StartTime));

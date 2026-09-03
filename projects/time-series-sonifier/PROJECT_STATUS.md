@@ -22,3 +22,9 @@ Still deferred: FFT/spectrum, icons, multiple voices, stereo, effects, MIDI, exp
 
 - Added a white/blue/green theme, Setup/Pre-Visualization/Final Output workflow, reusable presentation rendering, vertical/square/horizontal output profiles, and a programmatic gray cube placeholder.
 - Added deterministic frame timing, offline WAV generation, FFmpeg MP4 command integration, export progress/status, and safe unavailable-FFmpeg handling.
+
+## Audio continuity and FFT theme — 2026-09-03
+
+- Corrected native buffer requeueing to use the completed `WAVEHDR`, added three reusable 512-frame buffers, and removed render-buffer allocation from the callback path.
+- Added explicit audio pause/resume semantics that keep the backend open and render silence while paused.
+- Updated the FFT renderer to a light plot with subtle gray grid lines, readable labels, and a green spectrum accent.

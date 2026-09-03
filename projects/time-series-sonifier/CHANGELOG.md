@@ -19,3 +19,6 @@
 - Improved default Windows audio compatibility with PCM16 stereo, deterministic sample-rate fallback, and `waveOut` diagnostics.
 - Changed icon visualization to a centered transparent overlay independent of graph/playhead coordinates.
 - Added white presentation UI, horizontal preview, vertical final-output preview, reusable scene rendering, gray cube placeholder, offline audio, and FFmpeg MP4 export integration.
+
+- Fixed continuous audio transport by requeueing the completed native buffer, reusing the render scratch buffer, and adding silent pause/resume behavior without reopening the device.
+- Restyled the live FFT panel for the light application theme.
