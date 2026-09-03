@@ -58,16 +58,18 @@ public sealed class SpectrumAnalyzer : IDisposable
 public sealed class SpectrumSurface : FrameworkElement
 {
     public SpectrumFrame? Frame { get; set; }
-    protected override void OnRender(DrawingContext dc) { dc.DrawRectangle(SpectrumPalette.Background, null, new Rect(0, 0, ActualWidth, ActualHeight)); SpectrumRenderer.Draw(dc, Frame, new Rect(0, 0, ActualWidth, ActualHeight)); }
+    public AppearanceMode ThemeMode { get; set; }
+    protected override void OnRender(DrawingContext dc) { SpectrumPalette.Mode = ThemeMode; dc.DrawRectangle(SpectrumPalette.Background, null, new Rect(0, 0, ActualWidth, ActualHeight)); SpectrumRenderer.Draw(dc, Frame, new Rect(0, 0, ActualWidth, ActualHeight)); }
 }
 
 public static class SpectrumPalette
 {
-    public static readonly Brush Background = Brushes.White;
-    public static readonly Brush Grid = Frozen(Color.FromRgb(225, 231, 236));
-    public static readonly Brush Labels = Frozen(Color.FromRgb(101, 114, 126));
-    public static readonly Brush Accent = Frozen(Color.FromRgb(32, 164, 100));
-    public static readonly Brush AccentFill = Frozen(Color.FromArgb(65, 32, 164, 100));
+    public static AppearanceMode Mode { get; set; }
+    public static Brush Background => Mode == AppearanceMode.Light ? Brushes.White : ThemePalette.For(Mode).Brush(ThemePalette.For(Mode).GraphBackground);
+    public static Brush Grid => ThemePalette.For(Mode).Brush(ThemePalette.For(Mode).Grid);
+    public static Brush Labels => ThemePalette.For(Mode).Brush(ThemePalette.For(Mode).SecondaryText);
+    public static Brush Accent => ThemePalette.For(Mode).Brush(ThemePalette.For(Mode).Green);
+    public static Brush AccentFill => ThemePalette.For(Mode).Brush(ThemePalette.For(Mode).SpectrumFill);
     static SolidColorBrush Frozen(Color color) { var brush = new SolidColorBrush(color); brush.Freeze(); return brush; }
 }
 

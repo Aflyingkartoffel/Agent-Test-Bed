@@ -32,6 +32,8 @@ Graph rendering keeps the full mapped series for interpolation, audio, readouts,
 
 The interactive graph separates static and dynamic visuals: frozen `StreamGeometry` and axis `DrawingGroup` content are rebuilt only after dataset, viewport, or axis changes, while playback redraws only the playhead and current marker. Presentation updates are limited to the active workflow tab; FFT updates are capped at a visualization-friendly rate, and human-readable readouts are throttled while authoritative state continues at timeline/audio cadence. Export keeps its own output-resolution cache and does not use interactive quality limits.
 
+The presentation polish adds a centralized Light/Dark semantic palette. Switching appearance updates application panels, graph axes, spectrum, preview, final output, and exported frames without changing image pixels. The graph defaults to Progressive reveal: its complete cached geometry remains intact while a reusable X-axis clip exposes 1% at the start through 100% at the end. Full Graph is available when a static complete line is preferred; both preview and export use the same normalized timeline state.
+
 ## Milestone 3 audio
 
 Milestone 3 adds one safe mono oscillator driven by `CurrentDataState.CurrentNormalizedValue`. `PitchMapper` uses `minFrequency * pow(maxFrequency / minFrequency, normalized)` with defaults of 110–1760 Hz, so the midpoint is approximately 440 Hz. `ParameterSmoother` glides frequency over about 50 ms. Sine, triangle, square, and saw waveforms share a continuous oscillator phase at 48 kHz.

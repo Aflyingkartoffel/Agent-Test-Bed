@@ -42,3 +42,8 @@
 
 - A cached geometry still costs work if the entire drawing surface is invalidated every tick. Separate visuals let the compositor retain static graph content while only the playhead layer changes.
 - Hidden tabs should not be invalidated by the active tab’s clock; expensive preview rendering belongs behind an active-view boundary.
+
+## 2026-09-03 — Theme resources and progressive reveal
+
+- Semantic WPF brushes can be updated in place so ordinary controls follow a live theme without duplicating styles.
+- A reveal effect can be a presentation concern: retain the complete sampled geometry and move only a clip boundary with timeline progress, preserving cache reuse and deterministic export.

@@ -27,3 +27,5 @@
 - Added viewport-aware min/max envelope sampling and cached display points for large graph datasets without changing authoritative data.
 - Added binary-search interpolation, shared numeric/time axes, selected axis titles, and a composition-timing FPS counter.
 - Added frozen static graph/axis visuals, dynamic-only playhead updates, active-tab presentation invalidation, FFT/readout throttling, and separate export caching.
+- Added centralized Light/Dark semantic theming across the application and presentation renderer.
+- Added Progressive/Full Graph selection with reusable timeline-driven reveal clipping over the cached graph geometry; export uses the same deterministic reveal state.
