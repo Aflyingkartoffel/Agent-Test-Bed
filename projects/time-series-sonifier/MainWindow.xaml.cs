@@ -10,8 +10,8 @@ public partial class MainWindow : Window
 {
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     readonly TimelineEngine timeline = new(); readonly AudioEngine audio = new(); readonly IconSettings iconSettings = new(); readonly IconRenderer iconRenderer = new(); readonly SpectrumAnalyzer spectrumAnalyzer = new(); readonly float[] spectrumSamples = new float[4096];
-    RawImportedData? raw; DataSeries? series; MappedDataSeries? mapped; MappedSeriesInterpolator? interpolator; BitmapImage? iconSource; bool sliderUpdate;
-    public MainWindow() { InitializeComponent(); timer.Tick += (_, _) => { timeline.Advance(1.0 / 60); UpdateView(); }; Loaded += (_, _) => UpdateView(); Graph.SizeChanged += (_, _) => UpdateView(); Closing += (_, _) => { timer.Stop(); spectrumAnalyzer.Dispose(); audio.Dispose(); }; }
+    RawImportedData? raw; DataSeries? series; MappedDataSeries? mapped; MappedSeriesInterpolator? interpolator; BitmapImage? iconSource; bool sliderUpdate; bool uiReady;
+    public MainWindow() { InitializeComponent(); uiReady = true; timer.Tick += (_, _) => { timeline.Advance(1.0 / 60); UpdateView(); }; Loaded += (_, _) => UpdateView(); Graph.SizeChanged += (_, _) => UpdateView(); Closing += (_, _) => { timer.Stop(); spectrumAnalyzer.Dispose(); audio.Dispose(); }; }
     void OpenData_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Filter = "Data files (*.csv;*.json)|*.csv;*.json|CSV files (*.csv)|*.csv|JSON files (*.json)|*.json|All files (*.*)|*.*" }; if (dialog.ShowDialog() != true) return;
@@ -38,7 +38,7 @@ public partial class MainWindow : Window
     void PitchSettings_Changed(object sender, RoutedEventArgs e) => UpdateAudioTarget();
     void Volume_Changed(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e) { audio.Volume = VolumeSlider.Value; }
     void SpectrumEnable_Click(object sender, RoutedEventArgs e) { if (SpectrumEnableCheck.IsChecked == true) spectrumAnalyzer.Enable(); else { spectrumAnalyzer.Disable(); Spectrum.Frame = null; } UpdateSpectrumView(); }
-    void FftSize_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (FftSizeBox.SelectedItem is System.Windows.Controls.ComboBoxItem item && int.TryParse(item.Content?.ToString(), out var size)) spectrumAnalyzer.SetFftSize(size); UpdateSpectrumView(); }
+    void FftSize_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (!uiReady) return; if (FftSizeBox.SelectedItem is System.Windows.Controls.ComboBoxItem item && int.TryParse(item.Content?.ToString(), out var size)) spectrumAnalyzer.SetFftSize(size); UpdateSpectrumView(); }
     double MinPitch() => double.TryParse(MinPitchBox.Text, out var value) && double.IsFinite(value) ? value : PitchMapper.DefaultMinimumFrequency;
     double MaxPitch() => double.TryParse(MaxPitchBox.Text, out var value) && double.IsFinite(value) ? value : PitchMapper.DefaultMaximumFrequency;
     void UpdateAudioTarget() { if (mapped is not null && interpolator is not null) audio.SetTargetFrequencyFromNormalized(interpolator.Evaluate(timeline.CurrentTime).CurrentNormalizedValue, MinPitch(), MaxPitch()); UpdateAudioView(); }
@@ -56,6 +56,7 @@ public partial class MainWindow : Window
     }
     void UpdateSpectrumView()
     {
+        if (!uiReady) return;
         if (!spectrumAnalyzer.Enabled || audio.State != AudioEngineState.Running) { Spectrum.Frame = null; SpectrumStatusText.Text = spectrumAnalyzer.Enabled ? "Waiting for running audio" : "Spectrum disabled"; Spectrum.InvalidateVisual(); return; }
         if (audio.SampleBuffer.TryCopyLatest(spectrumSamples.AsSpan(0, spectrumAnalyzer.FftSize))) { Spectrum.Frame = spectrumAnalyzer.Analyze(spectrumSamples.AsSpan(0, spectrumAnalyzer.FftSize)); SpectrumStatusText.Text = $"{spectrumAnalyzer.FftSize} point FFT · {audio.SampleBuffer.Count} samples · Nyquist {Spectrum.Frame?.Nyquist:0} Hz"; }
         Spectrum.InvalidateVisual();
