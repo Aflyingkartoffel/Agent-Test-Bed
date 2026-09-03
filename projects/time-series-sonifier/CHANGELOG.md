@@ -26,3 +26,4 @@
 - Fixed the live pitch handoff so target frequencies update the persistent smoother and follow interpolated normalized data.
 - Added viewport-aware min/max envelope sampling and cached display points for large graph datasets without changing authoritative data.
 - Added binary-search interpolation, shared numeric/time axes, selected axis titles, and a composition-timing FPS counter.
+- Added frozen static graph/axis visuals, dynamic-only playhead updates, active-tab presentation invalidation, FFT/readout throttling, and separate export caching.

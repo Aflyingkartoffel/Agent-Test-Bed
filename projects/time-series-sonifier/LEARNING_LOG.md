@@ -37,3 +37,8 @@
 
 - Large-data visualization can remain accurate by retaining the full series for state and interpolation while using a screen-space min/max envelope only for drawing.
 - A cached forward display representation removes repeated source-point work during playback; axis ticks and FPS measurement should be shared logic rather than values tied to a single timer interval.
+
+## 2026-09-03 — Static versus dynamic WPF visuals
+
+- A cached geometry still costs work if the entire drawing surface is invalidated every tick. Separate visuals let the compositor retain static graph content while only the playhead layer changes.
+- Hidden tabs should not be invalidated by the active tab’s clock; expensive preview rendering belongs behind an active-view boundary.

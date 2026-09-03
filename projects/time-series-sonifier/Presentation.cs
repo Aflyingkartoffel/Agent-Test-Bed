@@ -26,18 +26,19 @@ public sealed record PresentationScene(MappedDataSeries? Series, CurrentDataStat
 
 public sealed class PresentationSurface : FrameworkElement
 {
+    readonly GraphRenderCache graphCache = new();
     public PresentationScene? Scene { get; set; }
     public OutputProfile Profile { get; set; } = OutputProfile.Vertical;
-    protected override void OnRender(DrawingContext dc) { base.OnRender(dc); PresentationRenderer.Draw(dc, Scene, new Rect(0, 0, ActualWidth, ActualHeight), Profile); }
+    protected override void OnRender(DrawingContext dc) { base.OnRender(dc); PresentationRenderer.Draw(dc, Scene, new Rect(0, 0, ActualWidth, ActualHeight), Profile, graphCache); }
 }
 
 public static class PresentationRenderer
 {
-    public static void Draw(DrawingContext dc, PresentationScene? scene, Rect bounds, OutputProfile profile)
+    public static void Draw(DrawingContext dc, PresentationScene? scene, Rect bounds, OutputProfile profile, GraphRenderCache? graphCache = null)
     {
         dc.DrawRectangle(Brushes.White, null, bounds); var vertical = profile.Aspect == OutputAspectRatio.Vertical; var title = vertical ? new Rect(bounds.Left + bounds.Width * .08, bounds.Top + bounds.Height * .04, bounds.Width * .84, bounds.Height * .08) : new Rect(bounds.Left + bounds.Width * .06, bounds.Top + bounds.Height * .05, bounds.Width * .88, bounds.Height * .12); var chart = vertical ? new Rect(bounds.Left + bounds.Width * .07, bounds.Top + bounds.Height * .19, bounds.Width * .86, bounds.Height * .48) : new Rect(bounds.Left + bounds.Width * .05, bounds.Top + bounds.Height * .18, bounds.Width * .9, bounds.Height * .58); var spectrum = vertical ? new Rect(bounds.Left + bounds.Width * .08, bounds.Top + bounds.Height * .73, bounds.Width * .84, bounds.Height * .16) : new Rect(bounds.Left + bounds.Width * .06, bounds.Top + bounds.Height * .8, bounds.Width * .88, bounds.Height * .14);
         DrawText(dc, "TIME-SERIES SONIFIER", title.Left, title.Top, 18, Brushes.Black); if (scene is null || scene.Series is null || scene.Series.Points.Count < 2) { DrawText(dc, "IMPORT DATA TO PREVIEW", chart.Left, chart.Top + chart.Height * .4, 14, Brushes.Gray); return; }
-        DrawImage(dc, scene, chart); GraphRenderer.Draw(dc, scene.Series, scene.State, chart, scene.TimeColumnName, scene.ValueColumnName); if (scene.Spectrum is not null) DrawSpectrum(dc, scene.Spectrum, spectrum);
+        DrawImage(dc, scene, chart); GraphRenderer.Draw(dc, scene.Series, scene.State, chart, scene.TimeColumnName, scene.ValueColumnName, graphCache); if (scene.Spectrum is not null) DrawSpectrum(dc, scene.Spectrum, spectrum);
     }
     static void DrawImage(DrawingContext dc, PresentationScene scene, Rect chart)
     {

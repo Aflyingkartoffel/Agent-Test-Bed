@@ -40,3 +40,9 @@ Still deferred: FFT/spectrum, icons, multiple voices, stereo, effects, MIDI, exp
 - Kept full mapped data authoritative while adding viewport-scaled first/min/max/last bucket sampling and cached display points for dense graph rendering.
 - Replaced linear interpolation neighbor scans with binary search and added shared nice-number X/Y ticks, mapped-value ranges, selected axis titles, and readable formatting.
 - Added a real WPF composition-based smoothed FPS counter and synthetic 100k-point regression coverage. The focused runner now passes 174 checks.
+
+## High-performance visualization pipeline — 2026-09-03
+
+- Split the Setup graph into cached static and dynamic WPF visuals. Frozen graph geometry and axis drawing are rebuilt only when data, viewport, or labels change; playback updates only the playhead/marker visual.
+- Limited presentation redraws to the active workflow tab, throttled FFT/readout work, and retained a separate output-resolution cache for export.
+- GUI playback profiling on 1k–250k datasets was not available in this environment; synthetic structural benchmarks remain automated coverage.

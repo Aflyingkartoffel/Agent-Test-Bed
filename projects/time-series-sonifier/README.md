@@ -30,6 +30,8 @@ Selected time and value column names are carried as `PresentationScene` metadata
 
 Graph rendering keeps the full mapped series for interpolation, audio, readouts, and export. The screen graph uses a cached display representation sized from viewport width; dense buckets retain first, last, local minimum, and local maximum points so spikes remain visible without drawing every source point. The interpolator uses binary search for neighboring points. Axes use shared nice 1/2/5 tick spacing, mapped-value Y ranges, readable numeric formatting, time-aware X labels, and selected column titles. The header FPS counter measures WPF composition frames and applies a rolling half-second smoothing window.
 
+The interactive graph separates static and dynamic visuals: frozen `StreamGeometry` and axis `DrawingGroup` content are rebuilt only after dataset, viewport, or axis changes, while playback redraws only the playhead and current marker. Presentation updates are limited to the active workflow tab; FFT updates are capped at a visualization-friendly rate, and human-readable readouts are throttled while authoritative state continues at timeline/audio cadence. Export keeps its own output-resolution cache and does not use interactive quality limits.
+
 ## Milestone 3 audio
 
 Milestone 3 adds one safe mono oscillator driven by `CurrentDataState.CurrentNormalizedValue`. `PitchMapper` uses `minFrequency * pow(maxFrequency / minFrequency, normalized)` with defaults of 110–1760 Hz, so the midpoint is approximately 440 Hz. `ParameterSmoother` glides frequency over about 50 ms. Sine, triangle, square, and saw waveforms share a continuous oscillator phase at 48 kHz.
