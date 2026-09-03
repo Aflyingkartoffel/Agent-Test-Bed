@@ -13,3 +13,7 @@
 - Logarithmic frequency mapping better matches perceived pitch across a wide range.
 - Native audio resources need one owner and a stop order that prevents callbacks from touching released buffers.
 - A small backend interface makes lifecycle behavior testable without requiring a real audio device.
+## 2026-09-03 — Audio compatibility and icon layers
+
+- A device-facing audio format should be broadly compatible even when synthesis is internally mono; duplicating the generated sample to stereo PCM16 keeps the synth simple while matching common Windows playback paths.
+- Visualization layers should consume shared data state independently: a data-driven icon can stay centered while its scale changes, so graph coordinate transforms remain solely a graph concern.

@@ -15,7 +15,7 @@ public sealed class IconSettings
     public double MinimumScale { get; set; } = .5;
     public double MaximumScale { get; set; } = 1.5;
     public string? ImagePath { get; set; }
-    public IconDisplayMode DisplayMode { get; set; } = IconDisplayMode.FollowPlayhead;
+    public IconDisplayMode DisplayMode { get; set; } = IconDisplayMode.CenterFixed;
     public bool Validate(out string error)
     {
         if (!TryScale(MinimumScale, out _) || !TryScale(MaximumScale, out _)) { error = "Scale must be finite and between 0.05 and 10."; return false; }
@@ -44,12 +44,13 @@ public static class IconImageLoader
 
 public sealed class IconRenderer
 {
-    public const double BaseSize = 80;
+    public const double BaseSize = 160;
+    double displayedScale = 1;
     public void Update(Image image, IconSettings settings, BitmapImage? source, CurrentDataState state, MappedDataSeries? series, Size viewport)
     {
-        var visible = settings.Enabled && source is not null && series is not null && state.LeftPointIndex >= 0 && settings.DisplayMode == IconDisplayMode.FollowPlayhead;
-        image.Source = source; image.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; if (!visible || source is null || series is null) return;
-        image.Width = BaseSize; image.Height = BaseSize; image.RenderTransformOrigin = new Point(.5, .5); image.RenderTransform = new ScaleTransform(settings.ScalingEnabled ? IconScaleMapper.Map(state.CurrentNormalizedValue, settings.MinimumScale, settings.MaximumScale) : 1, settings.ScalingEnabled ? IconScaleMapper.Map(state.CurrentNormalizedValue, settings.MinimumScale, settings.MaximumScale) : 1);
-        if (GraphRenderer.TryMapPoint(series, state.CurrentTime, state.CurrentMappedValue, new Rect(0, 0, viewport.Width, viewport.Height), out var point)) { Canvas.SetLeft(image, point.X - BaseSize / 2); Canvas.SetTop(image, point.Y - BaseSize / 2); }
+        var visible = settings.Enabled && source is not null && state.LeftPointIndex >= 0;
+        image.Source = source; image.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; if (!visible || source is null) return;
+        var targetScale = settings.ScalingEnabled ? IconScaleMapper.Map(state.CurrentNormalizedValue, settings.MinimumScale, settings.MaximumScale) : 1; displayedScale += (targetScale - displayedScale) * .35; if (!double.IsFinite(displayedScale) || displayedScale <= 0) displayedScale = 1;
+        image.Width = BaseSize; image.Height = BaseSize; image.RenderTransformOrigin = new Point(.5, .5); image.RenderTransform = new ScaleTransform(displayedScale, displayedScale); Canvas.SetLeft(image, Math.Max(0, (viewport.Width - BaseSize) / 2)); Canvas.SetTop(image, Math.Max(0, (viewport.Height - BaseSize) / 2));
     }
 }

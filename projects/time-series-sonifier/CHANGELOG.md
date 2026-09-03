@@ -14,3 +14,7 @@
 - Added logarithmic pitch mapping, pitch glide, volume, and four oscillator waveforms.
 - Added explicit audio lifecycle and callback-safe native WaveOut backend.
 - Added device failure handling and lifecycle regression coverage.
+## 2026-09-03
+
+- Improved default Windows audio compatibility with PCM16 stereo, deterministic sample-rate fallback, and `waveOut` diagnostics.
+- Changed icon visualization to a centered transparent overlay independent of graph/playhead coordinates.
