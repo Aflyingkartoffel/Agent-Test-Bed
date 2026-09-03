@@ -47,3 +47,8 @@
 
 - Semantic WPF brushes can be updated in place so ordinary controls follow a live theme without duplicating styles.
 - A reveal effect can be a presentation concern: retain the complete sampled geometry and move only a clip boundary with timeline progress, preserving cache reuse and deterministic export.
+
+## 2026-09-03 — Frozen resources and expanding viewports
+
+- WPF `Freezable` resources may be frozen after being consumed by controls; live theme updates must replace frozen instances rather than assign to their properties.
+- A growing visualization can preserve layout stability by clipping a fixed final composition and drawing its moving boundary dynamically.

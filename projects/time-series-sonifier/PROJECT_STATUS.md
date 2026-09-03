@@ -17,6 +17,10 @@ Still deferred: FFT/spectrum, icons, multiple voices, stereo, effects, MIDI, exp
 ## Dark mode and progressive graph reveal
 
 Implemented: centralized Light/Dark semantic resources, live appearance switching, theme-aware graph and FFT rendering, Progressive/Full Graph selection, reusable time/X-axis reveal clipping over cached geometry, and shared reveal state across Setup, Preview, Final Output, and deterministic export. Image source pixels remain unchanged.
+
+## Theme toggle and expanding frame fix
+
+Fixed the runtime crash caused by attempting to mutate a frozen WPF `SolidColorBrush` during live theme application. Frozen resources are replaced safely, while theme-keyed graph caches rebuild only for the new appearance. Progressive reveal now grows the complete visualization frame from 4% to 100% using a compositor-friendly clip; Y-axis support stays readable, future X-axis/grid content remains clipped, and the moving right frame edge tracks the timeline.
 ## Audio device and icon overlay update — 2026-09-03
 
 - Uses the Windows default `WAVE_MAPPER` with stereo PCM16 and 48 kHz/44.1 kHz fallback; the oscillator follows the actual opened sample rate and failures retain translated diagnostics.

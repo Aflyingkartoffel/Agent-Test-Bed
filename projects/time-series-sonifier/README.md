@@ -34,6 +34,8 @@ The interactive graph separates static and dynamic visuals: frozen `StreamGeomet
 
 The presentation polish adds a centralized Light/Dark semantic palette. Switching appearance updates application panels, graph axes, spectrum, preview, final output, and exported frames without changing image pixels. The graph defaults to Progressive reveal: its complete cached geometry remains intact while a reusable X-axis clip exposes 1% at the start through 100% at the end. Full Graph is available when a static complete line is preferred; both preview and export use the same normalized timeline state.
 
+Theme changes replace frozen resource brushes safely instead of mutating them. Progressive mode now uses an expanding visualization viewport: the visible frame starts at 4% of the final plot width and follows `0.04 + 0.96 * timelineProgress`. The fixed WPF layout remains unchanged; one clip reveals the graph frame, axes/grid, graph, and centered image while the dynamic border’s right edge follows the same boundary. Full Graph remains unclipped.
+
 ## Milestone 3 audio
 
 Milestone 3 adds one safe mono oscillator driven by `CurrentDataState.CurrentNormalizedValue`. `PitchMapper` uses `minFrequency * pow(maxFrequency / minFrequency, normalized)` with defaults of 110–1760 Hz, so the midpoint is approximately 440 Hz. `ParameterSmoother` glides frequency over about 50 ms. Sine, triangle, square, and saw waveforms share a continuous oscillator phase at 48 kHz.

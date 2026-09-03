@@ -29,3 +29,5 @@
 - Added frozen static graph/axis visuals, dynamic-only playhead updates, active-tab presentation invalidation, FFT/readout throttling, and separate export caching.
 - Added centralized Light/Dark semantic theming across the application and presentation renderer.
 - Added Progressive/Full Graph selection with reusable timeline-driven reveal clipping over the cached graph geometry; export uses the same deterministic reveal state.
+- Fixed Dark Mode switching by replacing frozen theme brushes instead of mutating them.
+- Changed Progressive reveal from data-line-only clipping to a 4%-to-100% expanding visualization frame with a moving right edge and fixed WPF layout.

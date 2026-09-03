@@ -9,8 +9,9 @@ public enum GraphRevealMode { Progressive, FullGraph }
 
 public static class GraphReveal
 {
-    public const double InitialFraction = .01;
+    public const double InitialFraction = .04;
     public static double Progress(double normalizedPosition, GraphRevealMode mode) => mode == GraphRevealMode.FullGraph ? 1 : Math.Clamp(double.IsFinite(normalizedPosition) ? Math.Max(InitialFraction, normalizedPosition) : InitialFraction, InitialFraction, 1);
+    public static double VisibleFraction(double normalizedPosition, GraphRevealMode mode) => mode == GraphRevealMode.FullGraph ? 1 : InitialFraction + (1 - InitialFraction) * Math.Clamp(double.IsFinite(normalizedPosition) ? normalizedPosition : 0, 0, 1);
 }
 
 public sealed record ThemePalette(Color AppBackground, Color PanelBackground, Color GraphBackground, Color PrimaryText, Color SecondaryText, Color Border, Color Blue, Color Green, Color Grid, Color SpectrumFill)
@@ -43,5 +44,5 @@ public sealed class ThemeManager : INotifyPropertyChanged
         var palette = Palette;
         Set(resources, "AppBackgroundBrush", palette.AppBackground); Set(resources, "PanelBackgroundBrush", palette.PanelBackground); Set(resources, "PrimaryBlueBrush", palette.Blue); Set(resources, "SecondaryGreenBrush", palette.Green); Set(resources, "PrimaryTextBrush", palette.PrimaryText); Set(resources, "SecondaryTextBrush", palette.SecondaryText); Set(resources, "BorderBrush", palette.Border); Set(resources, "MutedBackgroundBrush", palette.GraphBackground); Set(resources, "GraphBackgroundBrush", palette.GraphBackground); Set(resources, "GridBrush", palette.Grid); Set(resources, "GraphLineBrush", palette.Blue); Set(resources, "SpectrumFillBrush", palette.SpectrumFill);
     }
-    static void Set(ResourceDictionary resources, string key, Color color) { if (resources[key] is SolidColorBrush brush) brush.Color = color; else resources[key] = new SolidColorBrush(color); }
+    static void Set(ResourceDictionary resources, string key, Color color) { if (resources[key] is SolidColorBrush brush && !brush.IsFrozen) brush.Color = color; else resources[key] = new SolidColorBrush(color); }
 }
