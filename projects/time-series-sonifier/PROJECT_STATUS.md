@@ -17,3 +17,8 @@ Still deferred: FFT/spectrum, icons, multiple voices, stereo, effects, MIDI, exp
 
 - Uses the Windows default `WAVE_MAPPER` with stereo PCM16 and 48 kHz/44.1 kHz fallback; the oscillator follows the actual opened sample rate and failures retain translated diagnostics.
 - Icons are centered transparent overlays with independent normalized scaling and no graph-coordinate attachment.
+
+## Presentation and video export — 2026-09-03
+
+- Added a white/blue/green theme, Setup/Pre-Visualization/Final Output workflow, reusable presentation rendering, vertical/square/horizontal output profiles, and a programmatic gray cube placeholder.
+- Added deterministic frame timing, offline WAV generation, FFmpeg MP4 command integration, export progress/status, and safe unavailable-FFmpeg handling.

@@ -41,6 +41,10 @@ public static class IconOpacity
 
 public static class IconImageLoader
 {
+    public static ImageSource CreateDefaultCube()
+    {
+        var group = new DrawingGroup(); group.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(170, 177, 184)), new Pen(Brushes.DimGray, 2), Geometry.Parse("M 80,10 L 145,45 L 80,80 L 15,45 Z"))); group.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(135, 143, 151)), new Pen(Brushes.DimGray, 2), Geometry.Parse("M 15,45 L 80,80 L 80,155 L 15,120 Z"))); group.Children.Add(new GeometryDrawing(new SolidColorBrush(Color.FromRgb(105, 113, 121)), new Pen(Brushes.DimGray, 2), Geometry.Parse("M 80,80 L 145,45 L 145,120 L 80,155 Z"))); var image = new DrawingImage(group); image.Freeze(); return image;
+    }
     public static BitmapImage Load(string path)
     {
         if (!File.Exists(path)) throw new FileNotFoundException("Image file was not found.", path);
@@ -52,7 +56,7 @@ public sealed class IconRenderer
 {
     public const double BaseSize = 160;
     double displayedScale = 1;
-    public void Update(Image image, IconSettings settings, BitmapImage? source, CurrentDataState state, MappedDataSeries? series, Size viewport)
+    public void Update(Image image, IconSettings settings, ImageSource? source, CurrentDataState state, MappedDataSeries? series, Size viewport)
     {
         var visible = settings.Enabled && source is not null && state.LeftPointIndex >= 0;
         image.Source = source; image.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; if (!visible || source is null) return;

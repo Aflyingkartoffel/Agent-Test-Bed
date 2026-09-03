@@ -20,6 +20,8 @@ The Windows `waveOut` backend targets `WAVE_MAPPER` (the current default playbac
 
 Icons are independent transparent overlays centered in the main graph viewport. Their alpha channel and aspect ratio are preserved, while `CurrentDataState.CurrentNormalizedValue` drives a smoothed scale between the validated minimum and maximum. The overlay is hit-test transparent and does not use graph/playhead coordinates.
 
+The presentation workflow adds Setup, Pre-Visualization, and Final Output views. The preview uses a reusable `PresentationScene`/`PresentationRenderer` in a horizontal 16:9 layout; Final Output defaults to vertical 1080×1920 and also supports square and horizontal profiles. A programmatic gray cube is used when no custom image is loaded. Export renders deterministic frames at 30 or 60 FPS and offline WAV audio into a temporary directory, then invokes FFmpeg for H.264/AAC MP4 with `yuv420p`. FFmpeg is detected from PATH and is never downloaded automatically.
+
 FFT is disabled by default and never runs in the audio callback. Enabling/disabling or changing among 1024/2048/4096 points does not recreate the audio device. Stopping audio clears the sample buffer and the spectrum; restarting safely resumes analysis. This is an analysis-only layer: the existing data normalization and pitch mapping remain authoritative, while volume changes appear in the post-volume spectrum. No persistence, spectrogram, effects, or multiple voices are included in this milestone.
 
 ## Milestone 3 audio

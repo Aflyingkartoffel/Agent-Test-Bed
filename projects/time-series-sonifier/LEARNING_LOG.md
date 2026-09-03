@@ -17,3 +17,8 @@
 
 - A device-facing audio format should be broadly compatible even when synthesis is internally mono; duplicating the generated sample to stereo PCM16 keeps the synth simple while matching common Windows playback paths.
 - Visualization layers should consume shared data state independently: a data-driven icon can stay centered while its scale changes, so graph coordinate transforms remain solely a graph concern.
+
+## 2026-09-03 — Presentation rendering and export
+
+- A reusable scene renderer keeps the on-screen preview and exported frames driven by the same layout and state, while output profiles change composition rather than stretching pixels.
+- Offline frame timing and offline oscillator samples share presentation time, which avoids realtime playback speed and device timing affecting exported synchronization.

@@ -8,7 +8,6 @@ public sealed class PlaybackCoordinator
     MappedSeriesInterpolator? interpolator;
     double minimumPitch = PitchMapper.DefaultMinimumFrequency;
     double maximumPitch = PitchMapper.DefaultMaximumFrequency;
-    bool wasPlaying;
 
     public PlaybackCoordinator(TimelineEngine timeline, AudioEngine audio) { this.timeline = timeline; this.audio = audio; CurrentDataState = CurrentDataState.Empty; }
     public TimelineEngine Timeline => timeline;
@@ -31,11 +30,11 @@ public sealed class PlaybackCoordinator
         PublishState();
         if (AudioEnabled && audio.State != AudioEngineState.Running) audio.Start();
         timeline.Play();
-        wasPlaying = true;
     }
     public void Pause() { timeline.Pause(); }
-    public void Reset() { timeline.Reset(); PublishState(); audio.Stop(); wasPlaying = false; }
+    public void Reset() { timeline.Reset(); PublishState(); audio.Stop(); }
     public void SeekNormalized(double position) { timeline.SeekNormalized(position); PublishState(); }
+    public CurrentDataState EvaluateAtNormalized(double position) => interpolator is null ? CurrentDataState.Empty : interpolator.Evaluate(timeline.StartTime + Math.Clamp(position, 0, 1) * (timeline.EndTime - timeline.StartTime));
     public void SetAudioEnabled(bool enabled)
     {
         AudioEnabled = enabled;
@@ -48,7 +47,6 @@ public sealed class PlaybackCoordinator
         var playing = timeline.State == TimelineState.Playing;
         timeline.Advance(elapsedSeconds); PublishState();
         if (playing && timeline.State == TimelineState.Stopped && !timeline.LoopEnabled) audio.Stop();
-        wasPlaying = timeline.State == TimelineState.Playing;
     }
     void PublishState()
     {
