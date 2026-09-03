@@ -56,6 +56,7 @@ public sealed class AudioEngine : IDisposable
     public double TargetFrequency { get=>Volatile.Read(ref targetFrequency); private set=>Volatile.Write(ref targetFrequency, value); }
     public double CurrentFrequency => smoother.Current;
     public double Volume { get; set; } = .25;
+    public AudioSampleRingBuffer SampleBuffer { get; } = new();
     public void SetTargetFrequency(double frequency) => TargetFrequency = PitchMapper.Map(0, frequency, Math.Max(frequency + 1, frequency + 1));
     public void SetTargetFrequencyFromNormalized(double normalized, double minimum, double maximum) => TargetFrequency = PitchMapper.Map(normalized, minimum, maximum);
     public bool Start()
@@ -64,9 +65,9 @@ public sealed class AudioEngine : IDisposable
     }
     public void Stop()
     {
-        lock (gate) { if (disposed || State is AudioEngineState.Stopped or AudioEngineState.Stopping) return; State = AudioEngineState.Stopping; try { backend.Stop(); State = AudioEngineState.Stopped; Status = "Stopped"; } catch (Exception ex) { State = AudioEngineState.Faulted; Status = $"Audio stop fault: {ex.Message}"; } }
+        lock (gate) { if (disposed || State is AudioEngineState.Stopped or AudioEngineState.Stopping) return; State = AudioEngineState.Stopping; try { backend.Stop(); SampleBuffer.Clear(); State = AudioEngineState.Stopped; Status = "Stopped"; } catch (Exception ex) { State = AudioEngineState.Faulted; Status = $"Audio stop fault: {ex.Message}"; } }
     }
-    void Render(float[] buffer) { var target = TargetFrequency; for (var i = 0; i < buffer.Length; i++) { var current = smoother.Advance(1.0 / Oscillator.SampleRate); buffer[i] = (float)(oscillator.NextSample(current) * Math.Clamp(double.IsFinite(Volume) ? Volume : 0, 0, 1)); } }
+    void Render(float[] buffer) { var target = TargetFrequency; for (var i = 0; i < buffer.Length; i++) { var current = smoother.Advance(1.0 / Oscillator.SampleRate); buffer[i] = (float)(oscillator.NextSample(current) * Math.Clamp(double.IsFinite(Volume) ? Volume : 0, 0, 1)); } SampleBuffer.Write(buffer); }
     public void Dispose() { lock (gate) { if (disposed) return; Stop(); backend.Dispose(); disposed = true; State = AudioEngineState.Disposed; Status = "Disposed"; } }
 }
 

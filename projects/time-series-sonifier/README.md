@@ -14,7 +14,9 @@ CSV files need a header row and at least two columns. Time values may be numeric
 
 `CsvImporter` keeps `RawImportedData` and original rows separate from `DataSeriesBuilder`, which produces sorted `DataPoint` values. `TimelineEngine` owns play/pause/reset/seek, speed, loop, and a ten-second presentation duration. `SeriesInterpolator` produces the authoritative `CurrentDataState` used by `GraphRenderer` and the readout. `GraphSurface` renders one geometry rather than creating a WPF element per point.
 
-Milestone 1 intentionally has no audio, icon mapping, FFT, persistence, live external data, or expression mapping. Those are planned later systems that will consume `CurrentDataState`.
+Milestone 5 adds an optional live FFT spectrum downstream of synthesis. `AudioEngine` writes its post-volume, finite output samples to a bounded single-producer ring buffer; `SpectrumAnalyzer` consumes the latest 2048 samples on the UI update path, applies a precomputed Hann window, runs an internal radix-2 FFT, and exposes only bins from 0 Hz through Nyquist in `SpectrumFrame`. Magnitudes are normalized and clamped to -100..0 dB. A lightweight smoothing step stabilizes the display, and `SpectrumRenderer` draws a logarithmic-frequency, dB-guided panel without creating controls per bin.
+
+FFT is disabled by default and never runs in the audio callback. Enabling/disabling or changing among 1024/2048/4096 points does not recreate the audio device. Stopping audio clears the sample buffer and the spectrum; restarting safely resumes analysis. This is an analysis-only layer: the existing data normalization and pitch mapping remain authoritative, while volume changes appear in the post-volume spectrum. No persistence, spectrogram, effects, or multiple voices are included in this milestone.
 
 ## Milestone 3 audio
 

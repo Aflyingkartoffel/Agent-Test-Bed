@@ -9,9 +9,9 @@ namespace TimeSeriesSonifier;
 public partial class MainWindow : Window
 {
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(16) };
-    readonly TimelineEngine timeline = new(); readonly AudioEngine audio = new(); readonly IconSettings iconSettings = new(); readonly IconRenderer iconRenderer = new();
+    readonly TimelineEngine timeline = new(); readonly AudioEngine audio = new(); readonly IconSettings iconSettings = new(); readonly IconRenderer iconRenderer = new(); readonly SpectrumAnalyzer spectrumAnalyzer = new(); readonly float[] spectrumSamples = new float[4096];
     RawImportedData? raw; DataSeries? series; MappedDataSeries? mapped; MappedSeriesInterpolator? interpolator; BitmapImage? iconSource; bool sliderUpdate;
-    public MainWindow() { InitializeComponent(); timer.Tick += (_, _) => { timeline.Advance(1.0 / 60); UpdateView(); }; Loaded += (_, _) => UpdateView(); Graph.SizeChanged += (_, _) => UpdateView(); Closing += (_, _) => { timer.Stop(); audio.Dispose(); }; }
+    public MainWindow() { InitializeComponent(); timer.Tick += (_, _) => { timeline.Advance(1.0 / 60); UpdateView(); }; Loaded += (_, _) => UpdateView(); Graph.SizeChanged += (_, _) => UpdateView(); Closing += (_, _) => { timer.Stop(); spectrumAnalyzer.Dispose(); audio.Dispose(); }; }
     void OpenData_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Filter = "Data files (*.csv;*.json)|*.csv;*.json|CSV files (*.csv)|*.csv|JSON files (*.json)|*.json|All files (*.*)|*.*" }; if (dialog.ShowDialog() != true) return;
@@ -32,11 +32,13 @@ public partial class MainWindow : Window
     void Speed_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (SpeedBox.SelectedItem is System.Windows.Controls.ComboBoxItem item && double.TryParse(item.Content?.ToString()?.TrimEnd('x'), out var speed)) timeline.PlaybackSpeed = speed; }
     void TimelineSlider_Changed(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e) { if (!sliderUpdate && mapped is not null) { timeline.SeekNormalized(TimelineSlider.Value); UpdateView(); } }
     void AudioEnable_Click(object sender, RoutedEventArgs e) { if (AudioEnableCheck.IsChecked == true) StartSound_Click(sender, e); else StopSound_Click(sender, e); }
-    void StartSound_Click(object sender, RoutedEventArgs e) { if (mapped is null) { AudioStatusText.Text = "STATUS: Load a valid dataset first"; return; } UpdateAudioTarget(); if (!audio.Start()) StatusText.Text = audio.Status; UpdateAudioView(); }
-    void StopSound_Click(object sender, RoutedEventArgs e) { audio.Stop(); AudioEnableCheck.IsChecked = false; UpdateAudioView(); }
+    void StartSound_Click(object sender, RoutedEventArgs e) { if (mapped is null) { AudioStatusText.Text = "STATUS: Load a valid dataset first"; return; } UpdateAudioTarget(); if (!audio.Start()) StatusText.Text = audio.Status; timer.Start(); UpdateAudioView(); }
+    void StopSound_Click(object sender, RoutedEventArgs e) { audio.Stop(); AudioEnableCheck.IsChecked = false; Spectrum.Frame = null; Spectrum.InvalidateVisual(); UpdateAudioView(); }
     void Waveform_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (WaveformBox.SelectedIndex >= 0) audio.Waveform = (WaveformType)WaveformBox.SelectedIndex; }
     void PitchSettings_Changed(object sender, RoutedEventArgs e) => UpdateAudioTarget();
     void Volume_Changed(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e) { audio.Volume = VolumeSlider.Value; }
+    void SpectrumEnable_Click(object sender, RoutedEventArgs e) { if (SpectrumEnableCheck.IsChecked == true) spectrumAnalyzer.Enable(); else { spectrumAnalyzer.Disable(); Spectrum.Frame = null; } UpdateSpectrumView(); }
+    void FftSize_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (FftSizeBox.SelectedItem is System.Windows.Controls.ComboBoxItem item && int.TryParse(item.Content?.ToString(), out var size)) spectrumAnalyzer.SetFftSize(size); UpdateSpectrumView(); }
     double MinPitch() => double.TryParse(MinPitchBox.Text, out var value) && double.IsFinite(value) ? value : PitchMapper.DefaultMinimumFrequency;
     double MaxPitch() => double.TryParse(MaxPitchBox.Text, out var value) && double.IsFinite(value) ? value : PitchMapper.DefaultMaximumFrequency;
     void UpdateAudioTarget() { if (mapped is not null && interpolator is not null) audio.SetTargetFrequencyFromNormalized(interpolator.Evaluate(timeline.CurrentTime).CurrentNormalizedValue, MinPitch(), MaxPitch()); UpdateAudioView(); }
@@ -50,6 +52,12 @@ public partial class MainWindow : Window
     void IconScale_Changed(object sender, RoutedEventArgs e) { if (double.TryParse(MinScaleBox.Text, out var min)) iconSettings.MinimumScale = min; if (double.TryParse(MaxScaleBox.Text, out var max)) iconSettings.MaximumScale = max; if (!iconSettings.Validate(out var error)) IconStatusText.Text = error; else IconStatusText.Text = iconSource is null ? "No image loaded" : "Image loaded"; UpdateView(); }
     void UpdateView()
     {
-        timeline.LoopEnabled = LoopCheck.IsChecked == true; var state = interpolator?.Evaluate(timeline.CurrentTime) ?? CurrentDataState.Empty; if (audio.State == AudioEngineState.Running && mapped is not null) audio.SetTargetFrequencyFromNormalized(state.CurrentNormalizedValue, MinPitch(), MaxPitch()); Graph.MappedSeries = mapped; Graph.State = state; Graph.InvalidateVisual(); CurrentTimeText.Text = mapped is null ? "—" : state.CurrentTime.ToString("G8"); CurrentOriginalText.Text = mapped is null ? "—" : state.CurrentOriginalValue.ToString("G8"); CurrentMappedText.Text = mapped is null ? "—" : state.CurrentMappedValue.ToString("G8"); CurrentNormalizedText.Text = mapped is null ? "—" : state.CurrentNormalizedValue.ToString("0.000"); iconRenderer.Update(IconImage, iconSettings, iconSource, state, mapped, new Size(Graph.ActualWidth, Graph.ActualHeight)); if (mapped is not null) { sliderUpdate = true; TimelineSlider.Value = timeline.NormalizedPosition; sliderUpdate = false; } UpdateAudioView();
+        timeline.LoopEnabled = LoopCheck.IsChecked == true; var state = interpolator?.Evaluate(timeline.CurrentTime) ?? CurrentDataState.Empty; if (audio.State == AudioEngineState.Running && mapped is not null) audio.SetTargetFrequencyFromNormalized(state.CurrentNormalizedValue, MinPitch(), MaxPitch()); Graph.MappedSeries = mapped; Graph.State = state; Graph.InvalidateVisual(); CurrentTimeText.Text = mapped is null ? "—" : state.CurrentTime.ToString("G8"); CurrentOriginalText.Text = mapped is null ? "—" : state.CurrentOriginalValue.ToString("G8"); CurrentMappedText.Text = mapped is null ? "—" : state.CurrentMappedValue.ToString("G8"); CurrentNormalizedText.Text = mapped is null ? "—" : state.CurrentNormalizedValue.ToString("0.000"); iconRenderer.Update(IconImage, iconSettings, iconSource, state, mapped, new Size(Graph.ActualWidth, Graph.ActualHeight)); if (mapped is not null) { sliderUpdate = true; TimelineSlider.Value = timeline.NormalizedPosition; sliderUpdate = false; } UpdateAudioView(); UpdateSpectrumView();
+    }
+    void UpdateSpectrumView()
+    {
+        if (!spectrumAnalyzer.Enabled || audio.State != AudioEngineState.Running) { Spectrum.Frame = null; SpectrumStatusText.Text = spectrumAnalyzer.Enabled ? "Waiting for running audio" : "Spectrum disabled"; Spectrum.InvalidateVisual(); return; }
+        if (audio.SampleBuffer.TryCopyLatest(spectrumSamples.AsSpan(0, spectrumAnalyzer.FftSize))) { Spectrum.Frame = spectrumAnalyzer.Analyze(spectrumSamples.AsSpan(0, spectrumAnalyzer.FftSize)); SpectrumStatusText.Text = $"{spectrumAnalyzer.FftSize} point FFT · {audio.SampleBuffer.Count} samples · Nyquist {Spectrum.Frame?.Nyquist:0} Hz"; }
+        Spectrum.InvalidateVisual();
     }
 }
