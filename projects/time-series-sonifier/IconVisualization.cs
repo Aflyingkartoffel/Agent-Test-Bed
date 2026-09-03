@@ -33,6 +33,12 @@ public static class IconScaleMapper
     }
 }
 
+public static class IconOpacity
+{
+    public const double Default = .35;
+    public static double Clamp(double value) => double.IsFinite(value) ? Math.Clamp(value, 0, 1) : Default;
+}
+
 public static class IconImageLoader
 {
     public static BitmapImage Load(string path)
