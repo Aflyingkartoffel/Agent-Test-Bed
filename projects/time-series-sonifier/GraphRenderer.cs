@@ -14,6 +14,11 @@ public sealed class GraphSurface : FrameworkElement
 
 public static class GraphRenderer
 {
+    public static bool TryMapPoint(MappedDataSeries series, double time, double value, Rect bounds, out Point point)
+    {
+        var plot = new Rect(bounds.Left + 56, bounds.Top + 20, Math.Max(1, bounds.Width - 76), Math.Max(1, bounds.Height - 58)); var xSpan = series.MaximumTime - series.MinimumTime; var ySpan = Math.Max(1e-12, series.MaximumValue - series.MinimumValue); if (!double.IsFinite(time) || !double.IsFinite(value) || xSpan <= 0 || plot.Width <= 0 || plot.Height <= 0) { point = default; return false; }
+        point = new(plot.Left + (time - series.MinimumTime) / xSpan * plot.Width, plot.Bottom - (value - series.MinimumValue) / ySpan * plot.Height); return true;
+    }
     public static void Draw(DrawingContext dc, MappedDataSeries? mapped, CurrentDataState state, Rect bounds)
     {
         if (mapped is null) { Draw(dc, (DataSeries?)null, state, bounds); return; }
