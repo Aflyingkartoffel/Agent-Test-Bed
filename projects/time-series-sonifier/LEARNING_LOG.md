@@ -32,3 +32,8 @@
 
 - A target published by the UI is not enough by itself: the audio render path must consume it without rebuilding the smoother, otherwise the oscillator can remain at its initial frequency.
 - Semantic metadata belongs in the shared presentation scene so on-screen previews and exported frames cannot drift from Setup labels.
+
+## 2026-09-03 — Full data versus display data
+
+- Large-data visualization can remain accurate by retaining the full series for state and interpolation while using a screen-space min/max envelope only for drawing.
+- A cached forward display representation removes repeated source-point work during playback; axis ticks and FPS measurement should be shared logic rather than values tied to a single timer interval.

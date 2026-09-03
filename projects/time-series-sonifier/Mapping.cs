@@ -34,7 +34,7 @@ public sealed class MappedSeriesInterpolator
     public CurrentDataState Evaluate(double time)
     {
         var points = series.Points; time = Math.Clamp(time, series.MinimumTime, series.MaximumTime); var right = 0;
-        if (time > points[0].Time && time < points[^1].Time) { right = 1; while (right < points.Count && points[right].Time <= time) right++; }
+        if (time > points[0].Time && time < points[^1].Time) { var low = 1; var high = points.Count - 1; while (low < high) { var middle = low + (high - low) / 2; if (points[middle].Time <= time) low = middle + 1; else high = middle; } right = low; }
         else right = time >= points[^1].Time ? points.Count - 1 : 0;
         var left = right; var factor = 0d; var original = points[left].OriginalValue; var mapped = points[left].MappedValue;
         if (right > 0 && right < points.Count && points[right].Time > points[right - 1].Time) { left = right - 1; var span = points[right].Time - points[left].Time; factor = (time - points[left].Time) / span; original = points[left].OriginalValue + (points[right].OriginalValue - points[left].OriginalValue) * factor; mapped = points[left].MappedValue + (points[right].MappedValue - points[left].MappedValue) * factor; }

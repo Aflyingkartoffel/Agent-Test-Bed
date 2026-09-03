@@ -28,6 +28,8 @@ FFT is disabled by default and never runs in the audio callback. Enabling/disabl
 
 Selected time and value column names are carried as `PresentationScene` metadata, so Setup readouts, Pre-Visualization, Final Output, and exported frames use the same labels. Labels are formatted for display without changing source-column semantics. Live pitch follows interpolated `CurrentDataState.CurrentNormalizedValue`: the audio render path consumes the thread-safe target through the persistent 50 ms smoother, preserving phase while allowing the expected 110/220/440/880/1760 Hz progression. A simple 0–100 increasing dataset is useful for checking target/current frequency readouts.
 
+Graph rendering keeps the full mapped series for interpolation, audio, readouts, and export. The screen graph uses a cached display representation sized from viewport width; dense buckets retain first, last, local minimum, and local maximum points so spikes remain visible without drawing every source point. The interpolator uses binary search for neighboring points. Axes use shared nice 1/2/5 tick spacing, mapped-value Y ranges, readable numeric formatting, time-aware X labels, and selected column titles. The header FPS counter measures WPF composition frames and applies a rolling half-second smoothing window.
+
 ## Milestone 3 audio
 
 Milestone 3 adds one safe mono oscillator driven by `CurrentDataState.CurrentNormalizedValue`. `PitchMapper` uses `minFrequency * pow(maxFrequency / minFrequency, normalized)` with defaults of 110–1760 Hz, so the midpoint is approximately 440 Hz. `ParameterSmoother` glides frequency over about 50 ms. Sine, triangle, square, and saw waveforms share a continuous oscillator phase at 48 kHz.

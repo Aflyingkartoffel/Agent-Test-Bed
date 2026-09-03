@@ -9,7 +9,7 @@ public sealed class SeriesInterpolator
         var points = series.Points; time = Math.Clamp(time, series.MinimumTime, series.MaximumTime);
         if (time <= points[0].Time) return new(0, points[0].Time, points[0].Value, 0, 0, 0);
         if (time >= points[^1].Time) return new(1, points[^1].Time, points[^1].Value, points.Count - 1, points.Count - 1, 0);
-        var right = 1; while (right < points.Count && points[right].Time <= time) right++;
+        var low = 1; var high = points.Count - 1; while (low < high) { var middle = low + (high - low) / 2; if (points[middle].Time <= time) low = middle + 1; else high = middle; } var right = low;
         var left = right - 1; var span = points[right].Time - points[left].Time; var factor = span <= 0 ? 0 : (time - points[left].Time) / span;
         return new((time - series.MinimumTime) / (series.MaximumTime - series.MinimumTime), time, points[left].Value + (points[right].Value - points[left].Value) * factor, left, right, factor);
     }

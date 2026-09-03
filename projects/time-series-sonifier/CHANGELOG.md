@@ -24,3 +24,5 @@
 - Restyled the live FFT panel for the light application theme.
 - Added dynamic selected-column labels to current data, preview, final output, and exported presentation frames.
 - Fixed the live pitch handoff so target frequencies update the persistent smoother and follow interpolated normalized data.
+- Added viewport-aware min/max envelope sampling and cached display points for large graph datasets without changing authoritative data.
+- Added binary-search interpolation, shared numeric/time axes, selected axis titles, and a composition-timing FPS counter.

@@ -34,3 +34,9 @@ Still deferred: FFT/spectrum, icons, multiple voices, stereo, effects, MIDI, exp
 - Selected time/value column names now update current-data labels and flow through shared presentation-scene metadata into preview and export rendering.
 - Fixed live pitch tracking: the audio render path now consumes `TargetFrequency` through the persistent smoother, so interpolated normalized data changes oscillator pitch without restarting it.
 - Added progression and live-target regression coverage; the focused runner now passes 167 checks.
+
+## Large dataset rendering and graph axes — 2026-09-03
+
+- Kept full mapped data authoritative while adding viewport-scaled first/min/max/last bucket sampling and cached display points for dense graph rendering.
+- Replaced linear interpolation neighbor scans with binary search and added shared nice-number X/Y ticks, mapped-value ranges, selected axis titles, and readable formatting.
+- Added a real WPF composition-based smoothed FPS counter and synthetic 100k-point regression coverage. The focused runner now passes 174 checks.
