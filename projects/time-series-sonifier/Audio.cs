@@ -74,7 +74,7 @@ public sealed class AudioEngine : IDisposable
     {
         lock (gate) { if (disposed || State is AudioEngineState.Stopped or AudioEngineState.Stopping) return; State = AudioEngineState.Stopping; try { Volatile.Write(ref paused, 1); backend.Stop(); SampleBuffer.Clear(); State = AudioEngineState.Stopped; Status = "Stopped"; } catch (Exception ex) { State = AudioEngineState.Faulted; Status = $"Audio stop fault: {ex.Message}"; } }
     }
-    void Render(float[] buffer) { var rate = SampleRate; var gain = Volatile.Read(ref paused) == 1 ? 0 : Math.Clamp(double.IsFinite(Volume) ? Volume : 0, 0, 1); for (var i = 0; i < buffer.Length; i++) { var current = smoother.Advance(1.0 / rate); buffer[i] = (float)(oscillator.NextSample(current, rate) * gain); } SampleBuffer.Write(buffer); }
+    void Render(float[] buffer) { var rate = SampleRate; smoother.SetTarget(TargetFrequency); var gain = Volatile.Read(ref paused) == 1 ? 0 : Math.Clamp(double.IsFinite(Volume) ? Volume : 0, 0, 1); for (var i = 0; i < buffer.Length; i++) { var current = smoother.Advance(1.0 / rate); buffer[i] = (float)(oscillator.NextSample(current, rate) * gain); } SampleBuffer.Write(buffer); }
     public void Dispose() { lock (gate) { if (disposed) return; Stop(); backend.Dispose(); disposed = true; State = AudioEngineState.Disposed; Status = "Disposed"; } }
 }
 

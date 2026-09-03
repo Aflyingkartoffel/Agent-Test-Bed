@@ -28,3 +28,9 @@ Still deferred: FFT/spectrum, icons, multiple voices, stereo, effects, MIDI, exp
 - Corrected native buffer requeueing to use the completed `WAVEHDR`, added three reusable 512-frame buffers, and removed render-buffer allocation from the callback path.
 - Added explicit audio pause/resume semantics that keep the backend open and render silence while paused.
 - Updated the FFT renderer to a light plot with subtle gray grid lines, readable labels, and a green spectrum accent.
+
+## Dynamic labels and live pitch tracking — 2026-09-03
+
+- Selected time/value column names now update current-data labels and flow through shared presentation-scene metadata into preview and export rendering.
+- Fixed live pitch tracking: the audio render path now consumes `TargetFrequency` through the persistent smoother, so interpolated normalized data changes oscillator pitch without restarting it.
+- Added progression and live-target regression coverage; the focused runner now passes 167 checks.

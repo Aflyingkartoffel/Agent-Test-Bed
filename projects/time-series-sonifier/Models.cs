@@ -56,6 +56,11 @@ public sealed record CurrentDataState(
     public static CurrentDataState Empty => new(0, 0, 0, -1, -1, 0);
 }
 
+public static class ColumnLabel
+{
+    public static string Format(string? name, string fallback) => string.IsNullOrWhiteSpace(name) ? fallback : name.Trim().ToUpperInvariant();
+}
+
 public enum TimelineState { Stopped, Playing, Paused }
 
 public static class TimeValueParser

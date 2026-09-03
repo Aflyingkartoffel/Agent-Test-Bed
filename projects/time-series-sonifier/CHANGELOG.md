@@ -22,3 +22,5 @@
 
 - Fixed continuous audio transport by requeueing the completed native buffer, reusing the render scratch buffer, and adding silent pause/resume behavior without reopening the device.
 - Restyled the live FFT panel for the light application theme.
+- Added dynamic selected-column labels to current data, preview, final output, and exported presentation frames.
+- Fixed the live pitch handoff so target frequencies update the persistent smoother and follow interpolated normalized data.

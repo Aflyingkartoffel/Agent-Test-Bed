@@ -26,6 +26,8 @@ The presentation workflow adds Setup, Pre-Visualization, and Final Output views.
 
 FFT is disabled by default and never runs in the audio callback. Enabling/disabling or changing among 1024/2048/4096 points does not recreate the audio device. Stopping audio clears the sample buffer and the spectrum; restarting safely resumes analysis. This is an analysis-only layer: the existing data normalization and pitch mapping remain authoritative, while volume changes appear in the post-volume spectrum. No persistence, spectrogram, effects, or multiple voices are included in this milestone.
 
+Selected time and value column names are carried as `PresentationScene` metadata, so Setup readouts, Pre-Visualization, Final Output, and exported frames use the same labels. Labels are formatted for display without changing source-column semantics. Live pitch follows interpolated `CurrentDataState.CurrentNormalizedValue`: the audio render path consumes the thread-safe target through the persistent 50 ms smoother, preserving phase while allowing the expected 110/220/440/880/1760 Hz progression. A simple 0–100 increasing dataset is useful for checking target/current frequency readouts.
+
 ## Milestone 3 audio
 
 Milestone 3 adds one safe mono oscillator driven by `CurrentDataState.CurrentNormalizedValue`. `PitchMapper` uses `minFrequency * pow(maxFrequency / minFrequency, normalized)` with defaults of 110–1760 Hz, so the midpoint is approximately 440 Hz. `ParameterSmoother` glides frequency over about 50 ms. Sine, triangle, square, and saw waveforms share a continuous oscillator phase at 48 kHz.

@@ -27,3 +27,8 @@
 
 - A native streaming callback must requeue the exact completed buffer; selecting one by wall-clock time can leave another buffer unfilled and cause audible starvation.
 - Pause can preserve phase and device continuity by keeping the stream alive and rendering zero-gain samples, while Reset remains the explicit teardown operation.
+
+## 2026-09-03 — Shared labels and pitch targets
+
+- A target published by the UI is not enough by itself: the audio render path must consume it without rebuilding the smoother, otherwise the oscillator can remain at its initial frequency.
+- Semantic metadata belongs in the shared presentation scene so on-screen previews and exported frames cannot drift from Setup labels.

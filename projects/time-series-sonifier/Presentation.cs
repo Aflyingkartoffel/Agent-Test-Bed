@@ -22,7 +22,7 @@ public static class OutputFrameTiming
     public static int FrameCount(double durationSeconds, int framesPerSecond) => !double.IsFinite(durationSeconds) || durationSeconds <= 0 || framesPerSecond <= 0 ? 0 : (int)Math.Ceiling(durationSeconds * framesPerSecond);
 }
 
-public sealed record PresentationScene(MappedDataSeries? Series, CurrentDataState State, ImageSource? Image, double ImageOpacity, double MinimumScale, double MaximumScale, SpectrumFrame? Spectrum);
+public sealed record PresentationScene(MappedDataSeries? Series, CurrentDataState State, ImageSource? Image, double ImageOpacity, double MinimumScale, double MaximumScale, SpectrumFrame? Spectrum, string TimeColumnName = "TIME", string ValueColumnName = "VALUE");
 
 public sealed class PresentationSurface : FrameworkElement
 {
@@ -37,7 +37,7 @@ public static class PresentationRenderer
     {
         dc.DrawRectangle(Brushes.White, null, bounds); var vertical = profile.Aspect == OutputAspectRatio.Vertical; var title = vertical ? new Rect(bounds.Left + bounds.Width * .08, bounds.Top + bounds.Height * .04, bounds.Width * .84, bounds.Height * .08) : new Rect(bounds.Left + bounds.Width * .06, bounds.Top + bounds.Height * .05, bounds.Width * .88, bounds.Height * .12); var chart = vertical ? new Rect(bounds.Left + bounds.Width * .07, bounds.Top + bounds.Height * .19, bounds.Width * .86, bounds.Height * .48) : new Rect(bounds.Left + bounds.Width * .05, bounds.Top + bounds.Height * .18, bounds.Width * .9, bounds.Height * .58); var spectrum = vertical ? new Rect(bounds.Left + bounds.Width * .08, bounds.Top + bounds.Height * .73, bounds.Width * .84, bounds.Height * .16) : new Rect(bounds.Left + bounds.Width * .06, bounds.Top + bounds.Height * .8, bounds.Width * .88, bounds.Height * .14);
         DrawText(dc, "TIME-SERIES SONIFIER", title.Left, title.Top, 18, Brushes.Black); if (scene is null || scene.Series is null || scene.Series.Points.Count < 2) { DrawText(dc, "IMPORT DATA TO PREVIEW", chart.Left, chart.Top + chart.Height * .4, 14, Brushes.Gray); return; }
-        DrawImage(dc, scene, chart); DrawGraph(dc, scene, chart); if (scene.Spectrum is not null) DrawSpectrum(dc, scene.Spectrum, spectrum); DrawText(dc, $"TIME  {scene.State.CurrentTime:G5}     VALUE  {scene.State.CurrentMappedValue:G5}", chart.Left, chart.Bottom + bounds.Height * .025, 12, new SolidColorBrush(Color.FromRgb(31, 41, 51)));
+        DrawImage(dc, scene, chart); DrawGraph(dc, scene, chart); if (scene.Spectrum is not null) DrawSpectrum(dc, scene.Spectrum, spectrum); DrawText(dc, $"{ColumnLabel.Format(scene.TimeColumnName, "TIME")}  {scene.State.CurrentTime:G5}     {ColumnLabel.Format(scene.ValueColumnName, "VALUE")}  {scene.State.CurrentMappedValue:G5}", chart.Left, chart.Bottom + bounds.Height * .025, 12, new SolidColorBrush(Color.FromRgb(31, 41, 51)));
     }
     static void DrawImage(DrawingContext dc, PresentationScene scene, Rect chart)
     {
