@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.IO;
 
 namespace TimeSeriesSonifier;
 
@@ -59,6 +60,18 @@ public sealed record CurrentDataState(
 public static class ColumnLabel
 {
     public static string Format(string? name, string fallback) => string.IsNullOrWhiteSpace(name) ? fallback : name.Trim().ToUpperInvariant();
+}
+
+public static class DatasetNameFormatter
+{
+    public static string Format(string? sourceName)
+    {
+        if (string.IsNullOrWhiteSpace(sourceName)) return "DATA VISUALIZATION";
+        var name = Path.GetFileNameWithoutExtension(sourceName.Trim());
+        if (string.IsNullOrWhiteSpace(name)) return "DATA VISUALIZATION";
+        name = name.Replace('_', ' ').Replace('-', ' ');
+        return string.Join(" ", name.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
+    }
 }
 
 public enum TimelineState { Stopped, Playing, Paused }

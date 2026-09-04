@@ -14,6 +14,7 @@ public sealed record OutputProfile(OutputAspectRatio Aspect, int Width, int Heig
     public static OutputProfile Square { get; } = new(OutputAspectRatio.Square, 1080, 1080, "SQUARE 1080 × 1080 (1:1)");
     public static OutputProfile Horizontal { get; } = new(OutputAspectRatio.Horizontal, 1920, 1080, "HORIZONTAL 1920 × 1080 (16:9)");
     public static IReadOnlyList<OutputProfile> All { get; } = new[] { Vertical, Square, Horizontal };
+    public override string ToString() => Label;
 }
 
 public static class OutputFrameTiming
@@ -22,7 +23,50 @@ public static class OutputFrameTiming
     public static int FrameCount(double durationSeconds, int framesPerSecond) => !double.IsFinite(durationSeconds) || durationSeconds <= 0 || framesPerSecond <= 0 ? 0 : (int)Math.Ceiling(durationSeconds * framesPerSecond);
 }
 
-public sealed record PresentationScene(MappedDataSeries? Series, CurrentDataState State, ImageSource? Image, double ImageOpacity, double MinimumScale, double MaximumScale, SpectrumFrame? Spectrum, string TimeColumnName = "TIME", string ValueColumnName = "VALUE", AppearanceMode ThemeMode = AppearanceMode.Light, GraphRevealMode RevealMode = GraphRevealMode.Progressive, double RevealProgress = 0);
+public sealed record PresentationScene(MappedDataSeries? Series, CurrentDataState State, ImageSource? Image, double ImageOpacity, double MinimumScale, double MaximumScale, SpectrumFrame? Spectrum, string TimeColumnName = "TIME", string ValueColumnName = "VALUE", AppearanceMode ThemeMode = AppearanceMode.Light, GraphRevealMode RevealMode = GraphRevealMode.Progressive, double RevealProgress = 0, string DatasetDisplayName = "DATA VISUALIZATION");
+
+public static class PresentationSceneTitle
+{
+    public static string For(PresentationScene? scene) => scene is null ? "DATA VISUALIZATION" : string.IsNullOrWhiteSpace(scene.DatasetDisplayName) || scene.DatasetDisplayName == "DATA VISUALIZATION" ? DatasetNameFormatter.Format(scene.Series?.Name) : scene.DatasetDisplayName;
+}
+
+public readonly record struct PresentationLayout(Rect Title, Rect Chart, Rect Readouts, Rect Spectrum)
+{
+    public static PresentationLayout Calculate(Rect bounds, OutputProfile profile)
+    {
+        var width = Math.Max(1, bounds.Width); var height = Math.Max(1, bounds.Height);
+        var horizontal = profile.Aspect == OutputAspectRatio.Horizontal;
+        var side = horizontal ? width * .045 : width * .055;
+        var contentWidth = Math.Max(1, width - side * 2);
+        var titleHeight = height * (horizontal ? .11 : .085);
+        var chartTop = height * (horizontal ? .15 : .14);
+        var chartHeight = height * (horizontal ? .58 : .54);
+        var readoutTop = height * (horizontal ? .77 : .70);
+        var readoutHeight = height * (horizontal ? .08 : .10);
+        var spectrumTop = height * (horizontal ? .87 : .82);
+        var spectrumHeight = Math.Max(1, height - spectrumTop - height * .035);
+        if (profile.Aspect == OutputAspectRatio.Square) { chartTop = height * .15; chartHeight = height * .56; readoutTop = height * .73; readoutHeight = height * .09; spectrumTop = height * .84; }
+        return new(
+            new Rect(bounds.Left + side, bounds.Top + height * .035, contentWidth, titleHeight),
+            new Rect(bounds.Left + side, bounds.Top + chartTop, contentWidth, chartHeight),
+            new Rect(bounds.Left + side, bounds.Top + readoutTop, contentWidth, readoutHeight),
+            new Rect(bounds.Left + side, bounds.Top + spectrumTop, contentWidth, spectrumHeight));
+    }
+}
+
+public static class PresentationText
+{
+    public static string Time(double value)
+    {
+        if (!double.IsFinite(value)) return "—";
+        if (value > DateTime.MinValue.Ticks / (double)TimeSpan.TicksPerSecond && value < DateTime.MaxValue.Ticks / (double)TimeSpan.TicksPerSecond)
+        {
+            try { return new DateTime((long)(value * TimeSpan.TicksPerSecond), DateTimeKind.Utc).ToLocalTime().ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture); } catch { }
+        }
+        return value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+    }
+    public static string Value(double value) => !double.IsFinite(value) ? "—" : AxisLabelFormatter.Number(value);
+}
 
 public sealed class PresentationSurface : FrameworkElement
 {
@@ -36,10 +80,12 @@ public static class PresentationRenderer
 {
     public static void Draw(DrawingContext dc, PresentationScene? scene, Rect bounds, OutputProfile profile, GraphRenderCache? graphCache = null)
     {
-        var palette = ThemePalette.For(ThemeManager.ActiveMode); dc.DrawRectangle(palette.Brush(palette.AppBackground), null, bounds); var vertical = profile.Aspect == OutputAspectRatio.Vertical; var title = vertical ? new Rect(bounds.Left + bounds.Width * .08, bounds.Top + bounds.Height * .04, bounds.Width * .84, bounds.Height * .08) : new Rect(bounds.Left + bounds.Width * .06, bounds.Top + bounds.Height * .05, bounds.Width * .88, bounds.Height * .12); var chart = vertical ? new Rect(bounds.Left + bounds.Width * .07, bounds.Top + bounds.Height * .19, bounds.Width * .86, bounds.Height * .48) : new Rect(bounds.Left + bounds.Width * .05, bounds.Top + bounds.Height * .18, bounds.Width * .9, bounds.Height * .58); var spectrum = vertical ? new Rect(bounds.Left + bounds.Width * .08, bounds.Top + bounds.Height * .73, bounds.Width * .84, bounds.Height * .16) : new Rect(bounds.Left + bounds.Width * .06, bounds.Top + bounds.Height * .8, bounds.Width * .88, bounds.Height * .14);
-        DrawText(dc, "TIME-SERIES SONIFIER", title.Left, title.Top, 18, palette.Brush(palette.PrimaryText)); if (scene is null || scene.Series is null || scene.Series.Points.Count < 2) { DrawText(dc, "IMPORT DATA TO PREVIEW", chart.Left, chart.Top + chart.Height * .4, 14, palette.Brush(palette.SecondaryText)); return; }
-        DrawImage(dc, scene, chart); GraphRenderer.Draw(dc, scene.Series, scene.State, chart, scene.TimeColumnName, scene.ValueColumnName, graphCache, scene.ThemeMode, scene.RevealMode, scene.RevealProgress); if (scene.Spectrum is not null) DrawSpectrum(dc, scene.Spectrum, spectrum);
+        var palette = ThemePalette.For(ThemeManager.ActiveMode); dc.DrawRectangle(palette.Brush(palette.AppBackground), null, bounds); var layout = PresentationLayout.Calculate(bounds, profile);
+        DrawText(dc, PresentationSceneTitle.For(scene), layout.Title.Left, layout.Title.Top, Math.Clamp(bounds.Width / 55, 16, 30), palette.Brush(palette.PrimaryText)); if (scene is null || scene.Series is null || scene.Series.Points.Count < 2) { DrawText(dc, "IMPORT DATA TO BEGIN", layout.Chart.Left, layout.Chart.Top + layout.Chart.Height * .4, 14, palette.Brush(palette.SecondaryText)); return; }
+        DrawImage(dc, scene, layout.Chart); GraphRenderer.Draw(dc, scene.Series, scene.State, layout.Chart, scene.TimeColumnName, scene.ValueColumnName, graphCache, scene.ThemeMode, scene.RevealMode, scene.RevealProgress); DrawReadouts(dc, scene, layout.Readouts, palette); DrawSpectrum(dc, scene.Spectrum, layout.Spectrum);
     }
+    static void DrawReadouts(DrawingContext dc, PresentationScene scene, Rect bounds, ThemePalette palette)
+    { var text = $"{ColumnLabel.Format(scene.TimeColumnName, "TIME")}  {PresentationText.Time(scene.State.CurrentTime)}    {ColumnLabel.Format(scene.ValueColumnName, "VALUE")}  {PresentationText.Value(scene.State.CurrentOriginalValue)}    NORMALIZED  {scene.State.CurrentNormalizedValue:0.000}"; DrawText(dc, text, bounds.Left, bounds.Top, Math.Clamp(bounds.Width / 65, 11, 20), palette.Brush(palette.SecondaryText)); }
     static void DrawImage(DrawingContext dc, PresentationScene scene, Rect chart)
     {
         if (scene.Image is null || scene.State.LeftPointIndex < 0) return; var scale = IconScaleMapper.Map(scene.State.CurrentNormalizedValue, scene.MinimumScale, scene.MaximumScale); var size = Math.Min(chart.Width, chart.Height) * .42 * scale; var rect = new Rect(chart.Left + (chart.Width - size) / 2, chart.Top + (chart.Height - size) / 2, size, size); var brush = new ImageBrush(scene.Image) { Stretch = Stretch.Uniform, Opacity = IconOpacity.Clamp(scene.ImageOpacity) }; dc.DrawRectangle(brush, null, rect);
@@ -49,7 +95,7 @@ public static class PresentationRenderer
         var plot = new Rect(chart.Left + chart.Width * .11, chart.Top + chart.Height * .08, chart.Width * .82, chart.Height * .8); var grid = new Pen(new SolidColorBrush(Color.FromRgb(225, 231, 236)), 1); for (var i = 0; i <= 5; i++) { var x = plot.Left + plot.Width * i / 5; var y = plot.Top + plot.Height * i / 5; dc.DrawLine(grid, new Point(x, plot.Top), new Point(x, plot.Bottom)); dc.DrawLine(grid, new Point(plot.Left, y), new Point(plot.Right, y)); }
         var xSpan = Math.Max(1e-12, scene.Series!.MaximumTime - scene.Series.MinimumTime); var ySpan = Math.Max(1e-12, scene.Series.MaximumValue - scene.Series.MinimumValue); Point Map(MappedDataPoint p) => new(plot.Left + (p.Time - scene.Series!.MinimumTime) / xSpan * plot.Width, plot.Bottom - (p.MappedValue - scene.Series!.MinimumValue) / ySpan * plot.Height); var geometry = new StreamGeometry(); using (var c = geometry.Open()) { c.BeginFigure(Map(scene.Series.Points[0]), false, false); foreach (var p in scene.Series.Points.Skip(1)) c.LineTo(Map(p), true, false); } dc.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromRgb(25, 118, 210)), 2), geometry); var playX = plot.Left + scene.State.NormalizedPosition * plot.Width; dc.DrawLine(new Pen(new SolidColorBrush(Color.FromRgb(32, 164, 100)), 2), new Point(playX, plot.Top), new Point(playX, plot.Bottom));
     }
-    static void DrawSpectrum(DrawingContext dc, SpectrumFrame frame, Rect bounds) { var palette = ThemePalette.For(ThemeManager.ActiveMode); dc.DrawRectangle(palette.Brush(palette.GraphBackground), null, bounds); if (frame.Decibels.Length < 2) return; var g = new StreamGeometry(); using (var c = g.Open()) { c.BeginFigure(new Point(bounds.Left, bounds.Bottom), true, false); for (var i = 1; i < frame.Decibels.Length; i++) c.LineTo(new Point(bounds.Left + i * bounds.Width / (frame.Decibels.Length - 1), bounds.Bottom - Math.Clamp((frame.Decibels[i] + 100) / 100, 0, 1) * bounds.Height), true, false); c.LineTo(new Point(bounds.Right, bounds.Bottom), true, false); } dc.DrawGeometry(palette.Brush(palette.SpectrumFill), new Pen(palette.Brush(palette.Blue), 1), g); }
+    static void DrawSpectrum(DrawingContext dc, SpectrumFrame? frame, Rect bounds) { var palette = ThemePalette.For(ThemeManager.ActiveMode); dc.DrawRectangle(palette.Brush(palette.GraphBackground), new Pen(palette.Brush(palette.Grid), 1), bounds); if (frame is null || frame.Decibels.Length < 2) return; var g = new StreamGeometry(); using (var c = g.Open()) { c.BeginFigure(new Point(bounds.Left, bounds.Bottom), true, false); for (var i = 1; i < frame.Decibels.Length; i++) c.LineTo(new Point(bounds.Left + i * bounds.Width / (frame.Decibels.Length - 1), bounds.Bottom - Math.Clamp((frame.Decibels[i] + 100) / 100, 0, 1) * bounds.Height), true, false); c.LineTo(new Point(bounds.Right, bounds.Bottom), true, false); } dc.DrawGeometry(palette.Brush(palette.SpectrumFill), new Pen(palette.Brush(palette.Blue), 1), g); }
     static void DrawText(DrawingContext dc, string text, double x, double y, double size, Brush brush) => dc.DrawText(new FormattedText(text, System.Globalization.CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), size, brush, 1), new Point(x, y));
 }
 

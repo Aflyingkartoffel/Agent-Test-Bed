@@ -36,3 +36,8 @@
 - Removed the redundant vertical playhead from Dynamic Timeline while retaining the endpoint marker and Full Graph playhead.
 - Removed the Dynamic Timeline right-edge playhead again so the endpoint dot is the sole current-time cue, and made Light/Progressive the explicit startup defaults.
 - Fixed live image opacity propagation and reused the existing centered scale transform for continuous data-driven image scaling.
+# 2026-09-03
+
+- Redesigned Final Output with responsive multi-profile layouts and a larger graph.
+- Removed Pre-Visualization and made Audio/FFT defaults explicit without auto-play.
+- Added dataset-derived presentation titles, formatted date readouts, and friendly profile labels shared with export.

@@ -1,5 +1,12 @@
 # Project Status
 
+## Final output presentation cleanup — 2026-09-03
+
+- Audio and FFT default on without starting playback; Light and Progressive remain startup defaults.
+- Removed the dedicated Pre-Visualization tab and its continuously updated surface.
+- Final Output now uses profile-aware responsive layout regions, a larger graph, compact readouts/spectrum, and friendly profile labels.
+- `DatasetNameFormatter` derives presentation titles from filenames; `PresentationScene` carries the title for both WPF rendering and offline export.
+
 ## Milestone 1 — Time-Series Visualization Foundation
 
 Complete in this branch: CSV import, column selection, safe validation, sorted processed series, numeric/year/date time parsing, linear interpolation, graph rendering, playhead and marker, current time/value readout, scrubbing, play/pause/reset, speed control, and looping.

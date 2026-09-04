@@ -70,3 +70,7 @@
 
 - Keep normalized UI contracts at the boundary: opacity is clamped once to 0–1, while source and enabled state remain independent visual properties.
 - For frequently changing visuals, mutate a reusable transform rather than recreating the transform object or bitmap each update.
+# 2026-09-03 — Shared presentation layout and metadata
+
+- A calculated layout model keeps one renderer responsive across multiple aspect ratios without duplicating UI systems.
+- Separating a display-only dataset title from the source path preserves import semantics while making exported presentations readable.

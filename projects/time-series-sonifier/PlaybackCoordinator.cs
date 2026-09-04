@@ -9,7 +9,7 @@ public sealed class PlaybackCoordinator
     double minimumPitch = PitchMapper.DefaultMinimumFrequency;
     double maximumPitch = PitchMapper.DefaultMaximumFrequency;
 
-    public PlaybackCoordinator(TimelineEngine timeline, AudioEngine audio) { this.timeline = timeline; this.audio = audio; CurrentDataState = CurrentDataState.Empty; }
+    public PlaybackCoordinator(TimelineEngine timeline, AudioEngine audio) { this.timeline = timeline; this.audio = audio; CurrentDataState = CurrentDataState.Empty; AudioEnabled = true; }
     public TimelineEngine Timeline => timeline;
     public AudioEngine Audio => audio;
     public CurrentDataState CurrentDataState { get; private set; }
