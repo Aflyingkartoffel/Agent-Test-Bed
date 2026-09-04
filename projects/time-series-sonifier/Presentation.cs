@@ -42,7 +42,7 @@ public static class PresentationRenderer
     }
     static void DrawImage(DrawingContext dc, PresentationScene scene, Rect chart)
     {
-        if (scene.Image is null || scene.State.LeftPointIndex < 0) return; var scale = IconScaleMapper.Map(scene.State.CurrentNormalizedValue, scene.MinimumScale, scene.MaximumScale); var size = Math.Min(chart.Width, chart.Height) * .42 * scale; var rect = new Rect(chart.Left + (chart.Width - size) / 2, chart.Top + (chart.Height - size) / 2, size, size); var brush = new ImageBrush(scene.Image) { Stretch = Stretch.Uniform, Opacity = IconOpacity.Clamp(scene.ImageOpacity) }; var plot = GraphRenderer.PlotBounds(chart); dc.PushClip(new RectangleGeometry(new Rect(chart.Left, chart.Top, plot.Left - chart.Left + plot.Width * GraphReveal.VisibleFraction(scene.RevealProgress, scene.RevealMode), chart.Height))); dc.DrawRectangle(brush, null, rect); dc.Pop();
+        if (scene.Image is null || scene.State.LeftPointIndex < 0) return; var scale = IconScaleMapper.Map(scene.State.CurrentNormalizedValue, scene.MinimumScale, scene.MaximumScale); var size = Math.Min(chart.Width, chart.Height) * .42 * scale; var rect = new Rect(chart.Left + (chart.Width - size) / 2, chart.Top + (chart.Height - size) / 2, size, size); var brush = new ImageBrush(scene.Image) { Stretch = Stretch.Uniform, Opacity = IconOpacity.Clamp(scene.ImageOpacity) }; dc.DrawRectangle(brush, null, rect);
     }
     static void DrawGraph(DrawingContext dc, PresentationScene scene, Rect chart)
     {
