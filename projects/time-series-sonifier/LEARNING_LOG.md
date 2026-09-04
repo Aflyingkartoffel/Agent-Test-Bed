@@ -61,3 +61,7 @@
 ## 2026-09-03 — Domain endpoints versus playheads
 
 - When a dynamic domain’s right edge already represents the current time, a second vertical playhead communicates the same state redundantly; Full Graph still benefits from one because its domain is static.
+
+## 2026-09-03 — Explicit UI defaults
+
+- Startup UI selections should be declared in the view and match the component defaults, preventing a visually misleading state before the first user interaction.

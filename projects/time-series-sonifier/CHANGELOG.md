@@ -34,3 +34,4 @@
 - Replaced the expanding-frame effect with Dynamic Timeline: a fixed full-size graph whose X domain grows from the first 3% of time to the complete dataset.
 - Added prefix-based visible Y scaling, future-point filtering, interpolated current endpoints, and full-frame remapping for dynamic presentation rendering.
 - Removed the redundant vertical playhead from Dynamic Timeline while retaining the endpoint marker and Full Graph playhead.
+- Removed the Dynamic Timeline right-edge playhead again so the endpoint dot is the sole current-time cue, and made Light/Progressive the explicit startup defaults.

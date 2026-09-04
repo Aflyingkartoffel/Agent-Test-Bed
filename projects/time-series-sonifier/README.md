@@ -38,6 +38,8 @@ Dynamic Timeline replaces frame growth with a fixed-size graph and expanding tim
 
 Dynamic Timeline uses the endpoint marker as the current-time indicator and does not draw a separate vertical playhead through the graph. Full Graph continues to show the moving playhead because its complete time domain remains visible. The bottom scrub slider remains collapsed for Dynamic Timeline and available for Full Graph.
 
+Fresh startup defaults to the Light theme and Progressive/Dynamic Timeline mode. Progressive mode shows only the current endpoint marker; Full Graph retains the conventional moving playhead.
+
 Theme changes replace frozen resource brushes safely instead of mutating them. Progressive mode now uses an expanding visualization viewport: the visible frame starts at 4% of the final plot width and follows `0.04 + 0.96 * timelineProgress`. The fixed WPF layout remains unchanged; one clip reveals the graph frame, axes/grid, graph, and centered image while the dynamic border’s right edge follows the same boundary. Full Graph remains unclipped.
 
 ## Milestone 3 audio

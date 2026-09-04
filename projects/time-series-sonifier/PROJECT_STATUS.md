@@ -27,6 +27,8 @@ Fixed the runtime crash caused by attempting to mutate a frozen WPF `SolidColorB
 Dynamic Timeline now keeps the final graph frame fixed and remaps a growing data domain across it. The first 3% of time is shown at full width, the X range expands continuously, visible Y extrema come from the revealed prefix, and the current interpolated value forms the right-edge endpoint. Full Graph remains available. Screen geometry is bounded by the existing viewport sampling budget; export uses the same deterministic domain calculation.
 
 Dynamic Timeline no longer draws the redundant vertical playhead line; its endpoint marker is the current-time cue. Full Graph retains the playhead, and the mode-dependent bottom scrub-slider visibility is unchanged.
+
+Startup selectors now explicitly default to Light and Progressive, matching the renderer’s initial state.
 ## Audio device and icon overlay update — 2026-09-03
 
 - Uses the Windows default `WAVE_MAPPER` with stereo PCM16 and 48 kHz/44.1 kHz fallback; the oscillator follows the actual opened sample rate and failures retain translated diagnostics.
