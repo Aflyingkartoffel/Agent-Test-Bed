@@ -34,6 +34,8 @@ The interactive graph separates static and dynamic visuals: frozen `StreamGeomet
 
 The presentation polish adds a centralized Light/Dark semantic palette. Switching appearance updates application panels, graph axes, spectrum, preview, final output, and exported frames without changing image pixels. The graph defaults to Progressive reveal: its complete cached geometry remains intact while a reusable X-axis clip exposes 1% at the start through 100% at the end. Full Graph is available when a static complete line is preferred; both preview and export use the same normalized timeline state.
 
+Dynamic Timeline replaces frame growth with a fixed-size graph and expanding time domain. The visible end advances from the first 3% of the time span to the full series, so early history fills the complete plot and compresses as later data arrives. The visible Y range is calculated from the revealed prefix with padding and a zero baseline for positive absolute data; axes use the existing nice tick generator. The interpolated current state is appended as the leading endpoint, and future points remain excluded. Full Graph retains the complete domain immediately.
+
 Theme changes replace frozen resource brushes safely instead of mutating them. Progressive mode now uses an expanding visualization viewport: the visible frame starts at 4% of the final plot width and follows `0.04 + 0.96 * timelineProgress`. The fixed WPF layout remains unchanged; one clip reveals the graph frame, axes/grid, graph, and centered image while the dynamic border’s right edge follows the same boundary. Full Graph remains unclipped.
 
 ## Milestone 3 audio

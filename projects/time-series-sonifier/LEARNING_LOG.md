@@ -52,3 +52,8 @@
 
 - WPF `Freezable` resources may be frozen after being consumed by controls; live theme updates must replace frozen instances rather than assign to their properties.
 - A growing visualization can preserve layout stability by clipping a fixed final composition and drawing its moving boundary dynamically.
+
+## 2026-09-03 — Dynamic time domains
+
+- A live chart effect is better modeled by changing coordinate transforms than by changing the physical frame: historical points naturally compress as the visible time maximum grows.
+- Prefix extrema make progressive Y autoscaling cheap because the revealed range always starts at the first sample; the same domain calculation can drive interactive and offline rendering.

@@ -31,3 +31,5 @@
 - Added Progressive/Full Graph selection with reusable timeline-driven reveal clipping over the cached graph geometry; export uses the same deterministic reveal state.
 - Fixed Dark Mode switching by replacing frozen theme brushes instead of mutating them.
 - Changed Progressive reveal from data-line-only clipping to a 4%-to-100% expanding visualization frame with a moving right edge and fixed WPF layout.
+- Replaced the expanding-frame effect with Dynamic Timeline: a fixed full-size graph whose X domain grows from the first 3% of time to the complete dataset.
+- Added prefix-based visible Y scaling, future-point filtering, interpolated current endpoints, and full-frame remapping for dynamic presentation rendering.

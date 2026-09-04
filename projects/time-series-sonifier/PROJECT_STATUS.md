@@ -21,6 +21,10 @@ Implemented: centralized Light/Dark semantic resources, live appearance switchin
 ## Theme toggle and expanding frame fix
 
 Fixed the runtime crash caused by attempting to mutate a frozen WPF `SolidColorBrush` during live theme application. Frozen resources are replaced safely, while theme-keyed graph caches rebuild only for the new appearance. Progressive reveal now grows the complete visualization frame from 4% to 100% using a compositor-friendly clip; Y-axis support stays readable, future X-axis/grid content remains clipped, and the moving right frame edge tracks the timeline.
+
+## Dynamic growing time domain
+
+Dynamic Timeline now keeps the final graph frame fixed and remaps a growing data domain across it. The first 3% of time is shown at full width, the X range expands continuously, visible Y extrema come from the revealed prefix, and the current interpolated value forms the right-edge endpoint. Full Graph remains available. Screen geometry is bounded by the existing viewport sampling budget; export uses the same deterministic domain calculation.
 ## Audio device and icon overlay update — 2026-09-03
 
 - Uses the Windows default `WAVE_MAPPER` with stereo PCM16 and 48 kHz/44.1 kHz fallback; the oscillator follows the actual opened sample rate and failures retain translated diagnostics.
