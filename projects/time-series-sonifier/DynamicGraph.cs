@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 
@@ -13,9 +14,15 @@ public readonly record struct GraphDisplayDomain(double VisibleStartTime, double
 public static class DynamicGraphDomain
 {
     public const double InitialDomainFraction = .03;
+    static readonly ConditionalWeakTable<MappedDataSeries, PrefixExtrema> extrema = new();
     public static GraphDisplayDomain Calculate(MappedDataSeries series, CurrentDataState state, double progress)
     {
-        var p = Math.Clamp(double.IsFinite(progress) ? progress : 0, 0, 1); var total = Math.Max(1e-12, series.MaximumTime - series.MinimumTime); var end = series.MinimumTime + total * (InitialDomainFraction + (1 - InitialDomainFraction) * p); if (double.IsFinite(state.CurrentTime)) end = Math.Max(end, state.CurrentTime); end = Math.Clamp(end, series.MinimumTime + Math.Min(total, 1e-12), series.MaximumTime); var last = LastIndexAtOrBefore(series.Points, end); var min = series.Points[0].MappedValue; var max = min; for (var i = 1; i <= last; i++) { min = Math.Min(min, series.Points[i].MappedValue); max = Math.Max(max, series.Points[i].MappedValue); } if (last < series.Points.Count - 1 && state.CurrentTime <= end) { min = Math.Min(min, state.CurrentMappedValue); max = Math.Max(max, state.CurrentMappedValue); } if (series.Mode == MappingMode.AbsoluteValue && min >= 0) min = 0; var range = Math.Max(1e-12, max - min); var padding = range * .08; min -= padding; max += padding; if (series.Mode == MappingMode.AbsoluteValue && min < 0 && series.Points.Take(last + 1).All(p => p.MappedValue >= 0)) min = 0; return new(series.MinimumTime, end, min, max);
+        var p = Math.Clamp(double.IsFinite(progress) ? progress : 0, 0, 1); var total = Math.Max(1e-12, series.MaximumTime - series.MinimumTime); var end = series.MinimumTime + total * (InitialDomainFraction + (1 - InitialDomainFraction) * p); if (double.IsFinite(state.CurrentTime)) end = Math.Max(end, state.CurrentTime); end = Math.Clamp(end, series.MinimumTime + Math.Min(total, 1e-12), series.MaximumTime); var last = LastIndexAtOrBefore(series.Points, end); var prefix = extrema.GetValue(series, static key => new PrefixExtrema(key)); var min = prefix.Minimum[last]; var max = prefix.Maximum[last]; if (last < series.Points.Count - 1 && state.CurrentTime <= end) { min = Math.Min(min, state.CurrentMappedValue); max = Math.Max(max, state.CurrentMappedValue); } if (series.Mode == MappingMode.AbsoluteValue && min >= 0) min = 0; var range = Math.Max(1e-12, max - min); var padding = range * .08; min -= padding; max += padding; if (series.Mode == MappingMode.AbsoluteValue && min < 0 && prefix.NonNegative[last]) min = 0; return new(series.MinimumTime, end, min, max);
+    }
+    sealed class PrefixExtrema
+    {
+        public readonly double[] Minimum; public readonly double[] Maximum; public readonly bool[] NonNegative;
+        public PrefixExtrema(MappedDataSeries series) { Minimum = new double[series.Points.Count]; Maximum = new double[series.Points.Count]; NonNegative = new bool[series.Points.Count]; var min = double.PositiveInfinity; var max = double.NegativeInfinity; var nonNegative = true; for (var i = 0; i < series.Points.Count; i++) { var value = series.Points[i].MappedValue; min = Math.Min(min, value); max = Math.Max(max, value); nonNegative &= value >= 0; Minimum[i] = min; Maximum[i] = max; NonNegative[i] = nonNegative; } }
     }
     public static int LastIndexAtOrBefore(IReadOnlyList<MappedDataPoint> points, double time) { var low = 0; var high = points.Count - 1; while (low < high) { var mid = (low + high + 1) / 2; if (points[mid].Time <= time) low = mid; else high = mid - 1; } return low; }
 }
