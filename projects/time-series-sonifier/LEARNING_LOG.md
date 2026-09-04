@@ -74,3 +74,7 @@
 
 - A calculated layout model keeps one renderer responsive across multiple aspect ratios without duplicating UI systems.
 - Separating a display-only dataset title from the source path preserves import semantics while making exported presentations readable.
+# 2026-09-03 — Mobile presentation and waveform snapshots
+
+- Semantic typography roles make responsive layouts easier to tune than scattered renderer font constants.
+- A bounded, deterministic waveform snapshot protects the audio callback while allowing the UI and exporter to visualize the same oscillator semantics.

@@ -41,3 +41,8 @@
 - Redesigned Final Output with responsive multi-profile layouts and a larger graph.
 - Removed Pre-Visualization and made Audio/FFT defaults explicit without auto-play.
 - Added dataset-derived presentation titles, formatted date readouts, and friendly profile labels shared with export.
+# 2026-09-03
+
+- Improved mobile readability of Final Output typography, axes, titles, and current-data readouts.
+- Added deterministic audio waveform visualization for live presentation and offline export.
+- Kept FFT as a separate spectrum visualization and preserved existing graph/image/audio behavior.

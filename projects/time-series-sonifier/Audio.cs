@@ -5,6 +5,16 @@ namespace TimeSeriesSonifier;
 public enum WaveformType { Sine, Triangle, Square, Saw }
 public enum AudioEngineState { Stopped, Starting, Running, Paused, Stopping, Faulted, Disposed }
 
+public sealed record WaveformSnapshot(IReadOnlyList<float> Samples, WaveformType Waveform, double Frequency, double Amplitude, double Phase)
+{
+    public static WaveformSnapshot Create(WaveformType waveform, double frequency, double amplitude, double phase, int sampleCount = 256, double windowSeconds = .08)
+    {
+        var count = Math.Clamp(sampleCount, 64, 512); var safeFrequency = double.IsFinite(frequency) ? Math.Clamp(frequency, 0, Oscillator.SampleRate * .45) : 0; var gain = Math.Clamp(double.IsFinite(amplitude) ? amplitude : 0, 0, 1); var start = double.IsFinite(phase) ? phase - Math.Floor(phase) : 0; var samples = new float[count];
+        for (var i = 0; i < count; i++) { var p = start + safeFrequency * windowSeconds * i / Math.Max(1, count - 1); p -= Math.Floor(p); var value = waveform switch { WaveformType.Triangle => 1 - 4 * Math.Abs(Math.Round(p) - p), WaveformType.Square => p < .5 ? 1 : -1, WaveformType.Saw => 2 * p - 1, _ => Math.Sin(2 * Math.PI * p) }; samples[i] = (float)(value * gain); }
+        return new(samples, waveform, safeFrequency, gain, start);
+    }
+}
+
 public static class PitchMapper
 {
     public const double DefaultMinimumFrequency = 110;
@@ -62,6 +72,7 @@ public sealed class AudioEngine : IDisposable
     public string? LastDiagnostic => (backend as IAudioDiagnostics)?.LastDiagnostic;
     public double Volume { get; set; } = .25;
     public AudioSampleRingBuffer SampleBuffer { get; } = new();
+    public WaveformSnapshot CreateWaveformSnapshot(int sampleCount = 256) => WaveformSnapshot.Create(Waveform, CurrentFrequency, Volume, oscillator.Phase, sampleCount);
     public void SetTargetFrequency(double frequency) => TargetFrequency = PitchMapper.Map(0, frequency, Math.Max(frequency + 1, frequency + 1));
     public void SetTargetFrequencyFromNormalized(double normalized, double minimum, double maximum) => TargetFrequency = PitchMapper.Map(normalized, minimum, maximum);
     public bool Start()

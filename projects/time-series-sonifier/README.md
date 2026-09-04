@@ -1,5 +1,7 @@
 # Time-Series Sonifier
 
+The Final Output presentation is optimized for mobile viewing: responsive typography keeps dataset titles, axis labels, dates, and values readable on phone-sized vertical video. A compact time-domain audio waveform is rendered alongside the FFT spectrum using the selected oscillator waveform, current frequency, volume, and deterministic phase. The same waveform snapshot and presentation layout rules are used by the live Final Output view and offline export.
+
 Current workflow is Setup followed by Final Output. Audio and FFT analysis default on but remain idle until playback starts; the app does not auto-load or auto-play. Final Output uses responsive vertical, square, or horizontal layouts with a large graph, compact readouts/spectrum, friendly export controls, and dataset-derived presentation titles shared with offline export.
 
 Time-Series Sonifier is a standalone .NET 8/WPF desktop tool for presenting time-series data visually. Milestone 1 imports one CSV, lets you choose time and value columns, builds a validated series, and plays a ten-second presentation timeline with a moving graph playhead and interpolated current-value marker.

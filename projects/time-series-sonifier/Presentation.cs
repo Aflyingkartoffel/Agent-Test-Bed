@@ -23,14 +23,23 @@ public static class OutputFrameTiming
     public static int FrameCount(double durationSeconds, int framesPerSecond) => !double.IsFinite(durationSeconds) || durationSeconds <= 0 || framesPerSecond <= 0 ? 0 : (int)Math.Ceiling(durationSeconds * framesPerSecond);
 }
 
-public sealed record PresentationScene(MappedDataSeries? Series, CurrentDataState State, ImageSource? Image, double ImageOpacity, double MinimumScale, double MaximumScale, SpectrumFrame? Spectrum, string TimeColumnName = "TIME", string ValueColumnName = "VALUE", AppearanceMode ThemeMode = AppearanceMode.Light, GraphRevealMode RevealMode = GraphRevealMode.Progressive, double RevealProgress = 0, string DatasetDisplayName = "DATA VISUALIZATION");
+public sealed record PresentationScene(MappedDataSeries? Series, CurrentDataState State, ImageSource? Image, double ImageOpacity, double MinimumScale, double MaximumScale, SpectrumFrame? Spectrum, string TimeColumnName = "TIME", string ValueColumnName = "VALUE", AppearanceMode ThemeMode = AppearanceMode.Light, GraphRevealMode RevealMode = GraphRevealMode.Progressive, double RevealProgress = 0, string DatasetDisplayName = "DATA VISUALIZATION", WaveformSnapshot? Waveform = null);
+
+public sealed record PresentationTypography(double Title, double AxisTick, double AxisTitle, double PrimaryReadout, double SecondaryReadout, double WaveformLabel)
+{
+    public static PresentationTypography For(Rect bounds, OutputProfile profile)
+    {
+        var scale = Math.Clamp(Math.Min(Math.Max(1, bounds.Width) / profile.Width, Math.Max(1, bounds.Height) / profile.Height), .25, 1);
+        return new(48 * scale, 28 * scale, 28 * scale, 40 * scale, 22 * scale, 22 * scale);
+    }
+}
 
 public static class PresentationSceneTitle
 {
     public static string For(PresentationScene? scene) => scene is null ? "DATA VISUALIZATION" : string.IsNullOrWhiteSpace(scene.DatasetDisplayName) || scene.DatasetDisplayName == "DATA VISUALIZATION" ? DatasetNameFormatter.Format(scene.Series?.Name) : scene.DatasetDisplayName;
 }
 
-public readonly record struct PresentationLayout(Rect Title, Rect Chart, Rect Readouts, Rect Spectrum)
+public readonly record struct PresentationLayout(Rect Title, Rect Chart, Rect Readouts, Rect Spectrum, Rect Waveform)
 {
     public static PresentationLayout Calculate(Rect bounds, OutputProfile profile)
     {
@@ -38,19 +47,22 @@ public readonly record struct PresentationLayout(Rect Title, Rect Chart, Rect Re
         var horizontal = profile.Aspect == OutputAspectRatio.Horizontal;
         var side = horizontal ? width * .045 : width * .055;
         var contentWidth = Math.Max(1, width - side * 2);
-        var titleHeight = height * (horizontal ? .11 : .085);
+        var titleHeight = height * (horizontal ? .10 : .085);
         var chartTop = height * (horizontal ? .15 : .14);
-        var chartHeight = height * (horizontal ? .58 : .54);
-        var readoutTop = height * (horizontal ? .77 : .70);
-        var readoutHeight = height * (horizontal ? .08 : .10);
-        var spectrumTop = height * (horizontal ? .87 : .82);
-        var spectrumHeight = Math.Max(1, height - spectrumTop - height * .035);
-        if (profile.Aspect == OutputAspectRatio.Square) { chartTop = height * .15; chartHeight = height * .56; readoutTop = height * .73; readoutHeight = height * .09; spectrumTop = height * .84; }
+        var chartHeight = height * (horizontal ? .52 : .48);
+        var readoutTop = height * (horizontal ? .70 : .64);
+        var readoutHeight = height * (horizontal ? .11 : .13);
+        var spectrumTop = height * (horizontal ? .83 : .79);
+        var spectrumHeight = height * (horizontal ? .065 : .075);
+        var waveformTop = height * (horizontal ? .91 : .89);
+        var waveformHeight = Math.Max(1, height - waveformTop - height * .03);
+        if (profile.Aspect == OutputAspectRatio.Square) { chartTop = height * .14; chartHeight = height * .49; readoutTop = height * .65; readoutHeight = height * .12; spectrumTop = height * .79; waveformTop = height * .89; }
         return new(
             new Rect(bounds.Left + side, bounds.Top + height * .035, contentWidth, titleHeight),
             new Rect(bounds.Left + side, bounds.Top + chartTop, contentWidth, chartHeight),
             new Rect(bounds.Left + side, bounds.Top + readoutTop, contentWidth, readoutHeight),
-            new Rect(bounds.Left + side, bounds.Top + spectrumTop, contentWidth, spectrumHeight));
+            new Rect(bounds.Left + side, bounds.Top + spectrumTop, contentWidth, spectrumHeight),
+            new Rect(bounds.Left + side, bounds.Top + waveformTop, contentWidth, waveformHeight));
     }
 }
 
@@ -80,12 +92,14 @@ public static class PresentationRenderer
 {
     public static void Draw(DrawingContext dc, PresentationScene? scene, Rect bounds, OutputProfile profile, GraphRenderCache? graphCache = null)
     {
-        var palette = ThemePalette.For(ThemeManager.ActiveMode); dc.DrawRectangle(palette.Brush(palette.AppBackground), null, bounds); var layout = PresentationLayout.Calculate(bounds, profile);
-        DrawText(dc, PresentationSceneTitle.For(scene), layout.Title.Left, layout.Title.Top, Math.Clamp(bounds.Width / 55, 16, 30), palette.Brush(palette.PrimaryText)); if (scene is null || scene.Series is null || scene.Series.Points.Count < 2) { DrawText(dc, "IMPORT DATA TO BEGIN", layout.Chart.Left, layout.Chart.Top + layout.Chart.Height * .4, 14, palette.Brush(palette.SecondaryText)); return; }
-        DrawImage(dc, scene, layout.Chart); GraphRenderer.Draw(dc, scene.Series, scene.State, layout.Chart, scene.TimeColumnName, scene.ValueColumnName, graphCache, scene.ThemeMode, scene.RevealMode, scene.RevealProgress); DrawReadouts(dc, scene, layout.Readouts, palette); DrawSpectrum(dc, scene.Spectrum, layout.Spectrum);
+        var palette = ThemePalette.For(ThemeManager.ActiveMode); dc.DrawRectangle(palette.Brush(palette.AppBackground), null, bounds); var layout = PresentationLayout.Calculate(bounds, profile); var typography = PresentationTypography.For(bounds, profile);
+        DrawText(dc, PresentationSceneTitle.For(scene), layout.Title.Left, layout.Title.Top, typography.Title, palette.Brush(palette.PrimaryText)); if (scene is null || scene.Series is null || scene.Series.Points.Count < 2) { DrawText(dc, "IMPORT DATA TO BEGIN", layout.Chart.Left, layout.Chart.Top + layout.Chart.Height * .4, typography.AxisTitle, palette.Brush(palette.SecondaryText)); DrawWaveform(dc, scene?.Waveform, layout.Waveform, typography, palette); return; }
+        DrawImage(dc, scene, layout.Chart); GraphRenderer.Draw(dc, scene.Series, scene.State, layout.Chart, scene.TimeColumnName, scene.ValueColumnName, graphCache, scene.ThemeMode, scene.RevealMode, scene.RevealProgress, typography.AxisTick / 11); DrawReadouts(dc, scene, layout.Readouts, typography, palette); DrawSpectrum(dc, scene.Spectrum, layout.Spectrum); DrawWaveform(dc, scene.Waveform, layout.Waveform, typography, palette);
     }
-    static void DrawReadouts(DrawingContext dc, PresentationScene scene, Rect bounds, ThemePalette palette)
-    { var text = $"{ColumnLabel.Format(scene.TimeColumnName, "TIME")}  {PresentationText.Time(scene.State.CurrentTime)}    {ColumnLabel.Format(scene.ValueColumnName, "VALUE")}  {PresentationText.Value(scene.State.CurrentOriginalValue)}    NORMALIZED  {scene.State.CurrentNormalizedValue:0.000}"; DrawText(dc, text, bounds.Left, bounds.Top, Math.Clamp(bounds.Width / 65, 11, 20), palette.Brush(palette.SecondaryText)); }
+    static void DrawReadouts(DrawingContext dc, PresentationScene scene, Rect bounds, PresentationTypography typography, ThemePalette palette)
+    { DrawText(dc, PresentationText.Time(scene.State.CurrentTime), bounds.Left, bounds.Top, typography.PrimaryReadout, palette.Brush(palette.PrimaryText)); DrawText(dc, ColumnLabel.Format(scene.ValueColumnName, "VALUE"), bounds.Left, bounds.Top + typography.PrimaryReadout * 1.2, typography.AxisTitle, palette.Brush(palette.SecondaryText)); DrawText(dc, PresentationText.Value(scene.State.CurrentOriginalValue), bounds.Left, bounds.Top + typography.PrimaryReadout * 2.05, typography.PrimaryReadout, palette.Brush(palette.PrimaryText)); DrawText(dc, $"NORMALIZED {scene.State.CurrentNormalizedValue:0.000}", bounds.Left, bounds.Top + bounds.Height - typography.SecondaryReadout, typography.SecondaryReadout, palette.Brush(palette.SecondaryText)); }
+    static void DrawWaveform(DrawingContext dc, WaveformSnapshot? waveform, Rect bounds, PresentationTypography typography, ThemePalette palette)
+    { dc.DrawRectangle(null, new Pen(palette.Brush(palette.Grid), 1), bounds); if (waveform is null || waveform.Samples.Count < 2) return; var geometry = new StreamGeometry(); using (var c = geometry.Open()) { c.BeginFigure(new Point(bounds.Left, bounds.Top + bounds.Height / 2), false, false); for (var i = 0; i < waveform.Samples.Count; i++) c.LineTo(new Point(bounds.Left + i * bounds.Width / (waveform.Samples.Count - 1), bounds.Top + bounds.Height * (1 - waveform.Samples[i]) / 2), true, false); } dc.DrawGeometry(null, new Pen(palette.Brush(palette.Green), Math.Max(1, typography.WaveformLabel / 16)), geometry); DrawText(dc, "AUDIO WAVEFORM", bounds.Left, bounds.Top - typography.WaveformLabel * .35, typography.WaveformLabel, palette.Brush(palette.SecondaryText)); }
     static void DrawImage(DrawingContext dc, PresentationScene scene, Rect chart)
     {
         if (scene.Image is null || scene.State.LeftPointIndex < 0) return; var scale = IconScaleMapper.Map(scene.State.CurrentNormalizedValue, scene.MinimumScale, scene.MaximumScale); var size = Math.Min(chart.Width, chart.Height) * .42 * scale; var rect = new Rect(chart.Left + (chart.Width - size) / 2, chart.Top + (chart.Height - size) / 2, size, size); var brush = new ImageBrush(scene.Image) { Stretch = Stretch.Uniform, Opacity = IconOpacity.Clamp(scene.ImageOpacity) }; dc.DrawRectangle(brush, null, rect);

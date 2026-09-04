@@ -1,5 +1,12 @@
 # Project Status
 
+## Mobile-readable output and waveform — 2026-09-03
+
+- Added centralized profile-aware presentation typography with larger title, axis, and current-data roles.
+- Reworked Final Output readouts into a readable date/value hierarchy while retaining secondary normalized diagnostics.
+- Added bounded 256-sample time-domain waveform snapshots for Sine, Triangle, Square, and Saw; live output uses the audio state and export uses deterministic per-frame state.
+- FFT remains a separate frequency-domain visualization; both lower bands use shared responsive layout calculations.
+
 ## Final output presentation cleanup — 2026-09-03
 
 - Audio and FFT default on without starting playback; Light and Progressive remain startup defaults.
