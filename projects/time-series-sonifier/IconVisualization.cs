@@ -55,12 +55,11 @@ public static class IconImageLoader
 public sealed class IconRenderer
 {
     public const double BaseSize = 160;
-    double displayedScale = 1;
-    public void Update(Image image, IconSettings settings, ImageSource? source, CurrentDataState state, MappedDataSeries? series, Size viewport)
+    double displayedScale = 1; ScaleTransform? scaleTransform;
+    public void Update(Image image, IconSettings settings, ImageSource? source, CurrentDataState state, MappedDataSeries? series, Size viewport, double opacity = IconOpacity.Default)
     {
-        var visible = settings.Enabled && source is not null && state.LeftPointIndex >= 0;
-        image.Source = source; image.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; if (!visible || source is null) return;
+        var visible = settings.Enabled && source is not null && state.LeftPointIndex >= 0; image.Source = source; image.Opacity = IconOpacity.Clamp(opacity); image.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; if (!visible || source is null) return;
         var targetScale = settings.ScalingEnabled ? IconScaleMapper.Map(state.CurrentNormalizedValue, settings.MinimumScale, settings.MaximumScale) : 1; displayedScale += (targetScale - displayedScale) * .35; if (!double.IsFinite(displayedScale) || displayedScale <= 0) displayedScale = 1;
-        image.Width = BaseSize; image.Height = BaseSize; image.RenderTransformOrigin = new Point(.5, .5); image.RenderTransform = new ScaleTransform(displayedScale, displayedScale); Canvas.SetLeft(image, Math.Max(0, (viewport.Width - BaseSize) / 2)); Canvas.SetTop(image, Math.Max(0, (viewport.Height - BaseSize) / 2));
+        image.Width = BaseSize; image.Height = BaseSize; image.RenderTransformOrigin = new Point(.5, .5); scaleTransform ??= new ScaleTransform(1, 1); scaleTransform.ScaleX = displayedScale; scaleTransform.ScaleY = displayedScale; image.RenderTransform = scaleTransform; Canvas.SetLeft(image, Math.Max(0, (viewport.Width - BaseSize) / 2)); Canvas.SetTop(image, Math.Max(0, (viewport.Height - BaseSize) / 2));
     }
 }

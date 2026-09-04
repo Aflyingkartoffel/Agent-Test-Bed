@@ -65,3 +65,8 @@
 ## 2026-09-03 — Explicit UI defaults
 
 - Startup UI selections should be declared in the view and match the component defaults, preventing a visually misleading state before the first user interaction.
+
+## 2026-09-03 — Live visual state
+
+- Keep normalized UI contracts at the boundary: opacity is clamped once to 0–1, while source and enabled state remain independent visual properties.
+- For frequently changing visuals, mutate a reusable transform rather than recreating the transform object or bitmap each update.

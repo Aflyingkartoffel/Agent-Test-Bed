@@ -40,6 +40,8 @@ Dynamic Timeline uses the endpoint marker as the current-time indicator and does
 
 Fresh startup defaults to the Light theme and Progressive/Dynamic Timeline mode. Progressive mode shows only the current endpoint marker; Full Graph retains the conventional moving playhead.
 
+Image updates use a normalized opacity value in the 0–1 range and a persistent centered `ScaleTransform`. The live Setup image consumes the same interpolated `CurrentDataState.CurrentNormalizedValue` used by sonification; Preview, Final Output, and export calculate scale from their frame state rather than relying on the live WPF control.
+
 Theme changes replace frozen resource brushes safely instead of mutating them. Progressive mode now uses an expanding visualization viewport: the visible frame starts at 4% of the final plot width and follows `0.04 + 0.96 * timelineProgress`. The fixed WPF layout remains unchanged; one clip reveals the graph frame, axes/grid, graph, and centered image while the dynamic border’s right edge follows the same boundary. Full Graph remains unclipped.
 
 ## Milestone 3 audio
