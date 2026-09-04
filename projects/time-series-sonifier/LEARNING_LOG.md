@@ -57,3 +57,7 @@
 
 - A live chart effect is better modeled by changing coordinate transforms than by changing the physical frame: historical points naturally compress as the visible time maximum grows.
 - Prefix extrema make progressive Y autoscaling cheap because the revealed range always starts at the first sample; the same domain calculation can drive interactive and offline rendering.
+
+## 2026-09-03 — Domain endpoints versus playheads
+
+- When a dynamic domain’s right edge already represents the current time, a second vertical playhead communicates the same state redundantly; Full Graph still benefits from one because its domain is static.

@@ -36,6 +36,8 @@ The presentation polish adds a centralized Light/Dark semantic palette. Switchin
 
 Dynamic Timeline replaces frame growth with a fixed-size graph and expanding time domain. The visible end advances from the first 3% of the time span to the full series, so early history fills the complete plot and compresses as later data arrives. The visible Y range is calculated from the revealed prefix with padding and a zero baseline for positive absolute data; axes use the existing nice tick generator. The interpolated current state is appended as the leading endpoint, and future points remain excluded. Full Graph retains the complete domain immediately.
 
+Dynamic Timeline uses the endpoint marker as the current-time indicator and does not draw a separate vertical playhead through the graph. Full Graph continues to show the moving playhead because its complete time domain remains visible. The bottom scrub slider remains collapsed for Dynamic Timeline and available for Full Graph.
+
 Theme changes replace frozen resource brushes safely instead of mutating them. Progressive mode now uses an expanding visualization viewport: the visible frame starts at 4% of the final plot width and follows `0.04 + 0.96 * timelineProgress`. The fixed WPF layout remains unchanged; one clip reveals the graph frame, axes/grid, graph, and centered image while the dynamic border’s right edge follows the same boundary. Full Graph remains unclipped.
 
 ## Milestone 3 audio
