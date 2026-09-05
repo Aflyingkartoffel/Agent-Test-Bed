@@ -9,6 +9,7 @@ namespace BounceSimulator;
 
 public partial class MainWindow : Window
 {
+    private const double EmptySceneCameraDistance = 7;
     private readonly Model3DGroup scene = new();
     private ImportedModel? loadedModel;
     private GeometryModel3D? modelVisual;
@@ -16,8 +17,8 @@ public partial class MainWindow : Window
     private bool isOrbiting;
     private double cameraYaw;
     private double cameraPitch = 12;
-    private double cameraDistance = 7;
-    private double defaultCameraDistance = 7;
+    private double cameraDistance = EmptySceneCameraDistance;
+    private double defaultCameraDistance = EmptySceneCameraDistance;
 
     public MainWindow()
     {
@@ -51,6 +52,8 @@ public partial class MainWindow : Window
             loadedModel = null;
             modelVisual = null;
             scene.Children.Clear();
+            defaultCameraDistance = EmptySceneCameraDistance;
+            ResetCameraState();
             StatusText.Text = error.Message;
             ViewportHint.Text = "Load an OBJ or FBX model to begin";
             System.Diagnostics.Debug.WriteLine($"Model import failed: {error}");

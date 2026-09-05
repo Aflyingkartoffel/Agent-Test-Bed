@@ -8,4 +8,4 @@ projects/<project-name>/
 
 Every project should include a README describing what it does, how to run it, current and planned features, known issues, and the technology used. Keep project-specific dependencies and configuration inside that project whenever practical.
 
-Current projects include `calculator/`, `3d-bounce-simulator/`, and `insect-light-simulation/`.
+Current projects include `calculator/`, `3d-bounce-simulator/`, `insect-light-simulation/`, and `creature-construction-lab/`.
