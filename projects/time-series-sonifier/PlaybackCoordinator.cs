@@ -6,14 +6,18 @@ public sealed class PlaybackCoordinator
     readonly TimelineEngine timeline;
     readonly AudioEngine audio;
     MappedSeriesInterpolator? interpolator;
-    double minimumPitch = PitchMapper.DefaultMinimumFrequency;
-    double maximumPitch = PitchMapper.DefaultMaximumFrequency;
+    double userMinimumPitch = PitchMapper.DefaultMinimumFrequency;
+    double userMaximumPitch = PitchMapper.DefaultMaximumFrequency;
 
     public PlaybackCoordinator(TimelineEngine timeline, AudioEngine audio) { this.timeline = timeline; this.audio = audio; CurrentDataState = CurrentDataState.Empty; AudioEnabled = true; }
     public TimelineEngine Timeline => timeline;
     public AudioEngine Audio => audio;
     public CurrentDataState CurrentDataState { get; private set; }
     public bool AudioEnabled { get; private set; }
+    public bool LaptopSpeakerMode { get; private set; }
+    public double UserMinimumPitch => userMinimumPitch;
+    public double UserMaximumPitch => userMaximumPitch;
+    public EffectivePitchRange EffectivePitchRange => PitchRangeResolver.Resolve(userMinimumPitch, userMaximumPitch, LaptopSpeakerMode);
 
     public void SetSeries(MappedDataSeries? series)
     {
@@ -21,7 +25,8 @@ public sealed class PlaybackCoordinator
         if (series is null) { timeline.SetRange(0, 1); CurrentDataState = CurrentDataState.Empty; return; }
         timeline.SetRange(series.MinimumTime, series.MaximumTime); PublishState();
     }
-    public void SetPitchRange(double minimum, double maximum) { minimumPitch = minimum; maximumPitch = maximum; PublishState(); }
+    public void SetPitchRange(double minimum, double maximum) { userMinimumPitch = minimum; userMaximumPitch = maximum; PublishState(); }
+    public void SetLaptopSpeakerMode(bool enabled) { LaptopSpeakerMode = enabled; PublishState(); }
     public void SetLoop(bool enabled) => timeline.LoopEnabled = enabled;
     public void SetPlaybackSpeed(double speed) => timeline.PlaybackSpeed = speed;
     public void Play()
@@ -51,6 +56,6 @@ public sealed class PlaybackCoordinator
     void PublishState()
     {
         CurrentDataState = interpolator?.Evaluate(timeline.CurrentTime) ?? CurrentDataState.Empty;
-        if (AudioEnabled && interpolator is not null) audio.SetTargetFrequencyFromNormalized(CurrentDataState.CurrentNormalizedValue, minimumPitch, maximumPitch);
+        if (AudioEnabled && interpolator is not null) { var range = EffectivePitchRange; audio.SetTargetFrequencyFromNormalized(CurrentDataState.CurrentNormalizedValue, range.Minimum, range.Maximum); }
     }
 }

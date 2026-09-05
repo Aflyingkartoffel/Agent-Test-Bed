@@ -19,6 +19,7 @@ public static class PitchMapper
 {
     public const double DefaultMinimumFrequency = 110;
     public const double DefaultMaximumFrequency = 1760;
+    public const double LaptopSpeakerMinimumFrequency = 220;
     public const double MaximumSafeFrequency = 20000;
     public static double Map(double normalized, double minimumFrequency = DefaultMinimumFrequency, double maximumFrequency = DefaultMaximumFrequency)
     {
@@ -27,6 +28,22 @@ public static class PitchMapper
         return min * Math.Pow(max / min, Math.Clamp(double.IsFinite(normalized) ? normalized : .5, 0, 1));
     }
     static double Sanitize(double value, double fallback) => double.IsFinite(value) && value > 0 ? Math.Min(value, MaximumSafeFrequency) : fallback;
+}
+
+public readonly record struct EffectivePitchRange(double Minimum, double Maximum);
+
+public static class PitchRangeResolver
+{
+    public static EffectivePitchRange Resolve(double userMinimum, double userMaximum, bool laptopSpeakerMode)
+    {
+        var minimum = Sanitize(userMinimum, PitchMapper.DefaultMinimumFrequency);
+        var maximum = Sanitize(userMaximum, PitchMapper.DefaultMaximumFrequency);
+        if (minimum >= maximum) { minimum = PitchMapper.DefaultMinimumFrequency; maximum = PitchMapper.DefaultMaximumFrequency; }
+        if (laptopSpeakerMode) minimum = Math.Max(minimum, PitchMapper.LaptopSpeakerMinimumFrequency);
+        return new(minimum, Math.Max(minimum, maximum));
+    }
+
+    static double Sanitize(double value, double fallback) => double.IsFinite(value) && value > 0 ? Math.Min(value, PitchMapper.MaximumSafeFrequency) : fallback;
 }
 
 public sealed class ParameterSmoother

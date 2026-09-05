@@ -115,10 +115,12 @@ public static class PresentationRenderer
 
 public static class OfflineAudioRenderer
 {
-    public static int RenderWav(string path, MappedDataSeries series, WaveformType waveform, double volume, double durationSeconds, bool enabled, int sampleRate = Oscillator.SampleRate)
+    public static EffectivePitchRange? RangeOverride { get; set; }
+    public static int RenderWav(string path, MappedDataSeries series, WaveformType waveform, double volume, double durationSeconds, bool enabled, int sampleRate = Oscillator.SampleRate, double minimumFrequency = PitchMapper.DefaultMinimumFrequency, double maximumFrequency = PitchMapper.DefaultMaximumFrequency)
     {
         var count = Math.Max(0, (int)Math.Round(durationSeconds * sampleRate)); var oscillator = new Oscillator { Waveform = waveform }; var bytes = new byte[count * 2]; var interpolator = new MappedSeriesInterpolator(series); using var stream = File.Create(path); using var writer = new BinaryWriter(stream); writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF")); writer.Write(36 + bytes.Length); writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVEfmt ")); writer.Write(16); writer.Write((short)1); writer.Write((short)1); writer.Write(sampleRate); writer.Write(sampleRate * 2); writer.Write((short)2); writer.Write((short)16); writer.Write(System.Text.Encoding.ASCII.GetBytes("data")); writer.Write(bytes.Length);
-        for (var i = 0; i < count; i++) { var time = series.MinimumTime + (series.MaximumTime - series.MinimumTime) * (i / (double)Math.Max(1, count - 1)); var state = interpolator.Evaluate(time); var sample = enabled ? oscillator.NextSample(PitchMapper.Map(state.CurrentNormalizedValue), sampleRate) * (float)Math.Clamp(double.IsFinite(volume) ? volume : 0, 0, 1) : 0; var pcm = (short)Math.Round(Math.Clamp(sample, -1, 1) * short.MaxValue); writer.Write(pcm); } return count;
+        var range = RangeOverride ?? PitchRangeResolver.Resolve(minimumFrequency, maximumFrequency, false);
+        for (var i = 0; i < count; i++) { var time = series.MinimumTime + (series.MaximumTime - series.MinimumTime) * (i / (double)Math.Max(1, count - 1)); var state = interpolator.Evaluate(time); var sample = enabled ? oscillator.NextSample(PitchMapper.Map(state.CurrentNormalizedValue, range.Minimum, range.Maximum), sampleRate) * (float)Math.Clamp(double.IsFinite(volume) ? volume : 0, 0, 1) : 0; var pcm = (short)Math.Round(Math.Clamp(sample, -1, 1) * short.MaxValue); writer.Write(pcm); } return count;
     }
 }
 
