@@ -1,0 +1,44 @@
+<Window x:Class="BounceSimulator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="3D Bounce Simulator" Width="1180" Height="760" MinWidth="800" MinHeight="520"
+        Background="#111111" Foreground="#F8FAFC"
+        Deactivated="Window_Deactivated" Closed="Window_Closed">
+  <Grid Margin="18">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <DockPanel Grid.Row="0" Margin="0,0,0,12">
+      <Button x:Name="LoadButton" Content="Load Model..." Click="LoadModel_Click" Width="130" DockPanel.Dock="Left" />
+      <Button Content="Reset View" Click="ResetView_Click" Width="110" Margin="8,0,0,0" DockPanel.Dock="Left" />
+      <TextBlock x:Name="StatusText" Text="No model loaded" Foreground="#AAB4C5" VerticalAlignment="Center" Margin="16,0,0,0" TextTrimming="CharacterEllipsis" />
+    </DockPanel>
+    <Border Grid.Row="1" Background="#000000" BorderBrush="#2D3440" BorderThickness="1" CornerRadius="12">
+      <Grid>
+        <Viewport3D x:Name="Viewport" ClipToBounds="True"
+                    MouseDown="Viewport_MouseDown" MouseMove="Viewport_MouseMove"
+                    MouseUp="Viewport_MouseUp" MouseWheel="Viewport_MouseWheel">
+          <Viewport3D.Camera>
+            <PerspectiveCamera x:Name="Camera" FieldOfView="45" Position="0,1,8" LookDirection="0,-1,-8" UpDirection="0,1,0" />
+          </Viewport3D.Camera>
+          <ModelVisual3D>
+            <ModelVisual3D.Content>
+              <Model3DGroup>
+                <AmbientLight Color="#707070" />
+                <DirectionalLight Color="#FFFFFF" Direction="-1,-2,-1" />
+              </Model3DGroup>
+            </ModelVisual3D.Content>
+          </ModelVisual3D>
+          <ModelVisual3D x:Name="ModelVisual" />
+        </Viewport3D>
+        <StackPanel Margin="18" IsHitTestVisible="False" VerticalAlignment="Top">
+          <TextBlock Text="3D BOUNCE SIMULATOR" Foreground="#8FA8FF" FontSize="11" FontWeight="Bold" />
+          <TextBlock x:Name="ViewportHint" Text="Load an OBJ or FBX model to begin" Foreground="#AAB4C5" Margin="0,4,0,0" />
+        </StackPanel>
+      </Grid>
+    </Border>
+    <TextBlock Grid.Row="2" Text="Left-drag to orbit • Scroll to zoom • R resets the view" Foreground="#7E8796" FontSize="11" Margin="0,12,0,0" />
+  </Grid>
+</Window>
