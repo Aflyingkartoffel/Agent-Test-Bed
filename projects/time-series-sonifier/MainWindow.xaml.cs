@@ -11,21 +11,8 @@ public partial class MainWindow : Window
 {
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(16) }; readonly FpsTracker fpsTracker = new(); readonly ThemeManager themeManager = new();
     readonly TimelineEngine timeline = new(); readonly AudioEngine audio = new(); readonly PlaybackCoordinator playback; readonly IconSettings iconSettings = new(); readonly IconRenderer iconRenderer = new(); readonly SpectrumAnalyzer spectrumAnalyzer = new(true); readonly float[] spectrumSamples = new float[4096];
-    RawImportedData? raw; DataSeries? series; MappedDataSeries? mapped; ImageSource? iconSource; OutputProfile outputProfile = OutputProfile.Vertical; bool sliderUpdate; bool uiReady; int readoutTick; long nextSpectrumTick; long nextWaveformTick; System.Windows.Controls.TextBlock? currentTimeLabel; System.Windows.Controls.TextBlock? currentValueLabel; System.Windows.Controls.CheckBox? laptopSpeakerCheck;
-    public MainWindow() { playback = new PlaybackCoordinator(timeline, audio); InitializeComponent(); AddLaptopSpeakerModeControl(); playback.SetAudioEnabled(true); AudioEnableCheck.IsChecked = true; SpectrumEnableCheck.IsChecked = true; themeManager.ApplyResources(Application.Current?.Resources); Graph.ThemeMode = AppearanceMode.Light; Graph.RevealMode = GraphRevealMode.Progressive; Spectrum.ThemeMode = AppearanceMode.Light; ConfigureFinalOutputLayout(); iconSource = IconImageLoader.CreateDefaultCube(); OutputProfileBox.ItemsSource = OutputProfile.All; OutputProfileBox.SelectedIndex = 0; uiReady = true; timer.Tick += (_, _) => { playback.Advance(1.0 / 60); UpdateView(); }; CompositionTarget.Rendering += OnRendering; Loaded += (_, _) => UpdateView(); Graph.SizeChanged += (_, _) => UpdateView(); Closing += (_, _) => { CompositionTarget.Rendering -= OnRendering; timer.Stop(); spectrumAnalyzer.Dispose(); audio.Dispose(); }; }
-    void AddLaptopSpeakerModeControl()
-    {
-        var audioGroup = FindVisualChildren<System.Windows.Controls.GroupBox>(this).FirstOrDefault(group => Equals(group.Header, "AUDIO"));
-        if (audioGroup?.Content is not System.Windows.Controls.StackPanel panel) return;
-        laptopSpeakerCheck = new System.Windows.Controls.CheckBox { Content = "LAPTOP SPEAKER MODE", Margin = new Thickness(0, 6, 0, 0) };
-        laptopSpeakerCheck.Click += LaptopSpeakerMode_Click;
-        panel.Children.Insert(1, laptopSpeakerCheck);
-        panel.Children.Insert(2, new System.Windows.Controls.TextBlock { Text = "Raises low pitches for small speakers", Foreground = (System.Windows.Media.Brush)FindResource("SecondaryTextBrush"), FontSize = 11, Margin = new Thickness(0, 2, 0, 8) });
-    }
-    static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++) { var child = VisualTreeHelper.GetChild(root, i); if (child is T match) yield return match; foreach (var nested in FindVisualChildren<T>(child)) yield return nested; }
-    }
+    RawImportedData? raw; DataSeries? series; MappedDataSeries? mapped; ImageSource? iconSource; OutputProfile outputProfile = OutputProfile.Vertical; bool sliderUpdate; bool uiReady; int readoutTick; long nextSpectrumTick; long nextWaveformTick; System.Windows.Controls.TextBlock? currentTimeLabel; System.Windows.Controls.TextBlock? currentValueLabel;
+    public MainWindow() { playback = new PlaybackCoordinator(timeline, audio); InitializeComponent(); playback.SetAudioEnabled(true); AudioEnableCheck.IsChecked = true; SpectrumEnableCheck.IsChecked = true; themeManager.ApplyResources(Application.Current?.Resources); Graph.ThemeMode = AppearanceMode.Light; Graph.RevealMode = GraphRevealMode.Progressive; Spectrum.ThemeMode = AppearanceMode.Light; ConfigureFinalOutputLayout(); iconSource = IconImageLoader.CreateDefaultCube(); OutputProfileBox.ItemsSource = OutputProfile.All; OutputProfileBox.SelectedIndex = 0; uiReady = true; timer.Tick += (_, _) => { playback.Advance(1.0 / 60); UpdateView(); }; CompositionTarget.Rendering += OnRendering; Loaded += (_, _) => UpdateView(); Graph.SizeChanged += (_, _) => UpdateView(); Closing += (_, _) => { CompositionTarget.Rendering -= OnRendering; timer.Stop(); spectrumAnalyzer.Dispose(); audio.Dispose(); }; }
     void ConfigureFinalOutputLayout()
     {
         if (VisualTreeHelper.GetParent(OutputSurface) is not System.Windows.Controls.Grid surfaceHost || VisualTreeHelper.GetParent(surfaceHost) is not System.Windows.Controls.Grid root) return;
@@ -57,7 +44,7 @@ public partial class MainWindow : Window
     void Speed_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (SpeedBox.SelectedItem is System.Windows.Controls.ComboBoxItem item && double.TryParse(item.Content?.ToString()?.TrimEnd('x'), out var speed)) playback.SetPlaybackSpeed(speed); }
     void TimelineSlider_Changed(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e) { if (!sliderUpdate && mapped is not null) { playback.SeekNormalized(TimelineSlider.Value); UpdateView(); } }
     void AudioEnable_Click(object sender, RoutedEventArgs e) { playback.SetAudioEnabled(AudioEnableCheck.IsChecked == true); if (playback.AudioEnabled && timeline.State == TimelineState.Playing) timer.Start(); UpdateView(); }
-    void LaptopSpeakerMode_Click(object sender, RoutedEventArgs e) { playback.SetLaptopSpeakerMode(laptopSpeakerCheck?.IsChecked == true); UpdateView(); }
+    void LaptopSpeakerMode_Click(object sender, RoutedEventArgs e) { playback.SetLaptopSpeakerMode(LaptopSpeakerCheck.IsChecked == true); UpdateView(); }
     void Waveform_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (WaveformBox.SelectedIndex >= 0) audio.Waveform = (WaveformType)WaveformBox.SelectedIndex; }
     void PitchSettings_Changed(object sender, RoutedEventArgs e) { playback.SetPitchRange(MinPitch(), MaxPitch()); UpdateView(); }
     void Volume_Changed(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e) { audio.Volume = VolumeSlider.Value; }
