@@ -31,10 +31,42 @@ public sealed class MappedDataSeries
     public required string Name { get; init; }
     public required MappingMode Mode { get; init; }
     public required IReadOnlyList<MappedDataPoint> Points { get; init; }
+    public FinancialDatasetProfile? FinancialProfile { get; init; }
+    public string? ValueColumnName { get; init; }
     public double MinimumTime => Points[0].Time;
     public double MaximumTime => Points[^1].Time;
     public double MinimumValue => Points.Min(p => p.MappedValue);
     public double MaximumValue => Points.Max(p => p.MappedValue);
+}
+
+public enum DatasetKind { Generic, FinancialTimeSeries }
+
+public sealed class FinancialDatasetProfile
+{
+    static readonly string[] PriceKeys = ["Open", "High", "Low", "Close", "Adj Close"];
+    public required int TimeColumnIndex { get; init; }
+    public required IReadOnlyDictionary<string, int> PriceColumnIndexes { get; init; }
+    public int? VolumeColumnIndex { get; init; }
+    public DatasetKind Kind => DatasetKind.FinancialTimeSeries;
+    public IReadOnlyList<string> PriceOptions => PriceKeys.Where(PriceColumnIndexes.ContainsKey).ToArray();
+    public string DefaultPrice => PriceColumnIndexes.ContainsKey("Close") ? "Close" : PriceColumnIndexes.ContainsKey("Adj Close") ? "Adj Close" : PriceColumnIndexes.ContainsKey("Open") ? "Open" : PriceOptions.FirstOrDefault() ?? "";
+    public static FinancialDatasetProfile? TryClassify(RawImportedData raw)
+    {
+        var matches = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < raw.Headers.Count; i++)
+        {
+            var key = Normalize(raw.Headers[i]);
+            var friendly = key switch { "open" => "Open", "high" => "High", "low" => "Low", "close" => "Close", "adjclose" or "adjustedclose" => "Adj Close", _ => null };
+            if (friendly is not null && !matches.ContainsKey(friendly)) matches[friendly] = i;
+        }
+        var time = raw.Headers.Select((header, index) => (header, index)).FirstOrDefault(item => Normalize(item.header) is "date" or "datetime" or "timestamp");
+        var volume = raw.Headers.Select((header, index) => (header, index)).FirstOrDefault(item => Normalize(item.header) == "volume");
+        if (time.header is null || matches.Count == 0 || (matches.Count < 2 && volume.header is null)) return null;
+        return new FinancialDatasetProfile { TimeColumnIndex = time.index, PriceColumnIndexes = matches, VolumeColumnIndex = volume.header is null ? null : volume.index };
+    }
+    public static string DisplayName(string column) => column == "Adj Close" ? "Adjusted Close" : column;
+    public bool TryGetColumnIndex(string displayName, out int index) => PriceColumnIndexes.TryGetValue(displayName == "Adjusted Close" ? "Adj Close" : displayName, out index);
+    static string Normalize(string value) => new string(value.Where(char.IsLetterOrDigit).ToArray()).ToLowerInvariant();
 }
 
 public sealed record SeriesBuildResult(DataSeries? Series, int ValidRows, int SkippedRows, string? Error)

@@ -11,7 +11,7 @@ public partial class MainWindow : Window
 {
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromMilliseconds(16) }; readonly FpsTracker fpsTracker = new(); readonly ThemeManager themeManager = new();
     readonly TimelineEngine timeline = new(); readonly AudioEngine audio = new(); readonly PlaybackCoordinator playback; readonly IconSettings iconSettings = new(); readonly IconRenderer iconRenderer = new(); readonly SpectrumAnalyzer spectrumAnalyzer = new(true); readonly float[] spectrumSamples = new float[4096];
-    RawImportedData? raw; DataSeries? series; MappedDataSeries? mapped; ImageSource? iconSource; OutputProfile outputProfile = OutputProfile.Vertical; bool sliderUpdate; bool uiReady; int readoutTick; long nextSpectrumTick; long nextWaveformTick; System.Windows.Controls.TextBlock? currentTimeLabel; System.Windows.Controls.TextBlock? currentValueLabel;
+    RawImportedData? raw; DataSeries? series; MappedDataSeries? mapped; FinancialDatasetProfile? financialProfile; string selectedPrice = ""; ImageSource? iconSource; OutputProfile outputProfile = OutputProfile.Vertical; bool sliderUpdate; bool uiReady; int readoutTick; long nextSpectrumTick; long nextWaveformTick; System.Windows.Controls.TextBlock? currentTimeLabel;
     public MainWindow() { playback = new PlaybackCoordinator(timeline, audio); InitializeComponent(); playback.SetAudioEnabled(true); AudioEnableCheck.IsChecked = true; SpectrumEnableCheck.IsChecked = true; themeManager.ApplyResources(Application.Current?.Resources); Graph.ThemeMode = AppearanceMode.Light; Graph.RevealMode = GraphRevealMode.Progressive; Spectrum.ThemeMode = AppearanceMode.Light; ConfigureFinalOutputLayout(); iconSource = IconImageLoader.CreateDefaultCube(); OutputProfileBox.ItemsSource = OutputProfile.All; OutputProfileBox.SelectedIndex = 0; uiReady = true; timer.Tick += (_, _) => { playback.Advance(1.0 / 60); UpdateView(); }; CompositionTarget.Rendering += OnRendering; Loaded += (_, _) => UpdateView(); Graph.SizeChanged += (_, _) => UpdateView(); Closing += (_, _) => { CompositionTarget.Rendering -= OnRendering; timer.Stop(); spectrumAnalyzer.Dispose(); audio.Dispose(); }; }
     void ConfigureFinalOutputLayout()
     {
@@ -27,15 +27,28 @@ public partial class MainWindow : Window
     void OpenData_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Filter = "Data files (*.csv;*.json)|*.csv;*.json|CSV files (*.csv)|*.csv|JSON files (*.json)|*.json|All files (*.*)|*.*" }; if (dialog.ShowDialog() != true) return;
-        try { raw = Path.GetExtension(dialog.FileName).Equals(".json", StringComparison.OrdinalIgnoreCase) ? JsonImporter.Read(dialog.FileName) : CsvImporter.Read(dialog.FileName); TimeColumnBox.ItemsSource = raw.Headers; ValueColumnBox.ItemsSource = raw.Headers; TimeColumnBox.SelectedIndex = raw.Headers.Count > 1 ? 0 : -1; ValueColumnBox.SelectedIndex = raw.Headers.Count > 1 ? 1 : -1; SourceText.Text = $"{raw.SourceName}\nLoaded {raw.Rows.Count} rows"; FormatText.Text = $"Format: {Path.GetExtension(dialog.FileName).TrimStart('.').ToUpperInvariant()}"; StatusText.Text = "Select a time and value column"; } catch (Exception ex) { StatusText.Text = ex.Message; raw = null; }
+        try { raw = Path.GetExtension(dialog.FileName).Equals(".json", StringComparison.OrdinalIgnoreCase) ? JsonImporter.Read(dialog.FileName) : CsvImporter.Read(dialog.FileName); financialProfile = FinancialDatasetProfile.TryClassify(raw); ConfigureDataControls(); SourceText.Text = $"{raw.SourceName}\nLoaded {raw.Rows.Count} rows"; FormatText.Text = $"Format: {Path.GetExtension(dialog.FileName).TrimStart('.').ToUpperInvariant()}"; StatusText.Text = financialProfile is null ? "Select a time and value column" : "Financial dataset detected"; RebuildSeries(); } catch (Exception ex) { StatusText.Text = ex.Message; raw = null; financialProfile = null; }
     }
     void Column_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { UpdateColumnLabels(); RebuildSeries(); }
+    void FinancialPriceType_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (FinancialPriceTypeBox.SelectedItem is string name) { selectedPrice = name; RebuildSeries(); } }
+    void AdvancedColumns_Click(object sender, RoutedEventArgs e) { var visible = financialProfile is null || AdvancedColumnsCheck.IsChecked == true; ValueColumnLabel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; ValueColumnBox.Visibility = visible ? Visibility.Visible : Visibility.Collapsed; RebuildSeries(); }
     void MappingMode_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (MappingModeBox.SelectedItem is System.Windows.Controls.ComboBoxItem item && Enum.TryParse<MappingMode>(item.Tag?.ToString(), out var mode)) { mappingMode = mode; RebuildSeries(); } }
+    void ConfigureDataControls()
+    {
+        if (raw is null) return;
+        TimeColumnBox.ItemsSource = raw.Headers; ValueColumnBox.ItemsSource = raw.Headers;
+        if (financialProfile is null) { FinancialControls.Visibility = Visibility.Collapsed; ValueColumnLabel.Visibility = Visibility.Visible; ValueColumnBox.Visibility = Visibility.Visible; AdvancedColumnsCheck.IsChecked = false; TimeColumnBox.SelectedIndex = raw.Headers.Count > 1 ? 0 : -1; ValueColumnBox.SelectedIndex = raw.Headers.Count > 1 ? 1 : -1; return; }
+        FinancialControls.Visibility = Visibility.Visible; AdvancedColumnsCheck.IsChecked = false; ValueColumnLabel.Visibility = Visibility.Collapsed; ValueColumnBox.Visibility = Visibility.Collapsed; TimeColumnBox.SelectedIndex = financialProfile.TimeColumnIndex; FinancialPriceTypeBox.ItemsSource = financialProfile.PriceOptions.Select(FinancialDatasetProfile.DisplayName).ToArray(); selectedPrice = FinancialDatasetProfile.DisplayName(financialProfile.DefaultPrice); FinancialPriceTypeBox.SelectedItem = selectedPrice;
+    }
+    string SemanticValueLabel() => financialProfile is null || AdvancedColumnsCheck.IsChecked == true ? ColumnLabel.Format(SelectedColumn(ValueColumnBox), "VALUE") + " — " + mappingMode : mappingMode switch { MappingMode.ChangeFromPrevious => "PRICE CHANGE", MappingMode.PercentChange => "PERCENT CHANGE", _ => $"{selectedPrice.ToUpperInvariant()} PRICE" };
     MappingMode mappingMode;
     void RebuildSeries()
     {
-        if (raw is null || TimeColumnBox.SelectedIndex < 0 || ValueColumnBox.SelectedIndex < 0) return;
-        var result = DataSeriesBuilder.Build(raw, TimeColumnBox.SelectedIndex, ValueColumnBox.SelectedIndex); series = result.Series; mapped = series is null ? null : MappingEngine.Map(series, mappingMode); if (mapped is null) { playback.SetSeries(null); StatusText.Text = result.Error ?? "The selected columns are invalid."; RowsText.Text = $"{result.ValidRows} valid points, {result.SkippedRows} rows skipped"; return; }
+        if (raw is null || TimeColumnBox.SelectedIndex < 0) return;
+        var valueColumn = ValueColumnBox.SelectedIndex; var displayName = (string?)null;
+        if (financialProfile is not null && AdvancedColumnsCheck.IsChecked != true) { if (!financialProfile.TryGetColumnIndex(selectedPrice, out valueColumn)) return; displayName = selectedPrice; }
+        if (valueColumn < 0) return;
+        var result = DataSeriesBuilder.Build(raw, TimeColumnBox.SelectedIndex, valueColumn); series = result.Series; mapped = series is null ? null : MappingEngine.Map(series, mappingMode, financialProfile is not null && AdvancedColumnsCheck.IsChecked != true ? financialProfile : null, displayName); if (mapped is null) { playback.SetSeries(null); StatusText.Text = result.Error ?? "The selected columns are invalid."; RowsText.Text = $"{result.ValidRows} valid points, {result.SkippedRows} rows skipped"; return; }
         playback.SetSeries(mapped); RowsText.Text = $"{result.ValidRows} valid points\n{result.SkippedRows} rows skipped\nShowing: {mappingMode}"; StatusText.Text = "Mapped data series ready"; UpdateView();
     }
     void Play_Click(object sender, RoutedEventArgs e) { playback.SetLoop(LoopCheck.IsChecked == true); playback.Play(); timer.Start(); UpdateView(); }
@@ -68,9 +81,9 @@ public partial class MainWindow : Window
     string SelectedColumn(System.Windows.Controls.ComboBox box) => box.SelectedItem?.ToString() ?? "";
     void UpdateColumnLabels()
     {
-        currentTimeLabel ??= FindTextBlock("CURRENT TIME"); currentValueLabel ??= FindTextBlock("SOURCE VALUE");
+        currentTimeLabel ??= FindTextBlock("CURRENT TIME");
         if (currentTimeLabel is not null) currentTimeLabel.Text = ColumnLabel.Format(SelectedColumn(TimeColumnBox), "CURRENT TIME");
-        if (currentValueLabel is not null) currentValueLabel.Text = ColumnLabel.Format(SelectedColumn(ValueColumnBox), "SOURCE VALUE");
+        CurrentValueLabel.Text = financialProfile is not null && AdvancedColumnsCheck.IsChecked != true ? SemanticValueLabel() : ColumnLabel.Format(SelectedColumn(ValueColumnBox), "SOURCE VALUE");
     }
     System.Windows.Controls.TextBlock? FindTextBlock(string text)
     {
@@ -78,10 +91,10 @@ public partial class MainWindow : Window
         void Visit(DependencyObject node) { for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) { var child = VisualTreeHelper.GetChild(node, i); if (child is System.Windows.Controls.TextBlock block && block.Text == text) { found = block; return; } Visit(child); if (found is not null) return; } }
         Visit(this); return found;
     }
-    PresentationScene CreateScene(CurrentDataState state, SpectrumFrame? spectrum) => new(mapped, state, iconSettings.Enabled ? iconSource : null, IconOpacity.Clamp(ImageOpacitySlider.Value), iconSettings.MinimumScale, iconSettings.MaximumScale, spectrum, SelectedColumn(TimeColumnBox), SelectedColumn(ValueColumnBox) + " — " + mappingMode);
+    PresentationScene CreateScene(CurrentDataState state, SpectrumFrame? spectrum) => new(mapped, state, iconSettings.Enabled ? iconSource : null, IconOpacity.Clamp(ImageOpacitySlider.Value), iconSettings.MinimumScale, iconSettings.MaximumScale, spectrum, SelectedColumn(TimeColumnBox), SemanticValueLabel());
     void UpdateView()
     {
-        playback.SetLoop(LoopCheck.IsChecked == true); UpdateColumnLabels(); var state = playback.CurrentDataState; Graph.MappedSeries = mapped; Graph.TimeLabel = SelectedColumn(TimeColumnBox); Graph.ValueLabel = SelectedColumn(ValueColumnBox) + " — " + mappingMode; Graph.State = state; Graph.Refresh(); if (timeline.State != TimelineState.Playing || ++readoutTick >= 3) { readoutTick = 0; CurrentTimeText.Text = mapped is null ? "—" : state.CurrentTime.ToString("G8"); CurrentOriginalText.Text = mapped is null ? "—" : state.CurrentOriginalValue.ToString("G8"); CurrentMappedText.Text = mapped is null ? "—" : state.CurrentMappedValue.ToString("G8"); CurrentNormalizedText.Text = mapped is null ? "—" : state.CurrentNormalizedValue.ToString("0.000"); } iconRenderer.Update(IconImage, iconSettings, iconSource, state, mapped, new Size(Graph.ActualWidth, Graph.ActualHeight), ImageOpacitySlider.Value); if (mapped is not null) { sliderUpdate = true; TimelineSlider.Value = timeline.NormalizedPosition; sliderUpdate = false; } UpdateAudioView(); UpdateSpectrumView(); if (WorkflowTabs.SelectedIndex != 0) UpdatePresentationViews();
+        playback.SetLoop(LoopCheck.IsChecked == true); UpdateColumnLabels(); var state = playback.CurrentDataState; Graph.MappedSeries = mapped; Graph.TimeLabel = SelectedColumn(TimeColumnBox); Graph.ValueLabel = SemanticValueLabel(); Graph.State = state; Graph.Refresh(); if (timeline.State != TimelineState.Playing || ++readoutTick >= 3) { readoutTick = 0; CurrentTimeText.Text = mapped is null ? "—" : state.CurrentTime.ToString("G8"); var displayValue = mapped is not null && mapped.FinancialProfile is not null && mapped.Mode != MappingMode.AbsoluteValue ? state.CurrentMappedValue : state.CurrentOriginalValue; CurrentOriginalText.Text = mapped is null ? "—" : AxisLabelFormatter.Value(displayValue, mapped?.Mode ?? MappingMode.AbsoluteValue, mapped?.FinancialProfile); CurrentMappedText.Text = mapped is null ? "—" : AxisLabelFormatter.Value(state.CurrentMappedValue, mapped.Mode, mapped.FinancialProfile); CurrentNormalizedText.Text = mapped is null ? "—" : state.CurrentNormalizedValue.ToString("0.000"); } iconRenderer.Update(IconImage, iconSettings, iconSource, state, mapped, new Size(Graph.ActualWidth, Graph.ActualHeight), ImageOpacitySlider.Value); if (mapped is not null) { sliderUpdate = true; TimelineSlider.Value = timeline.NormalizedPosition; sliderUpdate = false; } UpdateAudioView(); UpdateSpectrumView(); if (WorkflowTabs.SelectedIndex != 0) UpdatePresentationViews();
     }
     PresentationScene LivePresentationScene()
     {

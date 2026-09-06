@@ -4,7 +4,7 @@ public enum MappingMode { AbsoluteValue, ChangeFromPrevious, PercentChange }
 
 public static class MappingEngine
 {
-    public static MappedDataSeries Map(DataSeries source, MappingMode mode)
+    public static MappedDataSeries Map(DataSeries source, MappingMode mode, FinancialDatasetProfile? financialProfile = null, string? valueColumnName = null)
     {
         var points = new List<MappedDataPoint>(source.Points.Count); var previous = 0d;
         for (var i = 0; i < source.Points.Count; i++)
@@ -12,7 +12,7 @@ public static class MappingEngine
             var original = source.Points[i].Value; var mapped = mode == MappingMode.AbsoluteValue ? original : i == 0 ? 0 : mode == MappingMode.ChangeFromPrevious ? original - previous : previous == 0 ? 0 : (original - previous) / previous * 100;
             points.Add(new MappedDataPoint(source.Points[i].Time, original, double.IsFinite(mapped) ? mapped : 0, source.Points[i].OriginalRowIndex, source.Points[i].OriginalTimeText)); previous = original;
         }
-        return new MappedDataSeries { Name = source.Name, Mode = mode, Points = points };
+        return new MappedDataSeries { Name = source.Name, Mode = mode, Points = points, FinancialProfile = financialProfile, ValueColumnName = valueColumnName };
     }
 }
 
