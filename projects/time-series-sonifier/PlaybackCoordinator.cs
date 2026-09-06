@@ -9,11 +9,12 @@ public sealed class PlaybackCoordinator
     double userMinimumPitch = PitchMapper.DefaultMinimumFrequency;
     double userMaximumPitch = PitchMapper.DefaultMaximumFrequency;
 
-    public PlaybackCoordinator(TimelineEngine timeline, AudioEngine audio) { this.timeline = timeline; this.audio = audio; CurrentDataState = CurrentDataState.Empty; AudioEnabled = true; }
+    public PlaybackCoordinator(TimelineEngine timeline, AudioEngine audio) { this.timeline = timeline; this.audio = audio; CurrentDataState = CurrentDataState.Empty; AudioEnabled = true; StereoPanEnabled = true; }
     public TimelineEngine Timeline => timeline;
     public AudioEngine Audio => audio;
     public CurrentDataState CurrentDataState { get; private set; }
     public bool AudioEnabled { get; private set; }
+    public bool StereoPanEnabled { get; private set; }
     public bool LaptopSpeakerMode { get; private set; }
     public double UserMinimumPitch => userMinimumPitch;
     public double UserMaximumPitch => userMaximumPitch;
@@ -27,6 +28,7 @@ public sealed class PlaybackCoordinator
     }
     public void SetPitchRange(double minimum, double maximum) { userMinimumPitch = minimum; userMaximumPitch = maximum; PublishState(); }
     public void SetLaptopSpeakerMode(bool enabled) { LaptopSpeakerMode = enabled; PublishState(); }
+    public void SetStereoPanEnabled(bool enabled) { StereoPanEnabled = enabled; PublishState(); }
     public void SetLoop(bool enabled) => timeline.LoopEnabled = enabled;
     public void SetPlaybackSpeed(double speed) => timeline.PlaybackSpeed = speed;
     public void Play()
@@ -56,6 +58,8 @@ public sealed class PlaybackCoordinator
     void PublishState()
     {
         CurrentDataState = interpolator?.Evaluate(timeline.CurrentTime) ?? CurrentDataState.Empty;
+        audio.SetStereoPanEnabled(StereoPanEnabled);
+        audio.SetTargetPanFromProgress(CurrentDataState.NormalizedPosition);
         if (AudioEnabled && interpolator is not null) { var range = EffectivePitchRange; audio.SetTargetFrequencyFromNormalized(CurrentDataState.CurrentNormalizedValue, range.Minimum, range.Maximum); }
     }
 }

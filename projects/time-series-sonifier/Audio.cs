@@ -56,6 +56,28 @@ public sealed class ParameterSmoother
     public double Advance(double deltaSeconds) { deltaSeconds = Math.Clamp(double.IsFinite(deltaSeconds) ? deltaSeconds : 0, 0, 1); var amount = GlideSeconds <= 0 ? 1 : Math.Clamp(deltaSeconds / GlideSeconds, 0, 1); Current += (Target - Current) * amount; return Current; }
 }
 
+public sealed class SignedParameterSmoother
+{
+    public double Current { get; private set; }
+    public double Target { get; private set; }
+    public double GlideSeconds { get; set; } = .05;
+    public SignedParameterSmoother(double initial) { Current = Target = initial; }
+    public void SetTarget(double target) => Target = double.IsFinite(target) ? target : Current;
+    public double Advance(double deltaSeconds) { deltaSeconds = Math.Clamp(double.IsFinite(deltaSeconds) ? deltaSeconds : 0, 0, 1); var amount = GlideSeconds <= 0 ? 1 : Math.Clamp(deltaSeconds / GlideSeconds, 0, 1); Current += (Target - Current) * amount; return Current; }
+}
+
+public readonly record struct StereoPanGains(double Left, double Right);
+
+public static class StereoPanner
+{
+    public static double FromProgress(double progress) => Math.Clamp(double.IsFinite(progress) ? progress * 2 - 1 : 0, -1, 1);
+    public static StereoPanGains Gains(double pan)
+    {
+        var angle = (Math.Clamp(double.IsFinite(pan) ? pan : 0, -1, 1) + 1) * Math.PI / 4;
+        return new(Math.Cos(angle), Math.Sin(angle));
+    }
+}
+
 public sealed class Oscillator
 {
     public const int SampleRate = 48000;
@@ -78,13 +100,16 @@ public interface IAudioDiagnostics { string LastDiagnostic { get; } }
 
 public sealed class AudioEngine : IDisposable
 {
-    readonly object gate = new(); readonly IAudioBackend backend; readonly Oscillator oscillator = new(); readonly ParameterSmoother smoother; double targetFrequency = PitchMapper.Map(.5); bool disposed; int sampleRate = Oscillator.SampleRate; int paused;
+    readonly object gate = new(); readonly IAudioBackend backend; readonly Oscillator oscillator = new(); readonly ParameterSmoother smoother; readonly SignedParameterSmoother panSmoother = new(0) { GlideSeconds = .08 }; double targetFrequency = PitchMapper.Map(.5); bool disposed; int sampleRate = Oscillator.SampleRate; int paused; int panEnabled = 1;
     public AudioEngine(IAudioBackend? backend = null) { this.backend = backend ?? new WaveOutBackend(); smoother = new ParameterSmoother(targetFrequency); }
     public AudioEngineState State { get; private set; } = AudioEngineState.Stopped;
     public string Status { get; private set; } = "Stopped";
     public WaveformType Waveform { get=>oscillator.Waveform; set=>oscillator.Waveform=value; }
     public double TargetFrequency { get=>Volatile.Read(ref targetFrequency); private set=>Volatile.Write(ref targetFrequency, value); }
     public double CurrentFrequency => smoother.Current;
+    public bool StereoPanEnabled => Volatile.Read(ref panEnabled) == 1;
+    public double TargetPan => panSmoother.Target;
+    public double CurrentPan => panSmoother.Current;
     public int SampleRate => Volatile.Read(ref sampleRate);
     public string? LastDiagnostic => (backend as IAudioDiagnostics)?.LastDiagnostic;
     public double Volume { get; set; } = .25;
@@ -92,6 +117,9 @@ public sealed class AudioEngine : IDisposable
     public WaveformSnapshot CreateWaveformSnapshot(int sampleCount = 256) => WaveformSnapshot.Create(Waveform, CurrentFrequency, Volume, oscillator.Phase, sampleCount);
     public void SetTargetFrequency(double frequency) => TargetFrequency = PitchMapper.Map(0, frequency, Math.Max(frequency + 1, frequency + 1));
     public void SetTargetFrequencyFromNormalized(double normalized, double minimum, double maximum) => TargetFrequency = PitchMapper.Map(normalized, minimum, maximum);
+    public void SetStereoPanEnabled(bool enabled) { Volatile.Write(ref panEnabled, enabled ? 1 : 0); panSmoother.SetTarget(enabled ? panSmoother.Target : 0); }
+    public void SetTargetPan(double pan) => panSmoother.SetTarget(StereoPanEnabled ? Math.Clamp(pan, -1, 1) : 0);
+    public void SetTargetPanFromProgress(double progress) => SetTargetPan(StereoPanner.FromProgress(progress));
     public bool Start()
     {
         lock (gate) { if (disposed) return false; if (State == AudioEngineState.Paused) { Resume(); return true; } if (State == AudioEngineState.Running || State == AudioEngineState.Starting) return State == AudioEngineState.Running; State = AudioEngineState.Starting; Status = "Starting"; try { backend.Start(Render); Volatile.Write(ref sampleRate, backend is IAudioSampleRateProvider provider ? provider.SampleRate : Oscillator.SampleRate); Volatile.Write(ref paused, 0); State = AudioEngineState.Running; Status = "Running"; return true; } catch (Exception ex) { State = AudioEngineState.Faulted; Status = $"Audio unavailable: {ex.Message}"; return false; } }
@@ -102,7 +130,7 @@ public sealed class AudioEngine : IDisposable
     {
         lock (gate) { if (disposed || State is AudioEngineState.Stopped or AudioEngineState.Stopping) return; State = AudioEngineState.Stopping; try { Volatile.Write(ref paused, 1); backend.Stop(); SampleBuffer.Clear(); State = AudioEngineState.Stopped; Status = "Stopped"; } catch (Exception ex) { State = AudioEngineState.Faulted; Status = $"Audio stop fault: {ex.Message}"; } }
     }
-    void Render(float[] buffer) { var rate = SampleRate; smoother.SetTarget(TargetFrequency); var gain = Volatile.Read(ref paused) == 1 ? 0 : Math.Clamp(double.IsFinite(Volume) ? Volume : 0, 0, 1); for (var i = 0; i < buffer.Length; i++) { var current = smoother.Advance(1.0 / rate); buffer[i] = (float)(oscillator.NextSample(current, rate) * gain); } SampleBuffer.Write(buffer); }
+    void Render(float[] buffer) { var rate = SampleRate; smoother.SetTarget(TargetFrequency); panSmoother.SetTarget(StereoPanEnabled ? panSmoother.Target : 0); var gain = Volatile.Read(ref paused) == 1 ? 0 : Math.Clamp(double.IsFinite(Volume) ? Volume : 0, 0, 1); var mono = new float[buffer.Length / 2]; for (var i = 0; i < mono.Length; i++) { var current = smoother.Advance(1.0 / rate); var sample = (float)(oscillator.NextSample(current, rate) * gain); mono[i] = sample; var gains = StereoPanner.Gains(panSmoother.Advance(1.0 / rate)); buffer[i * 2] = (float)(sample * gains.Left); buffer[i * 2 + 1] = (float)(sample * gains.Right); } SampleBuffer.Write(mono); }
     public void Dispose() { lock (gate) { if (disposed) return; Stop(); backend.Dispose(); disposed = true; State = AudioEngineState.Disposed; Status = "Disposed"; } }
 }
 
@@ -117,11 +145,11 @@ public sealed class AudioLifecycle
 
 public sealed class WaveOutBackend : IAudioBackend, IAudioSampleRateProvider, IAudioDiagnostics
 {
-    public const int BufferCount=3, Samples=512; const int CallbackFunction=0x00030000, WomDone=0x3BD, PcmFormat=1; readonly object gate=new(); readonly byte[][] buffers=new byte[BufferCount][]; readonly GCHandle[] pins=new GCHandle[BufferCount]; readonly Header[] headers=new Header[BufferCount]; readonly float[] renderBuffer=new float[Samples]; readonly WaveOutProc callback; IntPtr device; Action<float[]>? render; int callbacksInFlight; bool running; public int SampleRate { get; private set; } = Oscillator.SampleRate; public string LastDiagnostic { get; private set; } = "";
+    public const int BufferCount=3, Samples=512; const int CallbackFunction=0x00030000, WomDone=0x3BD, PcmFormat=1; readonly object gate=new(); readonly byte[][] buffers=new byte[BufferCount][]; readonly GCHandle[] pins=new GCHandle[BufferCount]; readonly Header[] headers=new Header[BufferCount]; readonly float[] renderBuffer=new float[Samples * 2]; readonly WaveOutProc callback; IntPtr device; Action<float[]>? render; int callbacksInFlight; bool running; public int SampleRate { get; private set; } = Oscillator.SampleRate; public string LastDiagnostic { get; private set; } = "";
     public WaveOutBackend() => callback = OnMessage;
     public static int GetDeviceCount() => checked((int)waveOutGetNumDevs());
     public void Start(Action<float[]> renderer) { lock(gate){ if(running)return; render=renderer; uint result=0; foreach(var rate in new[]{48000,44100}) { var format=new Format{Tag=PcmFormat,Channels=2,Rate=(uint)rate,BytesPerSecond=(uint)(rate*4),BlockAlign=4,Bits=16}; result=waveOutOpen(out device,-1,ref format,callback,IntPtr.Zero,CallbackFunction); if(result==0){SampleRate=rate; LastDiagnostic=$"Audio backend: waveOut; Device: WAVE_MAPPER; Format: {rate} Hz stereo PCM16; waveOutOpen result: 0; Message: success"; break;} LastDiagnostic=$"Audio backend: waveOut; Device: WAVE_MAPPER; Format: {rate} Hz stereo PCM16; waveOutOpen result: {result}; Message: {ErrorText(result)}"; } if(result!=0)throw new InvalidOperationException(LastDiagnostic); try { running=true; for(var i=0;i<BufferCount;i++){buffers[i]=new byte[Samples*4];pins[i]=GCHandle.Alloc(buffers[i],GCHandleType.Pinned);headers[i]=new Header{Data=pins[i].AddrOfPinnedObject(),Length=(uint)buffers[i].Length,User=(uint)i};Check(waveOutPrepareHeader(device,ref headers[i],Marshal.SizeOf<Header>()),"prepare buffer");Fill(i);Check(waveOutWrite(device,ref headers[i],Marshal.SizeOf<Header>()),"queue buffer");} }catch{ Stop(); throw; } } }
-    void Fill(int index){render?.Invoke(renderBuffer);for(var i=0;i<Samples;i++){var sample=(short)Math.Round((float.IsFinite(renderBuffer[i])?Math.Clamp(renderBuffer[i],-1,1):0)*short.MaxValue);BitConverter.TryWriteBytes(buffers[index].AsSpan(i*4,2),sample);BitConverter.TryWriteBytes(buffers[index].AsSpan(i*4+2,2),sample);}}
+    void Fill(int index){render?.Invoke(renderBuffer);for(var i=0;i<Samples;i++){var left=(short)Math.Round((float.IsFinite(renderBuffer[i*2])?Math.Clamp(renderBuffer[i*2],-1,1):0)*short.MaxValue);var right=(short)Math.Round((float.IsFinite(renderBuffer[i*2+1])?Math.Clamp(renderBuffer[i*2+1],-1,1):0)*short.MaxValue);BitConverter.TryWriteBytes(buffers[index].AsSpan(i*4,2),left);BitConverter.TryWriteBytes(buffers[index].AsSpan(i*4+2,2),right);}}
     void OnMessage(IntPtr h,uint message,IntPtr a,IntPtr b,IntPtr c){if(message!=WomDone||!Volatile.Read(ref running))return;Interlocked.Increment(ref callbacksInFlight);try{if(!Volatile.Read(ref running))return;var index=b==IntPtr.Zero?-1:Marshal.ReadInt32(b,16);if(index<0||index>=BufferCount)return;Fill(index);if(Volatile.Read(ref running)&&device!=IntPtr.Zero)waveOutWrite(device,ref headers[index],Marshal.SizeOf<Header>());}finally{Interlocked.Decrement(ref callbacksInFlight);}}
     public void Stop(){lock(gate){if(device==IntPtr.Zero){running=false;return;}running=false;var handle=device;try{waveOutReset(handle);var deadline=Environment.TickCount64+1000;while(Volatile.Read(ref callbacksInFlight)>0&&Environment.TickCount64<deadline)Thread.Yield();for(var i=0;i<BufferCount;i++){if(handle!=IntPtr.Zero)waveOutUnprepareHeader(handle,ref headers[i],Marshal.SizeOf<Header>());if(pins[i].IsAllocated)pins[i].Free();}}finally{waveOutClose(handle);device=IntPtr.Zero;render=null;}}}
     public void Dispose()=>Stop(); static string ErrorText(uint code){var text=new System.Text.StringBuilder(256); waveOutGetErrorText(code,text,text.Capacity); return text.ToString();} static void Check(uint code,string operation){if(code!=0)throw new InvalidOperationException($"audio {operation} failed (code {code}): {ErrorText(code)}");}
