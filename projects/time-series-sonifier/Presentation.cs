@@ -68,9 +68,10 @@ public readonly record struct PresentationLayout(Rect Title, Rect Chart, Rect Re
 
 public static class PresentationText
 {
-    public static string Time(double value)
+    public static string Time(double value, IReadOnlyList<MappedDataPoint>? points = null)
     {
         if (!double.IsFinite(value)) return "—";
+        if (points is not null && points.Count > 0) return AxisLabelFormatter.Time(value, points);
         if (value > DateTime.MinValue.Ticks / (double)TimeSpan.TicksPerSecond && value < DateTime.MaxValue.Ticks / (double)TimeSpan.TicksPerSecond)
         {
             try { return new DateTime((long)(value * TimeSpan.TicksPerSecond), DateTimeKind.Utc).ToLocalTime().ToString("MMM d, yyyy", System.Globalization.CultureInfo.InvariantCulture); } catch { }
@@ -97,7 +98,7 @@ public static class PresentationRenderer
         DrawImage(dc, scene, layout.Chart); GraphRenderer.Draw(dc, scene.Series, scene.State, layout.Chart, scene.TimeColumnName, scene.ValueColumnName, graphCache, scene.ThemeMode, scene.RevealMode, scene.RevealProgress, typography.AxisTick / 11); DrawReadouts(dc, scene, layout.Readouts, typography, palette); DrawSpectrum(dc, scene.Spectrum, layout.Spectrum); DrawWaveform(dc, scene.Waveform, layout.Waveform, typography, palette);
     }
     static void DrawReadouts(DrawingContext dc, PresentationScene scene, Rect bounds, PresentationTypography typography, ThemePalette palette)
-    { DrawText(dc, PresentationText.Time(scene.State.CurrentTime), bounds.Left, bounds.Top, typography.PrimaryReadout, palette.Brush(palette.PrimaryText)); DrawText(dc, ColumnLabel.Format(scene.ValueColumnName, "VALUE"), bounds.Left, bounds.Top + typography.PrimaryReadout * 1.2, typography.AxisTitle, palette.Brush(palette.SecondaryText)); DrawText(dc, PresentationText.Value(scene.State.CurrentOriginalValue), bounds.Left, bounds.Top + typography.PrimaryReadout * 2.05, typography.PrimaryReadout, palette.Brush(palette.PrimaryText)); DrawText(dc, $"NORMALIZED {scene.State.CurrentNormalizedValue:0.000}", bounds.Left, bounds.Top + bounds.Height - typography.SecondaryReadout, typography.SecondaryReadout, palette.Brush(palette.SecondaryText)); }
+    { DrawText(dc, PresentationText.Time(scene.State.CurrentTime, scene.Series!.Points), bounds.Left, bounds.Top, typography.PrimaryReadout, palette.Brush(palette.PrimaryText)); DrawText(dc, ColumnLabel.Format(scene.ValueColumnName, "VALUE"), bounds.Left, bounds.Top + typography.PrimaryReadout * 1.2, typography.AxisTitle, palette.Brush(palette.SecondaryText)); DrawText(dc, PresentationText.Value(scene.State.CurrentOriginalValue), bounds.Left, bounds.Top + typography.PrimaryReadout * 2.05, typography.PrimaryReadout, palette.Brush(palette.PrimaryText)); DrawText(dc, $"NORMALIZED {scene.State.CurrentNormalizedValue:0.000}", bounds.Left, bounds.Top + bounds.Height - typography.SecondaryReadout, typography.SecondaryReadout, palette.Brush(palette.SecondaryText)); }
     static void DrawWaveform(DrawingContext dc, WaveformSnapshot? waveform, Rect bounds, PresentationTypography typography, ThemePalette palette)
     { dc.DrawRectangle(null, new Pen(palette.Brush(palette.Grid), 1), bounds); if (waveform is null || waveform.Samples.Count < 2) return; var geometry = new StreamGeometry(); using (var c = geometry.Open()) { c.BeginFigure(new Point(bounds.Left, bounds.Top + bounds.Height / 2), false, false); for (var i = 0; i < waveform.Samples.Count; i++) c.LineTo(new Point(bounds.Left + i * bounds.Width / (waveform.Samples.Count - 1), bounds.Top + bounds.Height * (1 - waveform.Samples[i]) / 2), true, false); } dc.DrawGeometry(null, new Pen(palette.Brush(palette.Green), Math.Max(1, typography.WaveformLabel / 16)), geometry); DrawText(dc, "AUDIO WAVEFORM", bounds.Left, bounds.Top - typography.WaveformLabel * .35, typography.WaveformLabel, palette.Brush(palette.SecondaryText)); }
     static void DrawImage(DrawingContext dc, PresentationScene scene, Rect chart)
@@ -115,10 +116,12 @@ public static class PresentationRenderer
 
 public static class OfflineAudioRenderer
 {
-    public static int RenderWav(string path, MappedDataSeries series, WaveformType waveform, double volume, double durationSeconds, bool enabled, int sampleRate = Oscillator.SampleRate)
+    public static EffectivePitchRange? RangeOverride { get; set; }
+    public static int RenderWav(string path, MappedDataSeries series, WaveformType waveform, double volume, double durationSeconds, bool enabled, int sampleRate = Oscillator.SampleRate, double minimumFrequency = PitchMapper.DefaultMinimumFrequency, double maximumFrequency = PitchMapper.DefaultMaximumFrequency)
     {
         var count = Math.Max(0, (int)Math.Round(durationSeconds * sampleRate)); var oscillator = new Oscillator { Waveform = waveform }; var bytes = new byte[count * 2]; var interpolator = new MappedSeriesInterpolator(series); using var stream = File.Create(path); using var writer = new BinaryWriter(stream); writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF")); writer.Write(36 + bytes.Length); writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVEfmt ")); writer.Write(16); writer.Write((short)1); writer.Write((short)1); writer.Write(sampleRate); writer.Write(sampleRate * 2); writer.Write((short)2); writer.Write((short)16); writer.Write(System.Text.Encoding.ASCII.GetBytes("data")); writer.Write(bytes.Length);
-        for (var i = 0; i < count; i++) { var time = series.MinimumTime + (series.MaximumTime - series.MinimumTime) * (i / (double)Math.Max(1, count - 1)); var state = interpolator.Evaluate(time); var sample = enabled ? oscillator.NextSample(PitchMapper.Map(state.CurrentNormalizedValue), sampleRate) * (float)Math.Clamp(double.IsFinite(volume) ? volume : 0, 0, 1) : 0; var pcm = (short)Math.Round(Math.Clamp(sample, -1, 1) * short.MaxValue); writer.Write(pcm); } return count;
+        var range = RangeOverride ?? PitchRangeResolver.Resolve(minimumFrequency, maximumFrequency, false);
+        for (var i = 0; i < count; i++) { var time = series.MinimumTime + (series.MaximumTime - series.MinimumTime) * (i / (double)Math.Max(1, count - 1)); var state = interpolator.Evaluate(time); var sample = enabled ? oscillator.NextSample(PitchMapper.Map(state.CurrentNormalizedValue, range.Minimum, range.Maximum), sampleRate) * (float)Math.Clamp(double.IsFinite(volume) ? volume : 0, 0, 1) : 0; var pcm = (short)Math.Round(Math.Clamp(sample, -1, 1) * short.MaxValue); writer.Write(pcm); } return count;
     }
 }
 

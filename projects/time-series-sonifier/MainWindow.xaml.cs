@@ -44,6 +44,7 @@ public partial class MainWindow : Window
     void Speed_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (SpeedBox.SelectedItem is System.Windows.Controls.ComboBoxItem item && double.TryParse(item.Content?.ToString()?.TrimEnd('x'), out var speed)) playback.SetPlaybackSpeed(speed); }
     void TimelineSlider_Changed(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e) { if (!sliderUpdate && mapped is not null) { playback.SeekNormalized(TimelineSlider.Value); UpdateView(); } }
     void AudioEnable_Click(object sender, RoutedEventArgs e) { playback.SetAudioEnabled(AudioEnableCheck.IsChecked == true); if (playback.AudioEnabled && timeline.State == TimelineState.Playing) timer.Start(); UpdateView(); }
+    void LaptopSpeakerMode_Click(object sender, RoutedEventArgs e) { playback.SetLaptopSpeakerMode(LaptopSpeakerCheck.IsChecked == true); UpdateView(); }
     void Waveform_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) { if (WaveformBox.SelectedIndex >= 0) audio.Waveform = (WaveformType)WaveformBox.SelectedIndex; }
     void PitchSettings_Changed(object sender, RoutedEventArgs e) { playback.SetPitchRange(MinPitch(), MaxPitch()); UpdateView(); }
     void Volume_Changed(object sender, System.Windows.RoutedPropertyChangedEventArgs<double> e) { audio.Volume = VolumeSlider.Value; }
@@ -88,7 +89,7 @@ public partial class MainWindow : Window
         if (now >= nextWaveformTick) { nextWaveformTick = now + System.Diagnostics.Stopwatch.Frequency / 30; return scene with { Waveform = audio.CreateWaveformSnapshot() }; }
         return OutputSurface.Scene?.Waveform is { } previous ? scene with { Waveform = previous } : scene;
     }
-    PresentationScene ExportPresentationScene(CurrentDataState state) => CreateScene(state, null) with { Waveform = WaveformSnapshot.Create(audio.Waveform, PitchMapper.Map(state.CurrentNormalizedValue, MinPitch(), MaxPitch()), audio.Volume, state.NormalizedPosition) };
+    PresentationScene ExportPresentationScene(CurrentDataState state) { var range = playback.EffectivePitchRange; OfflineAudioRenderer.RangeOverride = range; return CreateScene(state, null) with { Waveform = WaveformSnapshot.Create(audio.Waveform, PitchMapper.Map(state.CurrentNormalizedValue, range.Minimum, range.Maximum), audio.Volume, state.NormalizedPosition) }; }
     void UpdatePresentationViews() { if (WorkflowTabs.SelectedIndex != 1) return; var scene = LivePresentationScene(); OutputSurface.Scene = scene; OutputSurface.Profile = outputProfile; OutputSurface.InvalidateVisual(); }
     void UpdateExportStatus() { var fps = FrameRateBox.SelectedIndex == 1 ? 60 : 30; ExportStatusText.Text = $"{outputProfile.Width} × {outputProfile.Height} · {fps} FPS · {TimelineEngine.DefaultPresentationDuration:0.0} sec · {Math.Ceiling(TimelineEngine.DefaultPresentationDuration * fps):0} frames"; }
     async void Export_Click(object sender, RoutedEventArgs e)
